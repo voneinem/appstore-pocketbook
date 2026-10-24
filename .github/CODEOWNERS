@@ -1,0 +1,5 @@
+# The maintainer reviews everything that is not an app entry: code, workflows, keys, license list.
+# Entry files under catalog/entries/ have no owner, so contributors' submissions need no code-owner review.
+# Branch protection must have "Require review from Code Owners" switched on (docs/maintainer-keys.md).
+*                   @voneinem
+/catalog/entries/
