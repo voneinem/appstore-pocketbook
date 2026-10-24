@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "serial": 1792843200,
+  "generated_at": "2026-10-24T12:00:00Z",
+  "apps": [
+    {
+      "id": "sample-app",
+      "name": "Sample App",
+      "short_description": {
+        "en": "A small sample app that shows the package contract.",
+        "de": "Eine kleine Beispiel-App für den Paketvertrag."
+      },
+      "long_description": {
+        "en": "Sample App is a placeholder used in the documentation and in the contract tests. It does nothing useful on a reader."
+      },
+      "version": "1.2.0",
+      "release_date": "2026-10-20",
+      "package_url": "https://github.com/example-org/sample-app/releases/download/v1.2.0/sample-app-inkpad-one-1.2.0.zip",
+      "package_size": 222000,
+      "package_sha256": "0000000000000000000000000000000000000000000000000000000000000005",
+      "license": "MIT",
+      "source_url": "https://github.com/example-org/sample-app",
+      "author": "Example Author",
+      "min_firmware": "6.8.0",
+      "target_device": "InkPad One",
+      "icon_url": "https://raw.githubusercontent.com/example-org/sample-app/v1.2.0/icon.png",
+      "changelog_url": "https://github.com/example-org/sample-app/releases/tag/v1.2.0",
+      "withdrawn_versions": ["1.1.0"],
+      "listed_versions": ["1.0.0", "1.1.0", "1.2.0"],
+      "menu_entry_id": "U_SampleApp",
+      "data_dir": "system/sample-app"
+    }
+  ]
+}

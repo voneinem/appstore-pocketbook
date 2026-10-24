@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "sample-app",
+  "package_url": "https://github.com/example-org/sample-app/releases/download/v1.2.0/sample-app-inkpad-one-1.2.0.zip",
+  "release_date": "2026-10-20",
+  "short_description": {
+    "en": "A small sample app that shows the package contract.",
+    "de": "Eine kleine Beispiel-App für den Paketvertrag."
+  },
+  "long_description": {
+    "en": "Sample App is a placeholder used in the documentation and in the contract tests. It does nothing useful on a reader."
+  },
+  "license": "MIT",
+  "source_url": "https://github.com/example-org/sample-app",
+  "author": "Example Author",
+  "icon_url": "https://raw.githubusercontent.com/example-org/sample-app/v1.2.0/icon.png",
+  "changelog_url": "https://github.com/example-org/sample-app/releases/tag/v1.2.0",
+  "withdrawn_versions": ["1.1.0"]
+}
