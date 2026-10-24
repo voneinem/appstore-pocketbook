@@ -1,0 +1,64 @@
+PB Store - third-party notices
+
+This project is licensed under the MIT License (see LICENSE). The following components and
+patterns are used under their own terms.
+
+--------------------------------------------------------------------------------
+InkFeed (MIT License)
+https://github.com/jrohde/InkFeed
+
+Build and packaging patterns reach this repository through the sibling projects notes-pocketbook,
+nextcloud-pocketbook and office-pocketbook (all MIT, same author), which adapted them from InkFeed:
+the CMake host/device layout (top-level CMakeLists.txt, reserved TARGET_TYPE and SDK location rules),
+the test layout (tests/CMakeLists.txt) and the gate scripts (scripts/pre-merge.sh,
+scripts/check-version-bump.sh, scripts/check-constitution.sh). No InkFeed source code is copied
+into this repository.
+
+Copyright (c) 2026 Joost Rohde
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+Sibling projects (MIT License, same author)
+notes-pocketbook, nextcloud-pocketbook, office-pocketbook. The defensive JSON reader
+(core/src/json.cpp) and the test helpers (tests/support/tmp_dir.h, tls_test_server.h) were adapted
+from notes-pocketbook. Copyright (c) 2026 Volker von Einem.
+
+--------------------------------------------------------------------------------
+miniz (MIT License)
+third_party/miniz/, the miniz single-file ZIP/deflate library (https://github.com/richgel999/miniz).
+Copyright 2013-2014 RAD Game Tools and Valve Software; Copyright 2010-2014 Rich Geldreich and
+Tenacious Software LLC. The license text is third_party/miniz/LICENSE. Version and checksum:
+third_party/miniz/VERSION.
+
+--------------------------------------------------------------------------------
+OpenSSL (Apache-2.0)
+https://www.openssl.org/
+
+SHA-256 and Ed25519 use OpenSSL libcrypto, provided by the build system and not redistributed by
+this project. Licensed under the Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+Copyright (c) The OpenSSL Project Authors.
+
+--------------------------------------------------------------------------------
+libcurl (curl license)
+https://curl.se/docs/copyright.html
+
+Downloads of packages and of the live catalog use libcurl, provided by the build system and not
+redistributed by this project. Licensed under the curl license (MIT-style).
+Copyright (c) Daniel Stenberg, <daniel@haxx.se>, and many contributors.
