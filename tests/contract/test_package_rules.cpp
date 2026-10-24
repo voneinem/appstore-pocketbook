@@ -7,6 +7,7 @@
 #include <set>
 
 using namespace pbstore;
+using pbstore::json::Value;
 
 PB_TEST(a_conforming_package_passes_and_reports_its_size_and_hash) {
     auto app = pbtest::make_sample_app();
@@ -79,3 +80,31 @@ PB_TEST(a_package_with_a_directory_entries_and_extra_empty_directory_is_fine) {
 }
 
 PB_TEST_MAIN()
+
+// T089: every name verified on a real reader (firmware 6.11.1437) is reserved, in any capitalisation.
+PB_TEST(every_system_name_seen_on_a_real_reader_is_reserved_as_a_data_folder) {
+    const char* seen[] = {"notepad", "adobe", "bin", "cache", "components", "config", "cover_chache",
+                          "dictionaries", "empik-2", "explorer-3", "fonts", "gestures", "language",
+                          "license", "logo", "manuals", "mediaexplorer", "morphology", "pbdicts",
+                          "player-2", "reader", "state", "themes", "tts", "users", "timezone",
+                          "last_update_check"};
+    for (const char* name : seen) {
+        auto app = pbtest::make_sample_app();
+        Value m = app.manifest;
+        pbtest::set_member(m, "data_dir", Value::from_string(std::string("system/") + name));
+        PackageCheckResult r = check_package(pbtest::build_package(m, app.files));
+        PB_CHECK(!r.ok());
+        PB_CHECK(!r.findings.empty());
+        PB_CHECK_EQ(r.findings[0].rule_id, std::string("E-PKG-15"));
+        PB_CHECK(r.findings[0].message.find("reserved") != std::string::npos);
+    }
+}
+
+PB_TEST(the_apps_of_this_project_and_a_plain_name_are_not_reserved) {
+    for (const char* name : {"pbnotes", "pbcloud", "pboffice", "sample-app"}) {
+        auto app = pbtest::make_sample_app();
+        Value m = app.manifest;
+        pbtest::set_member(m, "data_dir", Value::from_string(std::string("system/") + name));
+        PB_CHECK(check_package(pbtest::build_package(m, app.files)).ok());
+    }
+}

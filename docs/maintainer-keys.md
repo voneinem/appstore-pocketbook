@@ -36,7 +36,7 @@ Never paste the private key into an issue, a pull request, a chat or a workflow 
 2. **Environments**: `catalog-signing` (holds the secret, limited to `main`) and `github-pages`.
 3. **Branch protection for `main`**, because the pull-request check runs the validation code of the
    pull request itself:
-   - require the status check `pull-request / check`;
+   - require the status check `check` (the job of the `pull-request` workflow);
    - require branches to be **up to date** before merging, so two pull requests cannot both pass
      against a stale tree;
    - require review from **Code Owners** (see `.github/CODEOWNERS`: the maintainer owns everything

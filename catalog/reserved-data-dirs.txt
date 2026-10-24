@@ -1,16 +1,46 @@
 # Names under system/ that an app may not claim as its user-data folder (data_dir: system/<name>).
 # One name per line; lines starting with # are comments. This list is compiled into pbstore_core.
 #
-# NOTE: this is a best guess from known firmware layouts. It MUST be verified against a real
-# reader's system/ folder before the first release (see specs/001-catalog-package-contract/research.md,
-# section 21). Extend it by reviewed change.
+# All names are lower case: data_dir names are lower case by rule, and the reader's storage is
+# FAT, where "Notepad" and "notepad" are the same folder. A name here blocks that folder in any
+# capitalisation. Files count as well as folders: an app must not claim "timezone" either.
+#
+# Verified on 2026-10-24 against the top level of system/ on a PocketBook reader, model 1030,
+# firmware 6.11.1437 (names only; nothing else was read or recorded). Extend it by reviewed change
+# when another model or firmware version uses further names.
+
+# observed on the device
+notepad
+adobe
+bin
+cache
+components
 config
-profiles
-state
+cover_chache
+dictionaries
+empik-2
+explorer-3
 fonts
+gestures
+language
+license
+logo
+manuals
+mediaexplorer
+morphology
+pbdicts
+player-2
+reader
+state
+themes
+tts
+users
+timezone
+last_update_check
+
+# not seen on that device; kept in case other models or firmware versions use them
+profiles
 dict
 keymaps
-themes
-bin
 lib
 tmp
