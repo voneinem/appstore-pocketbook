@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "id": "sample-app",
+  "name": "Sample App",
+  "version": "1.2.0",
+  "min_firmware": "6.8.0",
+  "target_device": "InkPad One",
+  "files": [
+    {
+      "path": "applications/icons/sample-app.bmp",
+      "size": 16206,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "path": "applications/icons/sample-app_f.bmp",
+      "size": 16206,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000002"
+    },
+    {
+      "path": "applications/sample-app.app",
+      "size": 1024,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000003"
+    },
+    {
+      "path": "applications/sample-app.bin",
+      "size": 204800,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000004"
+    }
+  ],
+  "menu_entry": {
+    "id": "U_SampleApp",
+    "title": "Sample App",
+    "path": "applications/sample-app.app",
+    "icon": "applications/icons/sample-app.bmp",
+    "focused_icon": "applications/icons/sample-app_f.bmp",
+    "group": "@General"
+  },
+  "data_dir": "system/sample-app"
+}
