@@ -49,7 +49,6 @@ jobs:
 
       # Each added or changed entry gets its own verdict: annotations on the pull request and a section
       # in the job summary. The loop goes through all entries before it fails.
-      # REMOVE "--first-publish" below once the first catalog has been published (task T093).
       - name: Check changed entries
         run: |
           status=0
@@ -57,7 +56,7 @@ jobs:
             case "$f" in
               catalog/entries/*.json)
                 [ -f "$f" ] || continue   # a deleted entry has nothing to check
-                build/tools/pbstore-catalog/pbstore-catalog check-entry "$f" --github --live-url "${CATALOG_URL}" --keys keys/trusted --first-publish || status=1
+                build/tools/pbstore-catalog/pbstore-catalog check-entry "$f" --github --live-url "${CATALOG_URL}" --keys keys/trusted || status=1
                 ;;
             esac
           done < "${RUNNER_TEMP}/changed.txt"
@@ -65,6 +64,5 @@ jobs:
 
       # The changed entries together with all other entries, exactly as the publish run will see them
       # (duplicate menu ids and data folders, withdrawn versions, serial rules). Nothing is written.
-      # REMOVE "--first-publish" below once the first catalog has been published (task T093).
       - name: Validate all entries together
-        run: build/tools/pbstore-catalog/pbstore-catalog build --entries catalog/entries --dry-run --live-url "${CATALOG_URL}" --keys keys/trusted --first-publish
+        run: build/tools/pbstore-catalog/pbstore-catalog build --entries catalog/entries --dry-run --live-url "${CATALOG_URL}" --keys keys/trusted

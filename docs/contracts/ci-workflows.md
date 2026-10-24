@@ -50,6 +50,9 @@ https://<owner>.github.io/<repository>/keys/<name>.pub
 The address is fixed when the repository is published and then compiled into the store and the
 installer. Moving it requires a store release before the old address stops being updated.
 
+The production address, published for the first time on 2026-10-24, is
+`https://voneinem.github.io/appstore-pocketbook/catalog.json`.
+
 ## Workflow hygiene
 
 - Actions are pinned by full commit SHA with a comment naming the version.

@@ -19,6 +19,11 @@ and checks your package. See the [developer guide](docs/developer-guide.md), the
 [what the review checks](docs/review-checks.md) and the formats in [docs/contracts/](docs/contracts/).
 Only open-source apps can be listed.
 
+## Where the catalog is
+
+The signed catalog is published at <https://voneinem.github.io/appstore-pocketbook/catalog.json>, with
+its signature at `catalog.json.sig` and the public keys under `keys/`, on the same site.
+
 ## How the signature works
 
 The catalog is `catalog.json` plus `catalog.json.sig`, a detached Ed25519 signature over the exact
