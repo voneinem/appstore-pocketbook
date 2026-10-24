@@ -44,7 +44,8 @@ named below; the whole suite under AddressSanitizer and UndefinedBehaviorSanitiz
   (GitHub redirects release assets to its object storage).
 - **Entry files are read completely before their size is checked.** A very large file in
   `catalog/entries/` would use memory in the CI run; entry files are reviewed in pull requests.
-- **Reserved data folder names** are a best guess until they are verified on a real reader
-  (`catalog/reserved-data-dirs.txt`, task T089).
+- **Reserved data folder names** were verified on one model and firmware (1030, 6.11.1437) on
+  2026-10-24 (`catalog/reserved-data-dirs.txt`, task T089). Other models or firmware versions may
+  use further names; the list grows by reviewed change.
 - **System libraries.** The sanitizer build reports one small leak inside `libp11-kit`, loaded
   through libcurl's TLS stack; it is suppressed in `tests/lsan.supp` and is not project code.

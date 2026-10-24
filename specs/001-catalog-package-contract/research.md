@@ -142,10 +142,8 @@ the PocketBook SDK 6.11 directory.
   string up to 40 characters starting with `@`.
 - `data_dir` must be `system/<name>` with `<name>` matching `^[a-z0-9][a-z0-9_-]{1,39}$` and not
   in `catalog/reserved-data-dirs.txt`. The sibling apps use `system/pbnotes`, `system/pbcloud`.
-- **Open item for implementation**: the initial reserved list must be checked against a real
-  reader's `system/` folder using the sibling `scripts/probe-device.sh` pattern. Until then the
-  list holds names known from firmware layouts (`config`, `profiles`, `state`, `fonts`, `dict`,
-  `keymaps`, `themes`, `bin`, `lib`, `tmp`) and is extended by reviewed change.
+- The reserved list was checked against a real reader's `system/` folder on 2026-10-24 (model 1030,
+  firmware 6.11.1437, see section 21) and is extended by reviewed change.
 - Icon format rules (opaque BMP, 122x122, 8 bit, from the siblings' notes) are **not** checked by
   this feature: the spec does not ask for it. Recorded for a later feature.
 
@@ -281,9 +279,13 @@ the PocketBook SDK 6.11 directory.
 
 ## 21. Reserved data folder names are a release blocker
 
-- The initial list in `catalog/reserved-data-dirs.txt` is a best guess (section 9). Before the first
-  public release, a maintainer task verifies it against a real reader's `system/` folder and fixes
-  the list. A wrong list could let an app claim a system folder as its data folder.
+- The initial list in `catalog/reserved-data-dirs.txt` was a best guess (section 9). It was verified
+  on 2026-10-24 against the top level of `system/` on a real reader (model 1030, firmware 6.11.1437;
+  folder and file names only, nothing else read or recorded) and now holds every name seen there.
+  Findings that shaped it: the reader's storage is FAT, so names are matched in lower case (the
+  firmware's `Notepad` is the same folder as `notepad`); files count as well as folders (`timezone`,
+  `last_update_check`). The five guessed names not seen on the device stay, marked as such. Other
+  models or firmware versions may add names; the list grows by reviewed change.
 
 ## 22. CI trust model: the PR check runs the pull request's own code
 

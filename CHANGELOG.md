@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Reserved data folder names verified on a real reader (model 1030, firmware 6.11.1437): the list
+  now holds every name seen under `system/`, in lower case because the storage is FAT, and a test
+  covers each name.
+
 ## 0.1.0
 
 - Catalog and package contract: signed catalog format (Ed25519 detached signature), package
