@@ -1,0 +1,101 @@
+# Publish (docs/contracts/ci-workflows.md): runs on main only, inside the protected environment that
+# holds the signing key. Rebuild, sign, verify, scan, then one Pages deployment of catalog.json,
+# catalog.json.sig and the public keys. Any failing entry stops the run and nothing is published.
+name: publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      first_publish:
+        description: "Publish the very first catalog (there is no live catalog yet). Leave off afterwards."
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: catalog-signing
+    env:
+      CATALOG_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/catalog.json
+      FIRST_PUBLISH: ${{ inputs.first_publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build libcurl4-openssl-dev libssl-dev
+
+      - name: Build the tool
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target pbstore-catalog
+
+      # Fetches and verifies the live catalog, carries unchanged entries over, downloads new or changed
+      # packages once. Any failure writes the findings to the job summary and fails the run.
+      - name: Build the catalog
+        run: |
+          extra=""
+          if [ "${FIRST_PUBLISH}" = "true" ]; then extra="--first-publish"; fi
+          mkdir -p out
+          if ! build/tools/pbstore-catalog/pbstore-catalog build --entries catalog/entries --out out --live-url "${CATALOG_URL}" --keys keys/trusted ${extra} 2> "${RUNNER_TEMP}/findings.txt"; then
+            { echo "### Publishing stopped"; echo; echo '```'; cat "${RUNNER_TEMP}/findings.txt"; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"
+            cat "${RUNNER_TEMP}/findings.txt" >&2
+            exit 1
+          fi
+          cat "${RUNNER_TEMP}/findings.txt" >&2
+
+      - name: Sign the catalog
+        env:
+          PBSTORE_SIGNING_KEY: ${{ secrets.PBSTORE_SIGNING_KEY }}
+        run: build/tools/pbstore-catalog/pbstore-catalog sign --catalog out/catalog.json
+
+      # The same checks a consumer makes, plus: the serial is greater than the live serial.
+      - name: Verify the signed catalog
+        run: |
+          live=""
+          if [ "${FIRST_PUBLISH}" != "true" ]; then
+            curl --fail --silent --show-error --location --proto '=https' "${CATALOG_URL}" --output "${RUNNER_TEMP}/live.json"
+            live="--live-serial $(sed -n 's/^  "serial": \([0-9]*\),$/\1/p' "${RUNNER_TEMP}/live.json")"
+          fi
+          build/tools/pbstore-catalog/pbstore-catalog verify --catalog out/catalog.json --sig out/catalog.json.sig --keys keys/trusted ${live}
+
+      - name: Assemble the site
+        run: |
+          mkdir -p site/keys
+          cp out/catalog.json out/catalog.json.sig site/
+          cp keys/trusted/*.pub site/keys/
+
+      # The published files must contain no key material (the signing key value is checked too).
+      - name: Scan the site for secrets
+        env:
+          PBSTORE_SIGNING_KEY: ${{ secrets.PBSTORE_SIGNING_KEY }}
+        run: scripts/pre-merge.sh --secrets site
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

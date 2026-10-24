@@ -1,0 +1,70 @@
+# Pull-request check (docs/contracts/ci-workflows.md). Read-only, no secrets: it can validate pull
+# requests from forks safely. It runs the validation code of the pull request itself, so changes
+# outside catalog/entries/ need the maintainer's review (CODEOWNERS, notice W-PR-01).
+name: pull-request
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_REF: ${{ github.base_ref }}
+      CATALOG_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/catalog.json
+    steps:
+      # the default checkout of a pull_request event is the merge commit: the tree main will be after the merge
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build libcurl4-openssl-dev libssl-dev
+
+      - name: Constitution checks
+        run: scripts/check-constitution.sh
+
+      - name: Version and changelog
+        run: PBSTORE_BASE_REF="origin/${BASE_REF}" scripts/check-version-bump.sh
+
+      - name: Build and test
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+
+      - name: Secret scan
+        run: scripts/pre-merge.sh --secrets
+
+      - name: Changed files
+        run: git diff --name-only "origin/${BASE_REF}...HEAD" > "${RUNNER_TEMP}/changed.txt"
+
+      - name: Reviewer notices for mixed changes
+        run: build/tools/pbstore-catalog/pbstore-catalog check-pr-paths --github --changed-files "${RUNNER_TEMP}/changed.txt"
+
+      # Each added or changed entry gets its own verdict: annotations on the pull request and a section
+      # in the job summary. The loop goes through all entries before it fails.
+      # REMOVE "--first-publish" below once the first catalog has been published (task T093).
+      - name: Check changed entries
+        run: |
+          status=0
+          while IFS= read -r f; do
+            case "$f" in
+              catalog/entries/*.json)
+                [ -f "$f" ] || continue   # a deleted entry has nothing to check
+                build/tools/pbstore-catalog/pbstore-catalog check-entry "$f" --github --live-url "${CATALOG_URL}" --keys keys/trusted --first-publish || status=1
+                ;;
+            esac
+          done < "${RUNNER_TEMP}/changed.txt"
+          exit $status
+
+      # The changed entries together with all other entries, exactly as the publish run will see them
+      # (duplicate menu ids and data folders, withdrawn versions, serial rules). Nothing is written.
+      # REMOVE "--first-publish" below once the first catalog has been published (task T093).
+      - name: Validate all entries together
+        run: build/tools/pbstore-catalog/pbstore-catalog build --entries catalog/entries --dry-run --live-url "${CATALOG_URL}" --keys keys/trusted --first-publish
