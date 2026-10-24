@@ -1,0 +1,16 @@
+# Names under system/ that an app may not claim as its user-data folder (data_dir: system/<name>).
+# One name per line; lines starting with # are comments. This list is compiled into pbstore_core.
+#
+# NOTE: this is a best guess from known firmware layouts. It MUST be verified against a real
+# reader's system/ folder before the first release (see specs/001-catalog-package-contract/research.md,
+# section 21). Extend it by reviewed change.
+config
+profiles
+state
+fonts
+dict
+keymaps
+themes
+bin
+lib
+tmp

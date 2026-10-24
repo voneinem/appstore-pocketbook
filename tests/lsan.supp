@@ -1,0 +1,4 @@
+# LeakSanitizer suppressions for the sanitizer build (scripts/pre-merge.sh --sanitize).
+# libp11-kit is loaded through libcurl's TLS stack and leaks a small locale string in its own
+# initializer; it is a system library, not code of this project.
+leak:libp11-kit.so
