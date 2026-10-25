@@ -10,6 +10,10 @@ public keys are in `keys/trusted/` (see [keys/README.md](../keys/README.md)).
 
 ## 1. Create the key
 
+You need the `pbstore-catalog` tool: build it once as described in the
+[developer guide](developer-guide.md) (a CMake build, then put `build/tools/pbstore-catalog` on your
+`PATH`).
+
 Create the key on a machine you trust, in a folder that is **not** a git work tree (`keygen` refuses
 to write the private key inside one):
 
@@ -23,8 +27,12 @@ It prints the public key and writes the private key with mode 0600. Then:
    `catalog-signing` (Settings, Environments; restrict the environment to the `main` branch).
 2. Put an **offline backup** of `current.key` somewhere safe (an encrypted drive, a password
    manager's secure note), then delete the local copy.
-3. Commit only the public half: `cp ~/pbstore-keys/current.pub keys/trusted/current.pub` and open a
-   pull request.
+3. Commit only the public half: `cp ~/pbstore-keys/current.pub keys/trusted/current.pub`.
+   **The very first key goes straight to `main`**, before branch protection is switched on (section
+   2): a pull request cannot pass its check before the first catalog is published, because there is
+   no live catalog to compare with (`E-BLD-03`). For the same reason every push to `main` before the
+   first publication makes the publish workflow fail; that is by design, and you can ignore those
+   failure notices. Every later key (the next key in section 5) goes in by pull request.
 
 Never paste the private key into an issue, a pull request, a chat or a workflow log.
 
@@ -34,6 +42,10 @@ Never paste the private key into an issue, a pull request, a chat or a workflow 
    `https://<owner>.github.io/<repository>/catalog.json` (with `catalog.json.sig` and `keys/*.pub`).
    This address is compiled into the store and the installer, so it must not change lightly.
 2. **Environments**: `catalog-signing` (holds the secret, limited to `main`) and `github-pages`.
+   GitHub creates an environment by itself the first time a workflow run uses it, so
+   `catalog-signing` may already exist, empty, after a failed first run: add the branch rule and the
+   secret to it. If GitHub answers "Name branch pattern already exists: main", the rule is already
+   there.
 3. **Branch protection for `main`**, because the pull-request check runs the validation code of the
    pull request itself:
    - require the status check `check` (the job of the `pull-request` workflow);
@@ -52,7 +64,9 @@ There is no live catalog yet, so the first run must say so explicitly:
 1. Run the workflow **publish** manually (Actions, publish, Run workflow) with the input
    `first_publish` switched on. It builds the catalog from `catalog/entries/`, signs it, verifies it,
    scans it for key material, and deploys it to GitHub Pages.
-2. Check the result:
+2. Check the result. GitHub Pages sends `cache-control: max-age=600`, so for up to ten minutes you may
+   still be served the previous catalog; if the serial differs from the one the publish job printed
+   ("catalog verified: serial N"), wait and fetch again before suspecting a failure:
 
    ```bash
    curl -fsS https://<owner>.github.io/<repository>/catalog.json -o catalog.json

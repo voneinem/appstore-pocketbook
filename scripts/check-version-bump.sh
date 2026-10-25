@@ -9,8 +9,9 @@
 #              PBSTORE_NO_BUMP=1 allow a product change without a bump (refactor, no visible change)
 #
 # A base without a VERSION file (the branch introduces it) needs no bump, only the CHANGELOG entry.
-# Files that do not need a bump: specs/, docs/, .specify/, .claude/, *.md except CHANGELOG.md, and the
-# app entries under catalog/entries/ (data added by contributors, not a change of the tool).
+# Files that do not need a bump: specs/, docs/, .specify/, .claude/, *.md except CHANGELOG.md, the app
+# entries under catalog/entries/ (data added by contributors) and the trusted public keys under
+# keys/trusted/ (configuration of who is trusted): none of them changes the tool.
 set -euo pipefail
 
 semver_gt() {  # semver_gt <new> <old>: new is strictly greater
@@ -34,7 +35,7 @@ check() {
     old="$(git show "$base:VERSION" 2>/dev/null | head -n 1 | tr -d '[:space:]' || true)"
 
     changed="$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u \
-        | grep -Ev '^(specs/|docs/|\.specify/|\.claude/|catalog/entries/)' | grep -Ev '(^|/)[^/]*\.md$' || true)"
+        | grep -Ev '^(specs/|docs/|\.specify/|\.claude/|catalog/entries/|keys/trusted/)' | grep -Ev '(^|/)[^/]*\.md$' || true)"
     changed="$(printf '%s\n' "$changed" | grep -Evx 'VERSION|CHANGELOG\.md|' || true)"
 
     if [ -n "$changed" ] && [ -n "$old" ] && ! semver_gt "$new" "$old" && [ "${PBSTORE_NO_BUMP:-}" != 1 ]; then
@@ -69,7 +70,8 @@ if [ "${1:-}" = "--self-test" ]; then
     expect pass "nothing changed"
     echo b > specs/s.md; echo c > README.md; expect pass "docs and specs only need no bump"
     mkdir -p catalog/entries; echo '{}' > catalog/entries/app.json; expect pass "an app entry is data and needs no bump"
-    rm -r catalog; echo b > app/a.cpp; expect fail "code changed, VERSION unchanged"
+    mkdir -p keys/trusted; echo 'AAAA' > keys/trusted/next.pub; expect pass "a trusted public key is configuration and needs no bump"
+    rm -r catalog keys; echo b > app/a.cpp; expect fail "code changed, VERSION unchanged"
     PBSTORE_NO_BUMP=1 expect pass "explicit opt-out"
     printf '1.1.0\n' > VERSION; expect fail "bumped but no CHANGELOG entry"
     printf '## 1.1.0\n- feature\n## 1.0.0\n- first\n' > CHANGELOG.md; expect pass "bumped with CHANGELOG entry"
