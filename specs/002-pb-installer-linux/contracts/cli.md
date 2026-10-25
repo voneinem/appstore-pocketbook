@@ -1,7 +1,7 @@
 # Contract: `pbstore-install` Command Line
 
 **Version**: 1.0 · **Status**: draft for implementation · A thin front end over the engine
-([engine-api.md](engine-api.md)); the tests drive it. Exit statuses and message form: [rules.md](rules.md).
+(the engine interface, `specs/002-pb-installer-linux/contracts/engine-api.md`); the tests drive it. Exit statuses and message form: `docs/installer-rules.md`.
 The catalog tool's conventions (`docs/contracts/cli.md`) are followed where they apply.
 
 ## General

@@ -25,11 +25,11 @@ The connected InkPad One storage, as the engine sees it through `ReaderFs`.
 |-------|---------|
 | `text`, `sha256` | The exact bytes read; `sha256` goes into the plan fingerprint |
 | `applications` | Ordered map: entry id → `{path, title, icon, focused_icon}` and the value's byte span |
-| `groups` | Ordered list: `{title, apps[]}` with the byte span of each `apps` array |
+| `groups` | Ordered list (the array `view.groups`): `{title, apps[]}` with the byte span of each `apps` array; a group may lack `apps` |
 | `indent_style` | Detected from the file: `pretty(n spaces or tab)` or `compact`; used for new text |
 
-Validation (shape check): top-level object; `applications` object of objects; `groups` array of objects
-with string `title` and array-of-string `apps`; no duplicate keys (parser). Failure: E-INS-12 (not valid
+Validation (shape check): top-level object; `applications` object of objects (keys starting with `_` are documentation and ignored); `view` object with a `groups` array of objects
+with string `title` and, if present, array-of-string `apps`; no duplicate keys (parser). Failure: E-INS-12 (not valid
 JSON) or E-INS-13 (expected parts missing). **Change types** (the only edits the engine can express):
 `AddEntry(id, value, group)`, `ReplaceEntry(id, value[, group move])`, `RemoveEntry(id)`; each is a set
 of text splices. A change is rejected if it would touch more than the one id.

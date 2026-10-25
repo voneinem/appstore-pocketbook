@@ -558,8 +558,9 @@ Story 8.
   any other file in the backup folder.
 - **FR-015**: If the desktop configuration is not valid or lacks the expected parts, the program
   MUST write nothing and MUST say why. The expected parts are: a top-level object with an
-  `applications` object whose members are objects, and a `groups` list whose entries are objects with
-  a `title` and an `apps` list of ids.
+  `applications` object whose members are objects (keys that start with an underscore are the reader's own
+  documentation), and a `view` object with a `groups` list whose entries are objects with a `title` and
+  an `apps` list of ids.
 - **FR-016**: The program MUST keep an install record per app listing every file it placed (with
   size and SHA-256), the installed version and where it came from (catalog or local file), and MUST
   use that record as the only basis for what removal and update delete.
@@ -581,7 +582,8 @@ Story 8.
   ejected safely and that a restart may be needed (until the behavior is verified on a reader), and
   which menu group will show the app. After a removal it MUST say that a restart may be needed and that the app's data folder was kept (and
   where) or deleted. If the app is not in its group after ejecting, the message tells the user to
-  restart the reader. It MUST give the steps to eject a drive
+  restart the reader. It MUST warn that the next start of the reader may take noticeably longer than
+  usual (observed on a real reader after every change) and that the user should wait for it. It MUST give the steps to eject a drive
   safely on a Linux desktop, and it MUST have flushed all written data to the drive before it reports
   success; it does not unmount the drive itself.
 

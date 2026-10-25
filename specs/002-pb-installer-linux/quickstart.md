@@ -49,6 +49,28 @@ the local HTTPS test server. The released `pbstore-install` is checked separatel
 Useful single runs: `ctest --test-dir build -R test_planner`, `-L unit`, `-L contract`, `-L integration`,
 `-L vfat`. The fault matrix prints the number of fault points it covered per operation.
 
+### Result of the run on 2026-10-25 (host, T143)
+
+`scripts/pre-merge.sh` and `scripts/pre-merge.sh --sanitize`: 98 tests, all passed, no sanitizer finding; two skipped:
+`test_install_vfat` (needs `sudo` for a loop mount; not run on this computer, runs in the pull-request workflow) and
+`test_release_binary` (needs the static file; run separately against `dist/pbstore-install-0.2.0-linux-x86_64`: passed).
+
+| Id | Result | Test |
+|----|--------|------|
+| S1, S2 | Pass | `test_cli_install`, `test_cli_dry_run_all` |
+| S3 | Pass | `test_install_catalog_session`, `test_cli_install` |
+| S4 | Pass | `test_fault_matrix`: install 421, install with the real planner 421, remove 479, update 631, update with entry changes 747, adopt 120, replace 581 fault points, each in both modes, with a second power loss inside every repair |
+| S5, S6 | Pass | `test_cli_install`, `test_cli_messages`, `test_fault_matrix` |
+| S7 | Pass | `test_cli_remove` |
+| S8 | Pass | `test_cli_update`, `test_install_withdrawal` |
+| S9 | Pass | `test_cli_adopt` |
+| S10 | Pass | `test_cli_local_file` |
+| S11 | Pass | `test_cli_installed`, `test_log_privacy` |
+| S12 | Pass | `test_release_binary` (static, no test names, one trusted key); also run once in a bare container, where it listed the live catalog |
+| S13 | Pass | `test_cli_gui`, `test_ui_flows`, `test_ui_security`, `test_ui_http_server`; the pages were also tried by hand in a headless browser |
+| S14 | Pass | `test_install_hostile_packages` |
+| S15 | Pass | `test_fetch` (untrusted CA, wrong host name, expired certificate, redirect to HTTP, stalled transfer) |
+
 ## 3. The release
 
 ```bash

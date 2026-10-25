@@ -1,7 +1,7 @@
 # Contract: Journal, Operation Protocol and Recovery
 
 **Journal format version**: 1 · **Status**: draft for implementation · Governed by constitution Principle IV
-and spec FR-013, FR-018. Reasoning in [research.md §3 and §5](../research.md). Written and read by the engine
+and spec FR-013, FR-018. Reasoning in `specs/002-pb-installer-linux/research.md` §3 and §5. Written and read by the engine
 only; the later store app uses the same code.
 
 ## Layout (inside `system/pbstore/journal/current/`)

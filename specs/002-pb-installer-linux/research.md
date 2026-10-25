@@ -48,16 +48,17 @@ touched while writing this plan.
 | F1 | The InkPad One in USB storage mode is a **vfat** drive that a desktop mounts under `/run/media/<user>/PB1030` | Observed | Owner's reader. The label `PB1030` is not relied on; markers decide. |
 | F2 | Model 1030, firmware 6.11.1437 on the owner's reader | Observed | Header of `catalog/reserved-data-dirs.txt`. |
 | F3 | The top level of `system/` holds the names in `catalog/reserved-data-dirs.txt` | Observed | Reserved list, one model and firmware. |
-| F4 | `system/config/desktop/view.json` has a top-level `applications` object (key = menu entry id such as `U_PbNotes`; value `{path, title, icon:{path}, focused_icon:{path}}`) and a `groups` list whose entries carry a `title` (for example `@General`) and an `apps` array of ids | Observed + Documented | Owner's read-only look; the three `INSTALL.md` files. The exact type of `groups` (array of objects) is taken from the owner's description; the shape check (§6) accepts only that shape and refuses everything else, so a wrong guess fails safe. |
+| F4 | `system/config/desktop/view.json` has a top-level `applications` object (key = menu entry id such as `U_PbNotes`; value `{path, title, icon:{path}, focused_icon:{path}}`) and a `view` object whose `groups` list has entries with a `title` (for example `@General`), a `sort` and an `apps` array of ids; `applications` and `view` also hold a `_comment` key (vendor documentation) | Observed | Owner's copy of a real reader, 2026-10-25 (`tests/fixtures/view-inkpad-one-observed.json`). The first guess, `groups` at the top level, was wrong; the shape check refused it, nothing was written, which is how it showed. `system/config/desktop/hash.txt` holds the MD5 of `view.json` (`hash2`); the installer does not touch it. |
 | F5 | `path` is absolute (`/mnt/ext1/applications/<app>.app`); `icon.path` and `focused_icon.path` are **relative to the storage root** (`applications/icons/pbnotes.bmp`) | Documented | All three `INSTALL.md` files. The task text said only "icon {path}"; the documents are explicit. Icons are opaque BMP files, 122x122, 8 bit. |
 | F6 | The device sees its storage as `/mnt/ext1`, so an entry `path` is `/mnt/ext1/` + the manifest's relative path | Documented | `INSTALL.md`. Valid for the InkPad One; other models are untested (and refused or confirmed by FR-005). |
 | F7 | The id must start with `U_`, `path` must be absolute | Documented | `INSTALL.md`; package contract `E-PKG-14`. |
-| F8 | The reader needs a restart (the docs say "safely eject and **reboot**") to show a new entry | Documented, necessity Unverified | The spec's always-say-"may be needed" wording stands until D-03. |
-| F9 | Whether the reader rereads `view.json` without a restart; whether it rewrites the file by itself | **Unverified** | The recovery design treats any content that is neither the recorded old nor new state as "changed by someone else" and never overwrites it (§5). |
+| F8 | The reader needs a restart (the docs say "safely eject and **reboot**") to show a new entry | Observed that after a change and a restart the menu shows it (remove and install of PB Notes, 2026-10-25); necessity of the restart **Unverified** (the owner always restarted) | The wording "a restart may be needed" stays. |
+| F9 | Whether the reader rereads `view.json` without a restart: **Unverified**. Whether it rewrites the file by itself: **Observed no**; the installer's `view.json` stayed byte for byte as written (MD5 equals `hash2`). The reader does rewrite `system/config/desktop/hash.txt` (and `hash.txt.back`) at its start: `hash2=` is the MD5 of `view.json`, and it was updated to the new value after the installer's edit | Observed 2026-10-25 | The installer does not touch `hash.txt`. The recovery design still treats content that is neither the recorded old nor new state as "changed by someone else". |
 | F10 | What the reader does when an entry points to a missing file | **Unverified** | Why the entry is written last on install and removed first on removal (§5). |
 | F11 | MTP and charge-only appearance on Linux | **Unverified** | Best-effort hint only (§8). |
 | F12 | Where model and firmware can be read from the mounted storage | **Unverified**; nothing is known to hold them | `identify()` returns "unknown" until D-02 finds a source; the unknown paths of FR-003 and FR-005 are therefore the *normal* path at first. |
 | F13 | FAT: no symbolic links, no file modes, case-insensitive names, 4 GiB file limit, coarse timestamps, no atomic directory move or replace | General FAT facts | Package limits already cap files at 200 MiB, so the 4 GiB limit cannot be hit. |
+| F15 | The first start of the reader after a change made with the installer takes noticeably longer than usual (also after an `adopt`, which only adds a record file in `system/pbstore/`) | Observed (owner, 2026-10-25); a start after that was quick again; cause unknown, whether a plain USB session without a change has the same effect is **Unverified** | Every completion message, the guide and the README say so. |
 | F14 | `statvfs.f_bsize` of a vfat mount is the cluster size | General Linux behavior; checked by the `vfat` test (§13) | Space rounding (spec FR-002). |
 
 ## 3. Consequences of FAT for the design
@@ -168,7 +169,8 @@ vacating is a rename, not a copy; the rule is conservative on purpose.
 ## 6. Editing the desktop configuration
 
 - **Decision**: a **lossless splice**. The file is parsed once (strictly, with byte spans). The shape
-  check requires: a top-level object; an `applications` object whose members are objects; a `groups`
+  check requires: a top-level object; an `applications` object whose members are objects (keys that
+  start with `_` ignored); a `view` object with a `groups`
   array of objects that each have a string `title` and an `apps` array of strings. Anything else is
   refused with E-INS-12 (not valid JSON, including duplicate keys, which the parser rejects) or E-INS-13
   (expected parts missing) and nothing is written. The change is made on the *text*: insert one member
@@ -183,7 +185,7 @@ vacating is a rename, not a copy; the rule is conservative on purpose.
   property test can prove (spec FR-014, `install-safety` CHK024), and it keeps unknown fields and other
   apps untouched by construction.
 - **Entry values** written: `path` = `/mnt/ext1/` + manifest `menu_entry.path` (F6), `title`, `icon`
-  `{path}` and `focused_icon` `{path}` = the manifest paths unchanged (F5). The group is the `groups`
+  `{path}` and `focused_icon` `{path}` = the manifest paths unchanged (F5). The group is the `view.groups`
   entry whose `title` equals the manifest's `menu_entry.group`; none → E-INS-14 and nothing is written
   (spec FR-027).
 - **Write**: through the journal (§5), never in place: the prepared text is renamed into the name freed
@@ -467,3 +469,15 @@ configuration editor, adoption and the assistant's pages contain no `#ifdef` and
 | D-06 | Unmount behaviour: `eject` after an install, look for a journal folder left behind | yes (approval) | flush and eject wording |
 
 Until D-03 and D-04 are done, the documents and messages say "unverified" and "a restart may be needed".
+
+### Results of the first run on a real reader (2026-10-25, the owner's InkPad One, firmware 6.11.1437)
+
+Done with the released-build candidate after a read-only copy of `applications/` and `system/` was made (D-00):
+`readers`, `installed`, `list` and an `adopt` dry run (all read-only), then on the reader: one `adopt` of PB Notes (wrote
+only `system/pbstore/installed/pbnotes.json`), one `remove` of PB Notes and one `install` of PB Notes again.
+
+- **Shape of `view.json`** (F4): the first guess in this design was wrong (groups at the top level); the real file has them under `view` and has `_comment` keys. The shape check refused it, nothing was written, the check was corrected and the real file is now a test fixture.
+- `adopt` of the hand-installed PB Notes: the files equalled the catalog package (so the adoption was possible); PB Cloud and PB Office were not tried on the reader (`list` showed all three as "installed outside the installer").
+- After `remove`, restart: PB Notes gone from the menu, PB Cloud and PB Office unchanged. After `install`, restart: PB Notes back in `@General`, opens, notes still there. `applications/` was byte-identical to the copy after the install; `view.json` differed only by the position of the PB Notes block (appended).
+- **The assistant (browser) on the real reader**: found the reader, listed the apps (offline and with the catalog), refused an adoption of the hand-installed PB Cloud with the file that differs (`applications/pbcloud.bin`) and wrote nothing, showed a replace plan and a preview (preview cannot be carried out), then carried out a removal and an install of PB Notes. After a restart PB Notes was in the menu, opened and showed its notes; `applications/` was byte-identical to the copy. The assistant ended by itself when the page was closed. Findings: the plan text is very long for an app with hundreds of unchanged files (the page now condenses them, the table under "All files" lists every file); the Adopt action is offered before the files are compared (the hint now says so).
+- **Not done**: D-01 (MTP and charge-only), D-02 (model and firmware source), D-04 (entry with a missing file), the three-person test of D-05, D-07 (restore check), an `update` on the reader. `system/pbstore/journal` was empty after each operation (D-06 partly).

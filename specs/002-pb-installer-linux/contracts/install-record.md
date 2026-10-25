@@ -38,10 +38,10 @@ Unknown fields are ignored. The file contains no user name, path of the computer
   "app_id": "testapp",
   "version": "1.2.0",
   "source": "catalog",
-  "package_sha256": "3a7f…",
+  "package_sha256": "bc4a71180870f7945155fbb02f4b0a2e3faa2a62d6d31b7039013055ed19869a",
   "files": [
-    { "path": "applications/testapp.app", "size": 1204, "sha256": "91c2…" },
-    { "path": "applications/icons/testapp.bmp", "size": 15094, "sha256": "0b4e…" }
+    { "path": "applications/testapp.app", "size": 1204, "sha256": "496b201b51bfcf2b44706b88f1ad2921927c9b5b92844d7c239384aa7fb3bc88" },
+    { "path": "applications/icons/testapp.bmp", "size": 15094, "sha256": "1b27a7f18bd999e7da6147ccbd1380bd73df84fa38509c612e84ff984a8f0b86" }
   ],
   "directories": ["applications/icons"],
   "menu_entry": {
@@ -49,7 +49,7 @@ Unknown fields are ignored. The file contains no user name, path of the computer
     "icon": "applications/icons/testapp.bmp", "focused_icon": "applications/icons/testapp_f.bmp",
     "group": "@General"
   },
-  "entry_sha256": "7d19…",
+  "entry_sha256": "923fe53966c6cd9343e11af776cd4b05be315ea4b200b02e4d5dfb0f929b73bf",
   "data_dir": "system/testapp",
   "written_at": "2026-10-25T12:00:00Z",
   "installed_by": "pbstore-install 0.2.0"
