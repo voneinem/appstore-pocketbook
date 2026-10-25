@@ -120,7 +120,7 @@ the PocketBook SDK 6.11 directory.
 
 - **Decision**: The ZIP root contains only `manifest.json` and the `applications/` tree
   (directory entries allowed). Names must be relative, use `/`, contain only
-  `A-Za-z0-9._ -` and `/` (no `..`, no leading dot segments), be at most 200 characters, be unique
+  `A-Za-z0-9._ -+` and `/` (`+` because the IANA time-zone names such as `Etc/GMT+1` contain it and FAT allows it; no `..`, no leading dot segments), be at most 200 characters, be unique
   case-insensitively, and may not be symlinks, encrypted or use compression other than stored or
   deflate. Limits: 64 MiB compressed, 200 MiB uncompressed, 1000 files, a compression-ratio guard.
 - **Rationale**: The reader's storage is FAT-like (case-insensitive, restricted characters); names

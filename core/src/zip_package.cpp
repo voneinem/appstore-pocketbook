@@ -99,7 +99,7 @@ std::vector<Finding> ZipArchive::open(const std::string& bytes, const ZipLimits&
         std::string path = e.is_directory ? name.substr(0, name.size() - 1) : name;
         if (!validate::is_safe_path(path)) {
             add("E-PKG-03", label, "unsafe file name " + std::string("\"") + label +
-                                   "\" (allowed: relative paths of A-Z a-z 0-9 . _ - and spaces, no \"..\", no hidden names, at most 200 characters)");
+                                   "\" (allowed: relative paths of A-Z a-z 0-9 . _ - + and spaces, no \"..\", no hidden names, at most 200 characters)");
         } else {
             auto ins = seen.emplace(lower_ascii(path), path);
             if (!ins.second)
