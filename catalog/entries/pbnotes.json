@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "pbnotes",
+  "package_url": "https://github.com/voneinem/notes-pocketbook/releases/download/v1.10.1/pbnotes-inkpad-one-1.10.1.zip",
+  "release_date": "2026-10-25",
+  "short_description": {
+    "en": "Notes app for the InkPad One that syncs with a Nextcloud Notes server.",
+    "de": "Notizen-App für den InkPad One mit Sync zu einem Nextcloud-Notes-Server."
+  },
+  "long_description": {
+    "en": "PB Notes shows your Nextcloud Notes on the InkPad One, also offline. It has a reader with Markdown, task checkboxes and adjustable text size, an editor for the on-screen keyboard, categories, favorites and search, and attachments that download only when you tap them. Notes can be created, edited and deleted offline and sync when the reader is on Wi-Fi, by hand, at start or automatically after a save. Early software: it is tested on an InkPad One and works for its author.",
+    "de": "PB Notes zeigt deine Nextcloud-Notizen auf dem InkPad One, auch offline. Es hat einen Leser mit Markdown, Aufgaben-Kästchen und einstellbarer Textgröße, einen Editor für die Bildschirmtastatur, Kategorien, Favoriten und Suche sowie Anhänge, die erst beim Antippen geladen werden. Notizen lassen sich offline anlegen, ändern und löschen und werden synchronisiert, sobald das Gerät im WLAN ist: von Hand, beim Start oder automatisch nach dem Speichern. Frühe Software: getestet auf einem InkPad One, funktioniert für ihren Autor."
+  },
+  "license": "MIT",
+  "source_url": "https://github.com/voneinem/notes-pocketbook",
+  "author": "Volker von Einem",
+  "icon_url": "https://raw.githubusercontent.com/voneinem/notes-pocketbook/v1.10.1/res/icons/pbnotes.bmp",
+  "changelog_url": "https://github.com/voneinem/notes-pocketbook/releases/tag/v1.10.1"
+}
