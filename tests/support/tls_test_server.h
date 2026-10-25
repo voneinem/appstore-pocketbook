@@ -54,11 +54,23 @@ public:
         const std::string csr = dir_.file(name + ".csr");
         const std::string ext = dir_.file(name + ".ext");
         dir_.write(name + ".ext", "subjectAltName=" + san + "\nbasicConstraints=CA:FALSE\n");
-        l.ok = run("openssl req -new -newkey rsa:2048 -nodes -subj /CN=" + name + " -keyout " + l.key + " -out " + csr) &&
-               run("openssl x509 -req -in " + csr + " -CA " + ca_cert() + " -CAkey " + dir_.file(ca_name_ + ".key") +
-                   " -CAcreateserial -extfile " + ext +
-                   (not_before.empty() ? " -days 30" : " -not_before " + not_before + " -not_after " + not_after) +
-                   " -out " + l.cert);
+        l.ok = run("openssl req -new -newkey rsa:2048 -nodes -subj /CN=" + name + " -keyout " + l.key + " -out " + csr);
+        if (l.ok && not_before.empty()) {
+            l.ok = run("openssl x509 -req -in " + csr + " -CA " + ca_cert() + " -CAkey " + dir_.file(ca_name_ + ".key") +
+                       " -CAcreateserial -extfile " + ext + " -days 30 -out " + l.cert);
+        } else if (l.ok) {
+            // A certificate with chosen dates: `openssl ca` takes -startdate and -enddate in every version, unlike
+            // `openssl x509 -not_before`, which only exists from OpenSSL 3.4.
+            const std::string base = dir_.file(name + ".ca");
+            dir_.write(name + ".ca.cnf",
+                       "[ca]\ndefault_ca=CA_default\n[CA_default]\ndatabase=" + base + ".index\nnew_certs_dir=" + dir_.file("") +
+                           "\nserial=" + base + ".serial\ndefault_md=sha256\npolicy=policy_any\nunique_subject=no\ncopy_extensions=none\n"
+                           "[policy_any]\ncommonName=supplied\n");
+            dir_.write(name + ".ca.index", "");
+            dir_.write(name + ".ca.serial", "1000\n");
+            l.ok = run("openssl ca -batch -config " + base + ".cnf -cert " + ca_cert() + " -keyfile " + dir_.file(ca_name_ + ".key") +
+                       " -in " + csr + " -extfile " + ext + " -startdate " + not_before + " -enddate " + not_after + " -notext -out " + l.cert);
+        }
         return l;
     }
 
