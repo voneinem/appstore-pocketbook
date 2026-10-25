@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- The version-bump check no longer counts an app entry under `catalog/entries/` as a change of the
+  tool, so a pull request that only adds or changes an entry needs no `VERSION` bump.
+
 ## 0.1.1
 
 - Reserved data folder names verified on a real reader (model 1030, firmware 6.11.1437): the list
