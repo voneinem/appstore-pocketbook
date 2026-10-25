@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "pbcloud",
+  "package_url": "https://github.com/voneinem/nextcloud-pocketbook/releases/download/v0.6.1/pbcloud-inkpad-one-0.6.1.zip",
+  "release_date": "2026-10-25",
+  "short_description": {
+    "en": "Nextcloud files client for the InkPad One: browse, download, upload and share.",
+    "de": "Nextcloud-Dateien-Client für den InkPad One: durchsuchen, laden, hochladen und teilen."
+  },
+  "long_description": {
+    "en": "PB Cloud shows your Nextcloud files page by page on the InkPad One and does nothing in the background: it talks to your server only when you tap. You can download files on demand and open them in the reader's own viewer, keep chosen files and folders offline, upload and manage files, pair a server folder with a folder on the reader (download only, upload only or two-way, always as a plan you approve first), share files and folders with public links, and restore items from the server's trash. Early software: it has been run on an InkPad One against its author's own Nextcloud, but most features have only been tested on a computer with a fake server. This is an unofficial app, not made or endorsed by Nextcloud GmbH or PocketBook.",
+    "de": "PB Cloud zeigt deine Nextcloud-Dateien seitenweise auf dem InkPad One und tut nichts im Hintergrund: Es spricht nur mit deinem Server, wenn du tippst. Du kannst Dateien bei Bedarf laden und im Betrachter des Geräts öffnen, ausgewählte Dateien und Ordner offline behalten, Dateien hochladen und verwalten, einen Server-Ordner mit einem Ordner auf dem Gerät abgleichen (nur laden, nur hochladen oder in beide Richtungen, immer als Plan, den du zuerst bestätigst), Dateien und Ordner mit öffentlichen Links teilen und Einträge aus dem Papierkorb des Servers wiederherstellen. Frühe Software: Sie wurde auf einem InkPad One mit dem eigenen Nextcloud ihres Autors ausprobiert, die meisten Funktionen sind aber nur auf einem Computer mit einem Test-Server geprüft. Inoffizielle App, nicht von Nextcloud GmbH oder PocketBook."
+  },
+  "license": "MIT",
+  "source_url": "https://github.com/voneinem/nextcloud-pocketbook",
+  "author": "Volker von Einem",
+  "icon_url": "https://raw.githubusercontent.com/voneinem/nextcloud-pocketbook/v0.6.1/res/icons/pbcloud.bmp",
+  "changelog_url": "https://github.com/voneinem/nextcloud-pocketbook/releases/tag/v0.6.1"
+}
