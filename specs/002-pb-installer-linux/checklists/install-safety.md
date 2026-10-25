@@ -12,76 +12,76 @@
 
 ## Staging and Placement on a FAT Volume
 
-- [ ] CHK001 Is the reader's file system (FAT, with no atomic directory move and no atomic replace of an existing file) stated as a constraint the requirements are written against, or is "moved into place" left to imply an atomic move? [Assumption, Spec §FR-013]
-- [ ] CHK002 Is it specified what "old or new complete version, never a mix" means when placement is a sequence of separate file and folder operations, including which single step makes the new version the one that counts (the commit point)? [Clarity, Gap, Spec §FR-013]
-- [ ] CHK003 Is the location of the staging area defined with respect to the reader's volume (same volume as the final place, and not inside any folder the reader or the app scans)? [Gap, Spec §FR-013]
-- [ ] CHK004 Are the order of placing files, the menu entry and the install record, and the state a reader would see between steps, specified so that the app is never listed without its files? [Completeness, Gap, Spec §FR-013, §FR-014]
-- [ ] CHK005 Are requirements stated for names that collide on a case-insensitive file system, including a file that exists on the reader differing only in letter case from a file to be placed? [Coverage, Edge Case, Gap]
-- [ ] CHK006 Is a rule defined for a file at a target path that the installer did not create, so that it is neither overwritten nor silently skipped, and is the outcome of that rule consistent with "nothing it did not create is overwritten"? [Consistency, Spec §FR-017, §US2 scenario 4]
-- [ ] CHK007 Is success reported only after the written data has been flushed to the volume, and is the wording of the "eject safely" message consistent with that? [Gap, Spec §FR-019]
-- [ ] CHK008 Is the coarse timestamp resolution of the file system addressed wherever the requirements compare or restore file state (or is comparison defined by size and SHA-256 only)? [Ambiguity, Spec §FR-016, §FR-023]
-- [ ] CHK009 Is behavior defined for a volume that is flagged as needing a file-system check, or that develops errors during a write? [Edge Case, Gap]
+- [x] CHK001 Is the reader's file system (FAT, with no atomic directory move and no atomic replace of an existing file) stated as a constraint the requirements are written against, or is "moved into place" left to imply an atomic move? [Assumption, Spec §FR-013]
+- [x] CHK002 Is it specified what "old or new complete version, never a mix" means when placement is a sequence of separate file and folder operations, including which single step makes the new version the one that counts (the commit point)? [Clarity, Gap, Spec §FR-013]
+- [x] CHK003 Is the location of the staging area defined with respect to the reader's volume (same volume as the final place, and not inside any folder the reader or the app scans)? [Gap, Spec §FR-013]
+- [x] CHK004 Are the order of placing files, the menu entry and the install record, and the state a reader would see between steps, specified so that the app is never listed without its files? [Completeness, Gap, Spec §FR-013, §FR-014]
+- [x] CHK005 Are requirements stated for names that collide on a case-insensitive file system, including a file that exists on the reader differing only in letter case from a file to be placed? [Coverage, Edge Case, Gap]
+- [x] CHK006 Is a rule defined for a file at a target path that the installer did not create, so that it is neither overwritten nor silently skipped, and is the outcome of that rule consistent with "nothing it did not create is overwritten"? [Consistency, Spec §FR-017, §US2 scenario 4]
+- [x] CHK007 Is success reported only after the written data has been flushed to the volume, and is the wording of the "eject safely" message consistent with that? [Gap, Spec §FR-019]
+- [x] CHK008 Is the coarse timestamp resolution of the file system addressed wherever the requirements compare or restore file state (or is comparison defined by size and SHA-256 only)? [Ambiguity, Spec §FR-016, §FR-023]
+- [x] CHK009 Is behavior defined for a volume that is flagged as needing a file-system check, or that develops errors during a write? [Edge Case, Gap]
 
 ## Journal and Recovery
 
-- [ ] CHK010 Is it specified where the journal is kept (on the reader, so that a different computer can recover), what it must record, and when it is created and removed? [Gap, Spec §Key Entities "Interrupted Operation"]
-- [ ] CHK011 Is the rule that decides "finish" versus "undo" stated in testable terms (for example the commit point from CHK002), instead of "finishes it or undoes it"? [Clarity, Spec §FR-018, §US2]
-- [ ] CHK012 Are the steps of install, update and removal enumerated well enough that "a fault at every write step" is a countable set that a reviewer can check? [Measurability, Spec §SC-002]
-- [ ] CHK013 Are the fault kinds in scope listed (power or cable loss, process kill, suspend, full storage, write error), together with what each must leave behind? [Completeness, Spec §SC-002, §Edge Cases]
-- [ ] CHK014 Is behavior defined for a journal that is missing, truncated or unreadable after a crash during its own write? [Edge Case, Gap]
-- [ ] CHK015 Is recovery required to be repeatable, so that an interruption of the recovery itself, any number of times, still ends in an old or new complete version? [Coverage, Recovery, Gap, Spec §FR-018]
-- [ ] CHK016 Is it specified what happens when the user declines the repair plan, including whether the app is usable on the reader in the meantime and how long a reader may stay in that state? [Completeness, Spec §FR-018, §US2 scenario 1]
-- [ ] CHK017 Do the requirements agree on when writes without a confirmed plan are allowed: the cleanup after a failure inside a run the user already confirmed (US2 scenario 5) versus recovery on a later run, which needs a confirmed repair plan? [Consistency, Spec §FR-011, §FR-018, §US2]
-- [ ] CHK018 Is the case defined of an interruption found on a reader by a different computer, or by a newer or older version of the program than the one that wrote the journal? [Edge Case, Gap]
-- [ ] CHK019 Is a lock or other rule defined for two program instances (or an instance and the user) working on the same reader at the same time? [Coverage, Gap]
-- [ ] CHK020 Is the interruption of adoption, the only action that writes just the install record, covered by the same journal and recovery requirements? [Coverage, Spec §FR-023]
+- [x] CHK010 Is it specified where the journal is kept (on the reader, so that a different computer can recover), what it must record, and when it is created and removed? [Gap, Spec §Key Entities "Interrupted Operation"]
+- [x] CHK011 Is the rule that decides "finish" versus "undo" stated in testable terms (for example the commit point from CHK002), instead of "finishes it or undoes it"? [Clarity, Spec §FR-018, §US2]
+- [x] CHK012 Are the steps of install, update and removal enumerated well enough that "a fault at every write step" is a countable set that a reviewer can check? [Measurability, Spec §SC-002]
+- [x] CHK013 Are the fault kinds in scope listed (power or cable loss, process kill, suspend, full storage, write error), together with what each must leave behind? [Completeness, Spec §SC-002, §Edge Cases]
+- [x] CHK014 Is behavior defined for a journal that is missing, truncated or unreadable after a crash during its own write? [Edge Case, Gap]
+- [x] CHK015 Is recovery required to be repeatable, so that an interruption of the recovery itself, any number of times, still ends in an old or new complete version? [Coverage, Recovery, Gap, Spec §FR-018]
+- [x] CHK016 Is it specified what happens when the user declines the repair plan, including whether the app is usable on the reader in the meantime and how long a reader may stay in that state? [Completeness, Spec §FR-018, §US2 scenario 1]
+- [x] CHK017 Do the requirements agree on when writes without a confirmed plan are allowed: the cleanup after a failure inside a run the user already confirmed (US2 scenario 5) versus recovery on a later run, which needs a confirmed repair plan? [Consistency, Spec §FR-011, §FR-018, §US2]
+- [x] CHK018 Is the case defined of an interruption found on a reader by a different computer, or by a newer or older version of the program than the one that wrote the journal? [Edge Case, Gap]
+- [x] CHK019 Is a lock or other rule defined for two program instances (or an instance and the user) working on the same reader at the same time? [Coverage, Gap]
+- [x] CHK020 Is the interruption of adoption, the only action that writes just the install record, covered by the same journal and recovery requirements? [Coverage, Spec §FR-023]
 
 ## Desktop Configuration: Backup and Expected Shape
 
-- [ ] CHK021 Is "the expected parts" of the desktop configuration defined precisely enough (required keys, groups, where an app entry lives) to decide objectively whether a file has the expected shape? [Ambiguity, Spec §FR-015, §Edge Cases]
-- [ ] CHK022 Are the backup's name, timestamp format and location specified, together with a requirement that the backup is complete and checked before the first change is written? [Clarity, Gap, Spec §FR-014]
-- [ ] CHK023 Is behavior defined when the backup cannot be made (full storage, write error), so that the configuration is not changed? [Edge Case, Gap, Spec §FR-014]
-- [ ] CHK024 Is it stated whether "only the app's entry is changed" is judged on the parsed content or byte for byte (key order, spacing, other formatting), so the claim can be tested? [Measurability, Spec §FR-014, Constitution §IV]
-- [ ] CHK025 Is the write of the configuration itself covered, given that a FAT volume cannot replace a file atomically, including what a crash in the middle of that write leaves and how recovery restores it? [Coverage, Recovery, Gap, Spec §FR-014]
-- [ ] CHK026 Is a limit or cleanup rule defined for the number of configuration backups, and does it allow deleting only backups the installer made? [Gap, Spec §FR-017]
-- [ ] CHK027 Is behavior defined when the configuration already holds an entry with the app's id or title that the installer did not create? [Edge Case, Gap, Spec §Edge Cases "same menu entry id"]
-- [ ] CHK028 Are the post-write checks (valid, every other entry unchanged) tied to a defined action if they fail, such as restoring the backup? [Completeness, Recovery, Spec §FR-014]
+- [x] CHK021 Is "the expected parts" of the desktop configuration defined precisely enough (required keys, groups, where an app entry lives) to decide objectively whether a file has the expected shape? [Ambiguity, Spec §FR-015, §Edge Cases]
+- [x] CHK022 Are the backup's name, timestamp format and location specified, together with a requirement that the backup is complete and checked before the first change is written? [Clarity, Gap, Spec §FR-014]
+- [x] CHK023 Is behavior defined when the backup cannot be made (full storage, write error), so that the configuration is not changed? [Edge Case, Gap, Spec §FR-014]
+- [x] CHK024 Is it stated whether "only the app's entry is changed" is judged on the parsed content or byte for byte (key order, spacing, other formatting), so the claim can be tested? [Measurability, Spec §FR-014, Constitution §IV]
+- [x] CHK025 Is the write of the configuration itself covered, given that a FAT volume cannot replace a file atomically, including what a crash in the middle of that write leaves and how recovery restores it? [Coverage, Recovery, Gap, Spec §FR-014]
+- [x] CHK026 Is a limit or cleanup rule defined for the number of configuration backups, and does it allow deleting only backups the installer made? [Gap, Spec §FR-017]
+- [x] CHK027 Is behavior defined when the configuration already holds an entry with the app's id or title that the installer did not create? [Edge Case, Gap, Spec §Edge Cases "same menu entry id"]
+- [x] CHK028 Are the post-write checks (valid, every other entry unchanged) tied to a defined action if they fail, such as restoring the backup? [Completeness, Recovery, Spec §FR-014]
 
 ## Free Space and Read-only Storage
 
-- [ ] CHK029 Is the "safety margin" quantified, and is it stated what the space check counts (new files, staging, backup, the old version kept for update rollback, record and journal, cluster rounding)? [Ambiguity, Spec §FR-002, §Edge Cases "Read-only or full storage"]
-- [ ] CHK030 Is a requirement defined for space that disappears between the check and the write, and for the check being repeated or the failure being handled at write time? [Edge Case, Spec §US2 scenario 5]
-- [ ] CHK031 Is the space needed for an update (old and new version side by side until the commit point) specified differently from a fresh install? [Completeness, Gap, Spec §FR-022]
-- [ ] CHK032 Are the read-only and no-write-permission checks required to happen before the plan is shown and again before the first write? [Consistency, Spec §Edge Cases, §FR-002]
+- [x] CHK029 Is the "safety margin" quantified, and is it stated what the space check counts (new files, staging, backup, the old version kept for update rollback, record and journal, cluster rounding)? [Ambiguity, Spec §FR-002, §Edge Cases "Read-only or full storage"]
+- [x] CHK030 Is a requirement defined for space that disappears between the check and the write, and for the check being repeated or the failure being handled at write time? [Edge Case, Spec §US2 scenario 5]
+- [x] CHK031 Is the space needed for an update (old and new version side by side until the commit point) specified differently from a fresh install? [Completeness, Gap, Spec §FR-022]
+- [x] CHK032 Are the read-only and no-write-permission checks required to happen before the plan is shown and again before the first write? [Consistency, Spec §Edge Cases, §FR-002]
 
 ## Update Rollback
 
-- [ ] CHK033 Is it stated that the previous version stays complete and usable until the commit point, and what exactly is removed afterwards (files of the old version that the new version no longer contains)? [Clarity, Spec §FR-022, §US4 scenario 2]
-- [ ] CHK034 Is behavior defined when the rollback of a failed update itself fails, or when a file of the old version was changed by the user before the update? [Edge Case, Recovery, Gap, Spec §US4]
-- [ ] CHK035 Is "the previous version still works" measurable (its files equal the install record and its menu entry is intact), so that the test is not a matter of opinion? [Measurability, Spec §US4 scenario 3]
-- [ ] CHK036 Are the install record and the menu entry of an update treated as part of the same all-or-nothing change as the files? [Completeness, Spec §FR-016, §FR-022]
+- [x] CHK033 Is it stated that the previous version stays complete and usable until the commit point, and what exactly is removed afterwards (files of the old version that the new version no longer contains)? [Clarity, Spec §FR-022, §US4 scenario 2]
+- [x] CHK034 Is behavior defined when the rollback of a failed update itself fails, or when a file of the old version was changed by the user before the update? [Edge Case, Recovery, Gap, Spec §US4]
+- [x] CHK035 Is "the previous version still works" measurable (its files equal the install record and its menu entry is intact), so that the test is not a matter of opinion? [Measurability, Spec §US4 scenario 3]
+- [x] CHK036 Are the install record and the menu entry of an update treated as part of the same all-or-nothing change as the files? [Completeness, Spec §FR-016, §FR-022]
 
 ## Removal
 
-- [ ] CHK037 Is it stated that removal deletes only files in the install record, and what happens to a recorded file whose content no longer equals its recorded SHA-256? [Clarity, Spec §FR-016, §FR-021, §US3 scenario 3]
-- [ ] CHK038 Are folders addressed: whether the installer deletes folders it created once they are empty, and that it never deletes a folder holding files it did not create? [Gap, Spec §FR-017]
-- [ ] CHK039 Is the order of removal steps (menu entry, files, record) defined so that an interruption leaves either the complete app or none of it? [Completeness, Recovery, Spec §US3 scenario 4]
-- [ ] CHK040 Is removal defined for a menu entry that the user changed since installation, and is the rule consistent with "only the entry of the app being removed is changed"? [Edge Case, Consistency, Spec §FR-014]
-- [ ] CHK041 Is it stated that an app without an install record (installed outside the installer) cannot be removed by the program, and is that consistent with the list states in FR-020? [Gap, Consistency, Spec §FR-020, §FR-023]
+- [x] CHK037 Is it stated that removal deletes only files in the install record, and what happens to a recorded file whose content no longer equals its recorded SHA-256? [Clarity, Spec §FR-016, §FR-021, §US3 scenario 3]
+- [x] CHK038 Are folders addressed: whether the installer deletes folders it created once they are empty, and that it never deletes a folder holding files it did not create? [Gap, Spec §FR-017]
+- [x] CHK039 Is the order of removal steps (menu entry, files, record) defined so that an interruption leaves either the complete app or none of it? [Completeness, Recovery, Spec §US3 scenario 4]
+- [x] CHK040 Is removal defined for a menu entry that the user changed since installation, and is the rule consistent with "only the entry of the app being removed is changed"? [Edge Case, Consistency, Spec §FR-014]
+- [x] CHK041 Is it stated that an app without an install record (installed outside the installer) cannot be removed by the program, and is that consistent with the list states in FR-020? [Gap, Consistency, Spec §FR-020, §FR-023]
 
 ## Data Folders
 
-- [ ] CHK042 Is "what it contains" for the data-folder confirmation defined (file count and total size only), and is it consistent with the rule that contents are not read? [Ambiguity, Conflict, Spec §FR-021, §FR-024]
-- [ ] CHK043 Are the two confirmations specified as separate prompts with distinct wording, and is it stated how the command-line mode expresses both without a single combined option? [Clarity, Spec §FR-021, §FR-029]
-- [ ] CHK044 Is it stated that update, adoption, replacement, recovery and failed-install cleanup never delete data folder contents, and is that listed in one place a reviewer can check? [Coverage, Spec §FR-022, §FR-023, §FR-024]
-- [ ] CHK045 Is the case of a data folder shared with another app, or an app whose data folder is null, covered in the removal and deletion requirements? [Edge Case, Spec §FR-021, §Edge Cases "same data folder"]
-- [ ] CHK046 Is it stated that a dry run of removal with data deletion shows the data-folder step in the plan but asks for no confirmation and deletes nothing? [Coverage, Spec §FR-012, §FR-021]
+- [x] CHK042 Is "what it contains" for the data-folder confirmation defined (file count and total size only), and is it consistent with the rule that contents are not read? [Ambiguity, Conflict, Spec §FR-021, §FR-024]
+- [x] CHK043 Are the two confirmations specified as separate prompts with distinct wording, and is it stated how the command-line mode expresses both without a single combined option? [Clarity, Spec §FR-021, §FR-029]
+- [x] CHK044 Is it stated that update, adoption, replacement, recovery and failed-install cleanup never delete data folder contents, and is that listed in one place a reviewer can check? [Coverage, Spec §FR-022, §FR-023, §FR-024]
+- [x] CHK045 Is the case of a data folder shared with another app, or an app whose data folder is null, covered in the removal and deletion requirements? [Edge Case, Spec §FR-021, §Edge Cases "same data folder"]
+- [x] CHK046 Is it stated that a dry run of removal with data deletion shows the data-folder step in the plan but asks for no confirmation and deletes nothing? [Coverage, Spec §FR-012, §FR-021]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK047 Is "byte-identical" defined for the reader folder (content only, or also names, folder structure and timestamps), given that the file system alters timestamps on its own? [Ambiguity, Spec §SC-003, §SC-004]
-- [ ] CHK048 Does each of FR-013 to FR-018, FR-021 and FR-022 map to at least one measurable success criterion or acceptance scenario, with no requirement that only a manual trial on a device could check? [Traceability, Spec §Requirements, §Success Criteria, Constitution §VI]
-- [ ] CHK049 Is it stated that the fault tests run against a fake reader tree that behaves like the FAT volume (no atomic rename over an existing file, case-insensitive names), so that the tests can fail for the right reasons? [Assumption, Constitution §VI, Spec §SC-002]
+- [x] CHK047 Is "byte-identical" defined for the reader folder (content only, or also names, folder structure and timestamps), given that the file system alters timestamps on its own? [Ambiguity, Spec §SC-003, §SC-004]
+- [x] CHK048 Does each of FR-013 to FR-018, FR-021 and FR-022 map to at least one measurable success criterion or acceptance scenario, with no requirement that only a manual trial on a device could check? [Traceability, Spec §Requirements, §Success Criteria, Constitution §VI]
+- [x] CHK049 Is it stated that the fault tests run against a fake reader tree that behaves like the FAT volume (no atomic rename over an existing file, case-insensitive names), so that the tests can fail for the right reasons? [Assumption, Constitution §VI, Spec §SC-002]
 
 ## Notes
 

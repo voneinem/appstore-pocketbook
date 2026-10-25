@@ -154,6 +154,10 @@ and the folder is byte-identical to before.
 7. **Given** the command-line mode, **When** the same app is installed with the same inputs,
    **Then** the resulting reader contents and the reported plan are identical to the graphical
    assistant's.
+8. **Given** a catalog with a lower serial than the last accepted one, or a server whose certificate
+   cannot be verified, **When** the user refreshes, **Then** nothing is offered, the message names the
+   rule (`E-CAT-04`) or the cause (`E-INS-26`) without suggesting to turn verification off, and the
+   remembered serial and the reader are unchanged.
 
 ---
 
@@ -376,13 +380,15 @@ Story 8.
 **Finding the reader**
 
 - **No reader found**: the program says no reader was found and tells the user to connect it, switch
-  it to USB storage mode, and wait; it offers to choose a folder by hand and to try again.
+  it to USB storage mode, and wait; it offers to choose a folder by hand and to try again. The
+  program looks for readers at start and when the user chooses "Try again" (command line: run it
+  again); it does not keep watching for one.
 - **Several readers or drives**: all candidates are listed with enough information to tell them
   apart (volume label, mount point, size); the user must choose one; in command-line mode no choice
   is guessed, the user must name the folder.
 - **Reader shows as MTP or charge-only**: if a device that looks like a PocketBook is present but
   exposes no storage folder, the message says the reader must be set to USB storage mode (and how
-  on the reader's connection prompt); nothing is attempted over MTP.
+  on the reader's connection prompt) and to try again afterwards; nothing is attempted over MTP.
 - **A drive that is not a PocketBook**: a drive or chosen folder that lacks an `applications` folder
   or `system/config/desktop/view.json` is not a reader and is refused with a message saying which
   expected parts are missing; a folder chosen by hand passes the same test.
@@ -462,8 +468,8 @@ Story 8.
   otherwise and name what is missing. Space needed = the new files rounded up to whole storage
   clusters, plus staging, the desktop configuration backup, the install record and the journal,
   plus a fixed margin of 10 MiB; for an update the files of the old version count as well until
-  the commit point. The plan MUST show needed and free space, and the check MUST be repeated
-  immediately before the first write.
+  the commit point. The plan MUST show needed and free space, and the space and writability checks
+  MUST be repeated immediately before the first write.
 - **FR-003**: The program MUST read the reader's firmware version when it can, and MUST, when the
   version cannot be read, show "firmware version unknown" in the plan and continue only after an
   explicit confirmation that states the risk; it MUST NOT ask the user to enter a version.
@@ -485,8 +491,10 @@ Story 8.
   each download stops at its limit (the contract's size limit for the catalog; the signed
   `package_size` for a package). Trust anchors come from the system's certificate store when usable,
   otherwise from a certificate bundle shipped inside the program. The program MUST verify the
-  signature against the short list of maintainer public keys built into the program (a list so that
-  keys can be rotated) before interpreting the catalog (contract: `catalog-format.md`). Transport
+  signature against the short list of maintainer public keys built into the program (so that keys can
+  be rotated: normally two, the current and the next, never more than three; changed only by a
+  reviewed change to `keys/trusted/` as described in `docs/maintainer-keys.md`) before interpreting
+  the catalog (contract: `catalog-format.md`). Transport
   failures (host unreachable, invalid or expired certificate, wrong host name, wrong system clock)
   get distinct plain messages, and none MUST suggest turning verification off.
 - **FR-007**: The program MUST apply the consumer rules of the catalog contract in order (size,
@@ -503,7 +511,9 @@ Story 8.
   signed entry, then ZIP and manifest rules, then the cross-checks; nothing of the package is parsed
   before its SHA-256 has matched. The bytes that are written to the reader MUST be the bytes that
   were verified (verified once and kept, never fetched or read a second time). Nothing is unpacked
-  anywhere before the checks have passed.
+  anywhere before the checks have passed, and package contents are never written to the computer's
+  disk: the package is held in memory and the only copy of its contents is the staging area on the
+  reader.
 - **FR-009**: No version that is listed in `withdrawn_versions` MUST be offered for install or
   update, and an installed copy MUST NOT be changed or removed because of a withdrawal.
 - **FR-010**: The program MUST contact the network only when the user starts an action that needs it
@@ -521,7 +531,8 @@ Story 8.
   clearly marked on every screen and in the result) and on the command line, that prints the same
   plan and writes nothing to the reader (no backup, no record, no staging folder). A dry run does
   fetch and verify the catalog and the package, so that the plan is the real one; on the computer
-  it may update the remembered serial and the log.
+  it may update the remembered serial and the log. A dry run asks for no confirmation, and a dry run
+  of a removal with data deletion shows the data-folder step in the plan and deletes nothing.
 - **FR-013**: Every install and update MUST be staged away from its final place, verified, and only
   then moved into place, so that after an interruption the next run restores the old or the new complete
   version (FR-018). The interval in which staged files are renamed into place contains no copying of
@@ -529,16 +540,23 @@ Story 8.
   operation has one commit point: before it the old state counts and recovery undoes the operation,
   from it on the new state counts and recovery finishes the operation. The requirements assume the
   reader's storage offers no atomic move of a folder and no atomic replacement of a file (see
-  Assumptions).
+  Assumptions). On install the menu entry is
+  added after the files and the install record last; on removal the menu entry is removed first, so
+  the app is never listed without its files. A write or flush error on the reader ends the action
+  with the previous state restored and a plain message (`E-INS-37`).
 - **FR-014**: Before every change to the desktop configuration the program MUST create a timestamped
-  backup, MUST change only the entry belonging to the app being installed, updated or removed, and
-  MUST verify afterwards that the configuration is valid and all other entries are unchanged. Of
+  backup, written and read back before the first change (if it cannot be made, nothing is changed),
+  MUST change only the entry belonging to the app being installed, updated or removed, leaving every
+  other byte of the file exactly as it was, and MUST verify afterwards that the configuration is valid
+  and all other entries are unchanged; if that check fails the previous configuration is restored. Of
   the backups it made, it MUST keep only the newest one of each calendar day (the computer's local
   date): an older backup of the same day MAY be deleted only after the new backup has been written
   and checked, MUST be one the installer made, and MUST be named in the plan. It MUST NOT delete
   any other file in the backup folder.
 - **FR-015**: If the desktop configuration is not valid or lacks the expected parts, the program
-  MUST write nothing and MUST say why.
+  MUST write nothing and MUST say why. The expected parts are: a top-level object with an
+  `applications` object whose members are objects, and a `groups` list whose entries are objects with
+  a `title` and an `apps` list of ids.
 - **FR-016**: The program MUST keep an install record per app listing every file it placed (with
   size and SHA-256), the installed version and where it came from (catalog or local file), and MUST
   use that record as the only basis for what removal and update delete.
@@ -546,13 +564,21 @@ Story 8.
   firmware, system folders or other apps' menu entries, and MUST refuse a plan that would. The only
   parts of the system area it may write are its own folder `system/pbstore/` and the one menu entry
   of the app being installed, updated or removed in the desktop configuration.
-- **FR-018**: When started on a reader with an interrupted installation, removal or update, the
-  program MUST detect it before any new action, show a repair plan (finish or undo, which app, why), and after the
-  user confirms it finish or undo the operation and tell the user which. No new action MUST start on
-  that reader until the repair is done.
+- **FR-018**: When started on a reader with an interrupted installation, removal, update, adoption or
+  replacement, the program MUST detect it before any new action, show a repair plan (finish or undo,
+  which app, why), and after the user confirms it finish or undo the operation and tell the user
+  which. No new action MUST start on that reader until the repair is done. The repair itself can be
+  interrupted and repeated any number of times and still ends in the old or the new complete version.
+  A repair that cannot finish because a file matches neither the old nor the new state changes nothing
+  at that path, names it (`E-INS-24`), and the app stays marked as needing repair.
+  While a repair is pending the affected app may be unusable on the reader, and the message says so.
+  A journal or install record written in a newer format than this program understands is left
+  untouched, and the message says that the program needs updating (`E-INS-35`).
 - **FR-019**: After a successful install or update the program MUST state that the reader must be
   ejected safely and that a restart may be needed (until the behavior is verified on a reader), and
-  which menu group will show the app. After a removal it MUST say that a restart may be needed. It MUST give the steps to eject a drive
+  which menu group will show the app. After a removal it MUST say that a restart may be needed and that the app's data folder was kept (and
+  where) or deleted. If the app is not in its group after ejecting, the message tells the user to
+  restart the reader. It MUST give the steps to eject a drive
   safely on a Linux desktop, and it MUST have flushed all written data to the drive before it reports
   success; it does not unmount the drive itself.
 
@@ -560,16 +586,24 @@ Story 8.
 
 - **FR-020**: The program MUST list the apps of the catalog with the state on this reader: not
   installed, installed, update available, or installed outside the installer; apps found on the
-  reader that are not in the catalog MUST also be listed. Any app of the catalog, the store app
-  included once it is listed, can be installed, updated and removed.
+  reader that are not in the catalog MUST also be listed (menu entries whose id starts with `U_`; the
+  device's and the vendor's own entries are not listed and never touched). Any app of the catalog,
+  the store app included once it is listed, can be installed, updated and removed. Actions per state:
+  not installed — install; installed — update (when one is available) and remove; installed outside
+  the installer — check and adopt, replace; not in the catalog — information only. Notes shown next
+  to the state: "from a local file", "no longer in the catalog", "changed since install"; an app
+  with an install record can always be removed.
 - **FR-021**: Removal MUST delete the recorded files and the app's menu entry, MUST keep the data
   folder by default, and MUST delete it only after the user separately chooses to and confirms twice,
   each confirmation naming the folder and what it contains (number of files and total size, nothing
-  else).
+  else). An app without a data folder offers no data deletion. Folders the installer created are
+  removed when they are empty, and a folder that holds any other file is never removed. A menu entry
+  that was changed since the install is removed anyway, and the plan says so.
 - **FR-022**: Update MUST keep the data folder and MUST leave the previous version working if it
   fails. If a recorded file of the installed version differs from the install record (size or
   SHA-256), the plan MUST list it, and update or replacement MUST proceed only after an extra
-  explicit confirmation naming those files; without it nothing is written.
+  explicit confirmation naming those files; without it nothing is written. The files, the menu entry
+  and the install record change together or not at all.
 - **FR-023**: The program MUST recognize hand-installed apps by their menu entry and files; it MUST
   offer adoption only if every file equals the package of the catalog, and adoption MUST only add the
   install record. Otherwise the app MUST be shown as installed outside the installer, replaceable
@@ -584,9 +618,13 @@ Story 8.
   (`E-PKG-01`..`E-PKG-15`) and limits apply, and the checks that need a signed entry (`E-ENT-13`,
   `E-ENT-14`, `E-ENT-15`, `E-ENT-17`) are replaced by the marking above. When the catalog is
   available, a local package whose menu entry id or data folder belongs to a different catalog app is
-  refused. A local package never changes the trusted keys or the remembered serial.
+  refused. A local package never changes the trusted keys or the remembered serial. The marking is the
+  first line of the plan and of the result, and the command line prints it before the confirmation
+  prompt; there is no extra confirmation for it.
 - **FR-026**: The program MUST refuse a package whose minimum firmware is higher than the reader's
-  and MUST refuse a plan in which two apps claim the same menu entry id or data folder. If the
+  and MUST refuse a plan in which two apps claim the same menu entry id or data folder (data folder
+  names are compared ignoring letter case, because the volume ignores it; menu entry ids exactly as
+  written in the desktop configuration). If the
   package's data folder already exists on the reader and no installed app owns it, the plan MUST say
   so and the install MUST proceed only after an explicit confirmation naming the folder, its file
   count and total size, and stating that its contents stay untouched; a reserved name is refused
@@ -600,7 +638,8 @@ Story 8.
 - **FR-028**: The program MUST provide a guided graphical assistant and a command-line mode that offer
   the same actions in the same order of steps and produce the same reader contents and the same plan
   for the same inputs. Both are front ends to one engine; the tests drive the command line and the
-  engine.
+  engine. Identical in both are the order of the steps, the plan text, the final message and the
+  reader contents; the layout and the form of the questions may differ.
 - **FR-029**: The command-line mode MUST be fully usable without interaction when the confirmations
   are given as explicit options, MUST never confirm on the user's behalf by default, and MUST use
   these exit statuses: 0 success (including a dry run and "nothing to do"); 1 content or
@@ -611,13 +650,17 @@ Story 8.
   status, the finding lines and the reader contents. When no terminal is available for a question, the program stops
   with a message and does not assume an answer.
 - **FR-030**: Every error MUST say what happened, whether the reader was changed, and what to do
-  next, in English, and MUST include the contract rule id where one exists.
+  next, in English, and MUST include the contract rule id where one exists. After a refusal it MUST
+  say what is still possible, of: try again, choose another folder, see what is installed, install
+  from a local file. Every finding of one check is reported, in the order the checks ran.
 - **FR-031**: The program MUST write a log of what it did, kept on the computer (never on the
   reader), containing no personal data and no secrets. Personal data means the user name, home path,
   e-mail address, host name, device serial number, and the reader's mount path, volume label and the
   path of a local package (these MAY be shown on screen but MUST appear in the log only as
   placeholders such as `<reader>` or `<file>`). A secret is any credential, for example one carried
-  in a proxy or download address; such values MUST NOT be written to the log or to a message.
+  in a proxy or download address; such values MUST NOT be written to the log or to a message. The log
+  is readable by the user only, is bounded to the three most recent files of at most 512 KiB each,
+  and cannot be switched off because it holds no personal data.
 - **FR-032**: The install logic (planning, staging, configuration editing, install records,
   recovery) MUST be a single reusable body of logic that the later on-reader store app uses
   unchanged, so that both behave identically for the same package; it MUST be testable on a desktop
@@ -633,7 +676,8 @@ Story 8.
   staging, desktop configuration backups, the lock against two instances on one reader) inside one
   folder, `system/pbstore/`, and nowhere else on the reader; it MUST refuse a package whose data
   folder is `system/pbstore`, naming the package and the folder. Removing the last app MUST leave
-  that folder in place.
+  that folder in place. A second instance of the program (command line or assistant) working on the
+  same reader is refused with a plain message (`E-INS-34`).
 - **FR-035**: Every write MUST stay inside the reader's chosen root. The program MUST refuse to write
   through a symbolic link or link-like object in the target path, MUST refuse a package file whose
   name differs only by letter case from a file already on the reader, and MUST refuse a package file
@@ -642,14 +686,16 @@ Story 8.
   characters and terminal escape sequences neutralised in every output and in the log.
 - **FR-036**: The requests the program sends MUST carry no identifier and no machine or user detail
   beyond what an HTTPS request inevitably contains plus the program's name and version. The program
-  MUST NOT need, ask for or advise elevated rights. Links from the catalog (source, changelog, icon)
+  MUST NOT need, ask for or advise elevated rights. On the computer it writes only its own state
+  folder (the serial memory and the log). Links from the catalog (source, changelog, icon)
   are shown, never fetched or opened without a user action, and only when they are HTTPS.
 - **FR-037**: User-facing behavior, the same in both front ends unless stated:
   - *Start*: with no arguments the program opens the assistant when a graphical session exists;
     otherwise it prints the command-line help and ends with the usage status.
   - *List*: each app is shown with name, installed version, offered version, state, source and short
     description, ordered by name. An empty catalog or an empty reader gives an explicit message, not
-    an empty screen.
+    an empty screen. An installed version that was withdrawn is shown with the note "withdrawn in the
+    catalog" and is never changed; an app whose only offered version is withdrawn is not offered.
   - *Plan*: shown as a summary (counts, total size, space needed against free) with the full file
     list available (in the assistant expandable; on the command line printed in full).
   - *Confirmations*: the plan has one confirmation; every extra confirmation (edited recorded files,
@@ -667,7 +713,9 @@ Story 8.
     the commit point: the cancel is held until the operation has finished, and the program says so.
     Cancelling during a repair follows the same rule.
   - *Waiting*: a network step that makes no progress for 30 seconds ends with a message that says
-    which step stalled and that nothing was written.
+    which step stalled and that nothing was written. A reader that stops responding cannot be timed
+    out by the program: the screen says that it is waiting for the reader, and unplugging it leads to
+    the repair of FR-018 on the next run.
   - *Progress*: downloads and writes show what is being done and how far it is (a count of files or
     bytes), or say that the step has no measurable progress.
   - *Accessibility*: the assistant can be operated with the keyboard alone and does not rely on colour
@@ -710,11 +758,15 @@ Story 8.
 
 - **SC-001**: A user who has never used the program can install a listed app on a connected reader
   in under 3 minutes of their own time (excluding download time), without opening a file manager or
-  editing any file.
-- **SC-002**: In the fault-injection test suite (a fault at every write step of install, update and
-  removal, plus the full-storage, read-only and invalid-configuration cases), 100% of runs end with
+  editing any file. Measured with at least three people who have never used the program, from
+  starting it to the final message with the reader already connected; at least two of the three
+  finish within 3 minutes.
+- **SC-002**: In the fault-injection test suite (a fault after every write step of install, update and
+  removal, where a write step is every call that changes the reader's file system, plus the
+  full-storage, read-only and invalid-configuration cases, and a suspend followed by I/O errors or a
+  vanished reader), 100% of runs end, after the next run's repair, with
   every app entirely old or entirely new and a desktop configuration that parses and keeps every
-  other entry unchanged.
+  other entry unchanged; the tests report how many fault points they covered per operation.
 - **SC-003**: In 100% of the tested failure cases (bad signature, rolled-back serial, wrong hash,
   contract violation, unreachable host, wrong folder) the reader folder is byte-identical before and
   after.
@@ -742,13 +794,20 @@ Story 8.
   differing only by letter case, reserved data folder name, `system/pbstore`, a claimed menu entry id
   or data folder, size and compression-ratio bombs), 100% are refused with the matching rule id and
   the reader folder is unchanged.
+- **SC-012**: In 100% of the tested actions the final message states how to eject safely, that a
+  restart may be needed, and where the app appears or that its data folder was kept; cancelling
+  before the commit point leaves the reader byte-identical in 100% of the cancel tests; progress is
+  reported at least once per second during downloads and writes.
 
 ## Assumptions
 
 - The reader's storage is a FAT-type volume: no atomic move of a folder, no atomic replacement of an
   existing file, letter case ignored in names, coarse file timestamps. Requirements are written
   against that, and the fake reader tree used in tests behaves the same way. File state is compared
-  by size and SHA-256, never by timestamp.
+  by size and SHA-256, never by timestamp; "byte-identical" in the success criteria means the same
+  names, folder structure and content, with timestamps and permissions ignored. A volume flagged as needing a file-system check is not
+  detected (the program cannot read that flag reliably); errors during a write are handled as in
+  FR-013.
 - The target is the PocketBook InkPad One only, mounted as ordinary USB storage by the operating
   system; the user has a desktop Linux system with a graphical session for the assistant. The
   command-line mode needs no graphical session.
@@ -758,7 +817,13 @@ Story 8.
   this feature; the package checks are the shared implementation of the contract's `package_match`
   and validation rules.
 - The installer trusts the maintainer public keys built into the program; key rotation follows
-  `docs/maintainer-keys.md` and ships as a new installer release.
+  `docs/maintainer-keys.md` and ships as a new installer release. If a key is compromised, the fix is
+  a new installer release: installers already in use keep trusting the old key until the user
+  downloads the new one, and the release notes and the README say so and point to the official
+  release page.
+- The catalog contract accepts an equal serial as unchanged. A catalog with the same serial but
+  different bytes is therefore not detected; a stricter check would need a change to the catalog
+  contract and the shared verifier, which is out of scope here.
 - The last accepted catalog serial is kept per user on the computer, so a catalog rollback cannot be
   achieved by switching readers.
 - Languages: the user interface and all messages are English only in this feature.
