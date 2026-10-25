@@ -13,9 +13,19 @@ enum class FetchKind { None, Unreachable, HttpStatus, Tls, TooLarge, Protocol, T
 struct FetchOptions {
     uint64_t max_bytes = 64ull * 1024 * 1024;   // the download is aborted at this size
     long timeout_seconds = 120;                 // total time for the whole transfer
-    // Additional trust anchor file (PEM). Empty: the system certificate store. This adds trust; it
-    // cannot weaken the verification.
+    // Trust anchor file (PEM). Empty: the system certificate store. When this or ca_blob is given the
+    // system store and the environment (SSL_CERT_FILE, SSL_CERT_DIR) are not consulted at all.
     std::string ca_file;
+    // Trust anchors as PEM bytes (for a bundle compiled into the program). Same rule as ca_file.
+    std::string ca_blob;
+    // User-Agent header. Empty: "pbstore-catalog/<version>".
+    std::string user_agent;
+    // A transfer that receives no data for this many seconds ends as FetchKind::Timeout ("no data").
+    // 0: no limit besides timeout_seconds.
+    long stall_seconds = 0;
+    // Called with (bytes received, total bytes or 0 if unknown), at least once per second while the
+    // transfer runs and once at the end.
+    std::function<void(uint64_t done, uint64_t total)> progress;
 };
 
 struct FetchResult {

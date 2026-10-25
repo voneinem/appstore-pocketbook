@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0
+
+- **PB Installer for Linux**: `pbstore-install`, a command line and a browser-based assistant (loopback only) that
+  install, update and remove apps from the signed catalog on a PocketBook InkPad One in USB storage mode.
+- Journal-based safe install for FAT: backup of the menu configuration, staged and verified files, a burst of
+  renames, verification, and recovery (undo or finish) after a cut-off; a fault matrix tests a power loss after
+  every write.
+- Install records on the reader, adopt (take over hand-installed apps), replace, install from a local package file
+  (`--file`), dry run (`--dry-run`), separate double-confirmed deletion of an app's data folder.
+- Rule ids `E-INS-*` / `W-INS-*` in `docs/installer-rules.md`; contracts for the reader layout, install record,
+  journal and command line in `docs/contracts/`; user guide and developer notes.
+- Release: static `linux-x86_64` build in a pinned container (`scripts/build-static-linux.sh`), release workflow
+  with `SHA256SUMS`, embedded Mozilla CA bundle as a fallback, new constitution checks R13 to R17.
+- Tried on a real InkPad One (firmware 6.11.1437): adopt, remove and install of PB Notes worked, the menu followed after a
+  restart, and the reader accepted the edited `view.json` and updated its checksum file itself. The next start of the reader
+  after a change takes noticeably longer than usual; the installer says so.
+- Not verified yet: the model and firmware of the reader cannot be read from the mounted storage (so every plan asks
+  for those two confirmations), and the manual tests on a real reader are open.
+
 ## 0.1.4
 
 - Package file names may contain `+`. The IANA time-zone database that PB Cloud and PB Office ship

@@ -17,6 +17,12 @@ class Value {
 public:
     enum class Type { Null, Bool, Number, String, Array, Object };
 
+    // Byte offsets in the parsed text, filled only when parse() is asked for spans: [begin, end) is the
+    // text of this value; for object members key_begin[i] is where the quote of member i's key starts.
+    struct Span {
+        size_t begin = 0, end = 0;
+    };
+
     Type type = Type::Null;
     bool boolean = false;
     double number = 0;
@@ -24,6 +30,8 @@ public:
     std::string string;
     std::vector<Value> array;
     std::vector<std::pair<std::string, Value>> object;  // members in document order
+    Span span;
+    std::vector<size_t> key_begin;   // parallel to `object`, only with spans
 
     bool is_null() const { return type == Type::Null; }
     bool is_bool() const { return type == Type::Bool; }
@@ -52,9 +60,11 @@ public:
 };
 
 // Parses a complete JSON document (trailing whitespace allowed). On failure returns nullopt and
-// sets *error (if given). `max_bytes` bounds the accepted document size.
+// sets *error (if given). `max_bytes` bounds the accepted document size. With `spans` every value
+// records where its text lies in `text` (used to change a file by splicing text); what is accepted
+// and rejected does not depend on it.
 std::optional<Value> parse(const std::string& text, std::string* error = nullptr,
-                           size_t max_bytes = 16u * 1024u * 1024u);
+                           size_t max_bytes = 16u * 1024u * 1024u, bool spans = false);
 
 // JSON string literal with quotes and escapes (UTF-8 passes through unchanged).
 std::string quote(const std::string& s);

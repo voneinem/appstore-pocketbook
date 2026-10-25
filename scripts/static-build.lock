@@ -1,0 +1,24 @@
+# Pinned inputs of the static build of the installer (scripts/build-static-linux.sh).
+#
+# Every source archive is checked against the SHA-256 below before it is built; a different hash stops the build.
+# The values were computed from the downloaded archives and compared with a hash that the project itself publishes:
+#   openssl-3.5.9.tar.gz   the project's own file openssl-3.5.9.tar.gz.sha256 in its GitHub release
+#   zlib-1.3.2.tar.gz      the digest GitHub shows for that release asset of madler/zlib (equal to the file from zlib.net)
+#   curl-8.23.0.tar.gz     the digest GitHub shows for that release asset of curl/curl (equal to the file from curl.se)
+# To update: download the new archive, compute its SHA-256, compare it with the project's published value,
+# change the three lines of that library, and let the build and its tests run (a reviewed change).
+#
+# The container image is pinned by digest (the digest of the multi-architecture index of alpine:3.22).
+ALPINE_IMAGE=docker.io/library/alpine@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
+
+OPENSSL_VERSION=3.5.9
+OPENSSL_URL=https://github.com/openssl/openssl/releases/download/openssl-3.5.9/openssl-3.5.9.tar.gz
+OPENSSL_SHA256=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
+
+ZLIB_VERSION=1.3.2
+ZLIB_URL=https://zlib.net/zlib-1.3.2.tar.gz
+ZLIB_SHA256=bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16
+
+CURL_VERSION=8.23.0
+CURL_URL=https://curl.se/download/curl-8.23.0.tar.gz
+CURL_SHA256=e3de77cfa6367083c776a26647fc9f633b538c06c3baa73d931a252ac8f72b49

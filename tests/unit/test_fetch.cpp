@@ -4,9 +4,11 @@
 #include "tls_test_server.h"
 #include "tmp_dir.h"
 
+#include <chrono>
 #include <fstream>
 #include <sstream>
 #include <thread>
+#include <vector>
 
 using namespace pbstore;
 
@@ -177,6 +179,149 @@ PB_TEST(verification_cannot_be_switched_off_in_the_source) {
     PB_CHECK(has(cpp, "CURLOPT_REDIR_PROTOCOLS_STR, \"https\""));
     PB_CHECK(!has(cpp, "getenv"));   // no environment variable can change the TLS behavior
     for (const char* bad : {"insecure", "skip_verify", "verify_peer", "no_verify"}) PB_CHECK(!has(hdr, bad));
+}
+
+// ---- additive options for the installer (feature 002, T008) ------------------------------------------
+namespace {
+std::string pem_of(const std::string& path) { return slurp(path); }
+
+// A response that arrives in `pieces` pieces, one per `gap_ms` (a slow download).
+pbtest::TlsTestServer::Streamer slow_body(int pieces, int gap_ms, size_t piece_size = 1000) {
+    return [=](const std::string&, const std::function<bool(const std::string&)>& write) {
+        const size_t total = static_cast<size_t>(pieces) * piece_size;
+        write("HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(total) + "\r\nConnection: close\r\n\r\n");
+        for (int i = 0; i < pieces; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(gap_ms));
+            if (!write(std::string(piece_size, 'x'))) return;
+        }
+    };
+}
+}  // namespace
+
+PB_TEST(the_user_agent_is_sent_as_given_and_defaults_to_the_catalog_tool) {
+    Harness h;
+    if (!h.ready()) PB_SKIP("openssl CLI not available");
+    pbtest::TlsTestServer srv(h.leaf.cert, h.leaf.key, [](const std::string&) { return pbtest::TlsTestServer::http_response(200, "ok"); });
+    FetchOptions o;
+    o.ca_file = h.pki.ca_cert();
+    o.user_agent = "pbstore-install/9.9.9";
+    PB_CHECK(https_get(srv.url("/"), o).ok);
+    PB_CHECK(has(srv.requests().at(0), "User-Agent: pbstore-install/9.9.9\r\n"));
+    PB_CHECK(!has(srv.requests().at(0), "pbstore-catalog"));
+    FetchOptions d;
+    d.ca_file = h.pki.ca_cert();
+    PB_CHECK(https_get(srv.url("/"), d).ok);
+    PB_CHECK(has(srv.requests().at(1), "User-Agent: pbstore-catalog/"));
+}
+
+PB_TEST(progress_is_reported_at_least_once_a_second_during_a_slow_transfer) {
+    Harness h;
+    if (!h.ready()) PB_SKIP("openssl CLI not available");
+    pbtest::TlsTestServer srv(h.leaf.cert, h.leaf.key, nullptr, slow_body(4, 700));
+    std::vector<std::pair<uint64_t, uint64_t>> seen;
+    std::vector<std::chrono::steady_clock::time_point> when;
+    FetchOptions o;
+    o.ca_file = h.pki.ca_cert();
+    o.progress = [&](uint64_t done, uint64_t total) {
+        seen.push_back({done, total});
+        when.push_back(std::chrono::steady_clock::now());
+    };
+    FetchResult r = https_get(srv.url("/slow"), o);
+    PB_CHECK(r.ok);
+    PB_CHECK_EQ(r.body.size(), static_cast<size_t>(4000));
+    PB_CHECK(seen.size() >= 3);
+    for (size_t i = 1; i < seen.size(); ++i) PB_CHECK(seen[i].first >= seen[i - 1].first);
+    PB_CHECK_EQ(seen.back().first, static_cast<uint64_t>(4000));
+    PB_CHECK_EQ(seen.back().second, static_cast<uint64_t>(4000));
+    // never a silent gap of a second or more in the middle of the transfer
+    for (size_t i = 1; i < when.size(); ++i)
+        PB_CHECK(std::chrono::duration_cast<std::chrono::milliseconds>(when[i] - when[i - 1]).count() < 1000);
+}
+
+PB_TEST(a_transfer_that_receives_no_data_for_the_stall_time_ends_naming_no_data) {
+    Harness h;
+    if (!h.ready()) PB_SKIP("openssl CLI not available");
+    pbtest::TlsTestServer srv(h.leaf.cert, h.leaf.key, nullptr,
+        [](const std::string&, const std::function<bool(const std::string&)>& write) {
+            write("HTTP/1.1 200 OK\r\nContent-Length: 100000\r\nConnection: close\r\n\r\n");
+            write(std::string(100, 'x'));
+            std::this_thread::sleep_for(std::chrono::milliseconds(4500));   // then nothing
+        });
+    FetchOptions o;
+    o.ca_file = h.pki.ca_cert();
+    o.stall_seconds = 2;
+    o.timeout_seconds = 60;
+    const auto t0 = std::chrono::steady_clock::now();
+    FetchResult r = https_get(srv.url("/stall"), o);
+    const auto secs = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
+    PB_CHECK(!r.ok);
+    PB_CHECK(r.kind == FetchKind::Timeout);
+    PB_CHECK(has(r.error, "no data"));
+    PB_CHECK(secs < 4);
+}
+
+PB_TEST(a_long_transfer_that_keeps_receiving_data_completes_when_the_total_time_allows_it) {
+    Harness h;
+    if (!h.ready()) PB_SKIP("openssl CLI not available");
+    // the default total time of the catalog tools stays 120 seconds
+    PB_CHECK_EQ(FetchOptions().timeout_seconds, 120L);
+    pbtest::TlsTestServer srv(h.leaf.cert, h.leaf.key, nullptr, slow_body(5, 700));   // about 3.5 s in total
+    FetchOptions shorter;
+    shorter.ca_file = h.pki.ca_cert();
+    shorter.timeout_seconds = 2;
+    FetchResult cut = https_get(srv.url("/long"), shorter);
+    PB_CHECK(!cut.ok && cut.kind == FetchKind::Timeout);
+    PB_CHECK(has(cut.error, "timed out"));
+    FetchOptions longer;                    // the installer's package download: a long total time ...
+    longer.ca_file = h.pki.ca_cert();
+    longer.timeout_seconds = 30;            // (600 in the installer; scaled down here)
+    longer.stall_seconds = 2;               // ... and a short limit for silence
+    FetchResult ok = https_get(srv.url("/long"), longer);
+    PB_CHECK(ok.ok);
+    PB_CHECK_EQ(ok.body.size(), static_cast<size_t>(5000));
+}
+
+PB_TEST(a_given_ca_blob_replaces_the_system_store_and_the_environment_changes_nothing) {
+    Harness h;
+    if (!h.ready()) PB_SKIP("openssl CLI not available");
+    pbtest::TlsTestServer srv(h.leaf.cert, h.leaf.key, [](const std::string&) { return pbtest::TlsTestServer::http_response(200, "ok"); });
+    FetchOptions good;
+    good.ca_blob = pem_of(h.pki.ca_cert());
+    FetchResult a = https_get(srv.url("/"), good);
+    PB_CHECK(a.ok);
+    PB_CHECK_EQ(a.body, std::string("ok"));
+    // another CA as the blob, the test CA only in the environment: the environment is not consulted
+    pbtest::TmpDir other_dir;
+    pbtest::TestPki other(other_dir, "other");
+    FetchOptions wrong;
+    wrong.ca_blob = pem_of(other.ca_cert());
+    ::setenv("SSL_CERT_FILE", h.pki.ca_cert().c_str(), 1);
+    ::setenv("SSL_CERT_DIR", h.dir.path().c_str(), 1);
+    FetchResult b = https_get(srv.url("/"), wrong);
+    ::unsetenv("SSL_CERT_FILE");
+    ::unsetenv("SSL_CERT_DIR");
+    PB_CHECK(!b.ok);
+    PB_CHECK(b.kind == FetchKind::Tls);
+}
+
+PB_TEST(verification_stays_on_for_every_combination_of_the_new_options) {
+    Harness h;
+    if (!h.ready()) PB_SKIP("openssl CLI not available");
+    pbtest::TlsTestServer srv(h.leaf.cert, h.leaf.key, [](const std::string&) { return pbtest::TlsTestServer::http_response(200, "secret"); });
+    pbtest::TmpDir other_dir;
+    pbtest::TestPki other(other_dir, "other");
+    for (int mask = 0; mask < 16; ++mask) {
+        FetchOptions o;
+        if (mask & 1) o.user_agent = "pbstore-install/1";
+        if (mask & 2) o.progress = [](uint64_t, uint64_t) {};
+        if (mask & 4) o.stall_seconds = 5;
+        if (mask & 8) o.ca_blob = pem_of(other.ca_cert()); else o.ca_file = other.ca_cert();
+        FetchResult r = https_get(srv.url("/"), o);
+        PB_CHECK(!r.ok);
+        PB_CHECK(r.kind == FetchKind::Tls);
+        PB_CHECK(r.body.empty());
+    }
+    PB_CHECK(srv.requests().empty());
 }
 
 PB_TEST_MAIN()

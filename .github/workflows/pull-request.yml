@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
 
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build libcurl4-openssl-dev libssl-dev dosfstools
 
       - name: Constitution checks
         run: scripts/check-constitution.sh
@@ -66,3 +66,53 @@ jobs:
       # (duplicate menu ids and data folders, withdrawn versions, serial rules). Nothing is written.
       - name: Validate all entries together
         run: build/tools/pbstore-catalog/pbstore-catalog build --entries catalog/entries --dry-run --live-url "${CATALOG_URL}" --keys keys/trusted
+
+  # A break in the static (musl) build of the installer must show on the pull request, not on the release tag.
+  # It runs only when the change touches what the static build is made of. It publishes nothing.
+  static-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      BASE_REF: ${{ github.base_ref }}
+      ALPINE_IMAGE: docker.io/library/alpine@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Does this change touch the static build?
+        id: touched
+        run: |
+          if git diff --name-only "origin/${BASE_REF}...HEAD" | grep -Eq '^(core/|tools/|third_party/|CMakeLists\.txt$|scripts/build-static-linux\.sh$|scripts/static-build-inside\.sh$|scripts/static-build\.lock$)'; then
+            echo "touched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "touched=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The container image is the pinned one
+        if: steps.touched.outputs.touched == 'true'
+        run: grep -q "ALPINE_IMAGE=${ALPINE_IMAGE}" scripts/static-build.lock
+
+      - name: Install build tools
+        if: steps.touched.outputs.touched == 'true'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build libcurl4-openssl-dev libssl-dev
+
+      - name: Build the host tree (for the test of the static file)
+        if: steps.touched.outputs.touched == 'true'
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target test_release_binary
+
+      - name: Static build in the pinned container
+        if: steps.touched.outputs.touched == 'true'
+        run: |
+          docker pull "${ALPINE_IMAGE}"
+          scripts/build-static-linux.sh
+
+      - name: Test the static file
+        if: steps.touched.outputs.touched == 'true'
+        run: |
+          version="$(head -n 1 VERSION | tr -d '[:space:]')"
+          PBSTORE_RELEASE_BINARY="${PWD}/dist/pbstore-install-${version}-linux-x86_64" ctest --test-dir build -L release --output-on-failure
+

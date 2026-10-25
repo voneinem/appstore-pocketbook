@@ -17,9 +17,26 @@ find_package(Threads REQUIRED)
 
 set(PBSTORE_TOOL_PATH "")
 set(PBSTORE_GEN_FIXTURES_PATH "")
+set(PBSTORE_INSTALL_TEST_TOOL_PATH "")
+set(PBSTORE_TEST_SEED_FILE_PATH "")
 if(TARGET pbstore-catalog)
     set(PBSTORE_TOOL_PATH "$<TARGET_FILE:pbstore-catalog>")
 endif()
+if(TARGET pbstore-install-test)
+    set(PBSTORE_INSTALL_TEST_TOOL_PATH "$<TARGET_FILE:pbstore-install-test>")
+endif()
+# The throw-away key of the installer's test build (made in the build directory by gen_test_key).
+if(TARGET pbstore_install)
+    set(PBSTORE_TEST_SEED_FILE_PATH ${PBSTORE_TEST_KEY_DIR}/test_signing_seed.txt)
+endif()
+
+# Tests that need the installer engine (and, for the assistant, its library) link them when they exist.
+set(PBSTORE_TEST_EXTRA_LIBS "")
+foreach(lib pbstore_install_ui pbstore_install)
+    if(TARGET ${lib})
+        list(APPEND PBSTORE_TEST_EXTRA_LIBS ${lib})
+    endif()
+endforeach()
 
 foreach(src ${PBSTORE_HELPER_SOURCES})
     get_filename_component(name ${src} NAME_WE)
@@ -31,17 +48,45 @@ foreach(src ${PBSTORE_HELPER_SOURCES})
     target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
 endforeach()
 
+# The throw-away key pair of the installer's test build: made in the build directory, never committed.
+if(TARGET gen_test_key AND TARGET pbstore_install)
+    add_custom_command(
+        OUTPUT ${PBSTORE_TEST_KEY_DIR}/test_trusted_key.inc ${PBSTORE_TEST_KEY_DIR}/test_signing_seed.txt
+        COMMAND ${CMAKE_COMMAND} -E env LSAN_OPTIONS=detect_leaks=0 $<TARGET_FILE:gen_test_key> ${PBSTORE_TEST_KEY_DIR}
+        DEPENDS gen_test_key
+        COMMENT "Generating the throw-away test key")
+    add_custom_target(pbstore_test_key DEPENDS ${PBSTORE_TEST_KEY_DIR}/test_trusted_key.inc ${PBSTORE_TEST_KEY_DIR}/test_signing_seed.txt)
+endif()
+
 foreach(src ${PBSTORE_TEST_SOURCES})
     get_filename_component(name ${src} NAME_WE)
     get_filename_component(dir ${src} DIRECTORY)
     get_filename_component(kind ${dir} NAME)
     add_executable(${name} ${src})
-    target_link_libraries(${name} PRIVATE pbstore_core OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
+    target_link_libraries(${name} PRIVATE ${PBSTORE_TEST_EXTRA_LIBS} pbstore_core OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
     target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support)
     target_compile_definitions(${name} PRIVATE
         PBSTORE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
         PBSTORE_TOOL="${PBSTORE_TOOL_PATH}"
+        PBSTORE_INSTALL_TEST_TOOL="${PBSTORE_INSTALL_TEST_TOOL_PATH}"
+        PBSTORE_TEST_SEED_FILE="${PBSTORE_TEST_SEED_FILE_PATH}"
+        PBSTORE_BUILD_DIR="${CMAKE_BINARY_DIR}"
         PBSTORE_GEN_FIXTURES="${PBSTORE_GEN_FIXTURES_PATH}")
+    # The build configuration is compiled into each program, so two tests link it: the release one and the test one.
+    if(name STREQUAL "test_install_build_config" AND TARGET pbstore_install_config)
+        target_sources(${name} PRIVATE $<TARGET_OBJECTS:pbstore_install_config>)
+    endif()
+    if(name STREQUAL "test_install_build_config_testbuild" AND TARGET pbstore_install_config_test)
+        target_sources(${name} PRIVATE $<TARGET_OBJECTS:pbstore_install_config_test>)
+    endif()
+    # Tests of the installer may include the engine's private sources next to the public headers.
+    if(TARGET pbstore_install)
+        target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/core/install/src ${PBSTORE_TEST_KEY_DIR})
+        add_dependencies(${name} pbstore_test_key)
+    endif()
+    if(TARGET pbstore-install-test)
+        add_dependencies(${name} pbstore-install-test)
+    endif()
     if(PBSTORE_GEN_FIXTURES_PATH)
         add_dependencies(${name} gen_fixtures)
     endif()
@@ -50,6 +95,15 @@ foreach(src ${PBSTORE_TEST_SOURCES})
     endif()
     add_test(NAME ${name} COMMAND ${name})
     set_tests_properties(${name} PROPERTIES LABELS "${kind}" SKIP_RETURN_CODE 77)
+    # Tests that need a loop-mounted FAT volume (mkfs.vfat and sudo) are named test_*_vfat and carry
+    # the label "vfat"; they skip with status 77 when either tool is missing.
+    if(name MATCHES "_vfat$")
+        set_tests_properties(${name} PROPERTIES LABELS "${kind};vfat")
+    endif()
+    # Tests of the released binary (PBSTORE_RELEASE_BINARY set by the release scripts) carry "release".
+    if(name MATCHES "_release_binary$")
+        set_tests_properties(${name} PROPERTIES LABELS "${kind};release")
+    endif()
     if(PBSTORE_SANITIZE)
         set_tests_properties(${name} PROPERTIES ENVIRONMENT "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp:print_suppressions=0")
     endif()

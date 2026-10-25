@@ -44,3 +44,6 @@ dict
 keymaps
 lib
 tmp
+
+# used by the installer itself for its install records, backups and journal (system/pbstore/)
+pbstore

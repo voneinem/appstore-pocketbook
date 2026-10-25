@@ -59,6 +59,27 @@ Copyright (c) The OpenSSL Project Authors.
 libcurl (curl license)
 https://curl.se/docs/copyright.html
 
-Downloads of packages and of the live catalog use libcurl, provided by the build system and not
-redistributed by this project. Licensed under the curl license (MIT-style).
+Downloads of packages and of the live catalog use libcurl, provided by the build system. The
+released Linux installer contains libcurl 8.x. Licensed under the curl license (MIT-style).
 Copyright (c) Daniel Stenberg, <daniel@haxx.se>, and many contributors.
+
+--------------------------------------------------------------------------------
+Mozilla CA certificate bundle (MPL-2.0)
+third_party/cacert/cacert.pem, the CA certificates that Mozilla trusts, as extracted by the curl
+project (https://curl.se/docs/caextract.html). The installer uses it only when no CA bundle of the
+operating system can be found. Licensed under the Mozilla Public License 2.0
+(https://www.mozilla.org/MPL/2.0/). Date, source address and checksum: third_party/cacert/VERSION.
+
+--------------------------------------------------------------------------------
+zlib (zlib license)
+https://zlib.net/
+
+The released Linux installer contains zlib (static build, version in scripts/static-build.lock),
+which libcurl uses for compressed transfers. Copyright (C) Jean-loup Gailly and Mark Adler.
+
+--------------------------------------------------------------------------------
+musl libc (MIT License)
+https://musl.libc.org/
+
+The released Linux installer is linked statically against musl libc from the pinned Alpine Linux
+build image. Copyright (c) Rich Felker, et al.

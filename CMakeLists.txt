@@ -36,8 +36,11 @@ add_compile_definitions(PBSTORE_VERSION="${PBSTORE_FILE_VERSION}")
 
 enable_testing()
 
+# The throw-away key pair of the installer's test build lives in the build directory only.
+set(PBSTORE_TEST_KEY_DIR ${CMAKE_BINARY_DIR}/test_key)
+
 # Subdirectories are added when they exist, so the tree configures at every stage of the work.
-foreach(dir third_party/miniz core tools/pbstore-catalog tests)
+foreach(dir third_party/miniz third_party/cacert core tools/pbstore-catalog tools/pbstore-install-ui tools/pbstore-install tests)
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${dir}/CMakeLists.txt)
         add_subdirectory(${dir})
     endif()

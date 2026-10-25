@@ -54,11 +54,23 @@ public:
         const std::string csr = dir_.file(name + ".csr");
         const std::string ext = dir_.file(name + ".ext");
         dir_.write(name + ".ext", "subjectAltName=" + san + "\nbasicConstraints=CA:FALSE\n");
-        l.ok = run("openssl req -new -newkey rsa:2048 -nodes -subj /CN=" + name + " -keyout " + l.key + " -out " + csr) &&
-               run("openssl x509 -req -in " + csr + " -CA " + ca_cert() + " -CAkey " + dir_.file(ca_name_ + ".key") +
-                   " -CAcreateserial -extfile " + ext +
-                   (not_before.empty() ? " -days 30" : " -not_before " + not_before + " -not_after " + not_after) +
-                   " -out " + l.cert);
+        l.ok = run("openssl req -new -newkey rsa:2048 -nodes -subj /CN=" + name + " -keyout " + l.key + " -out " + csr);
+        if (l.ok && not_before.empty()) {
+            l.ok = run("openssl x509 -req -in " + csr + " -CA " + ca_cert() + " -CAkey " + dir_.file(ca_name_ + ".key") +
+                       " -CAcreateserial -extfile " + ext + " -days 30 -out " + l.cert);
+        } else if (l.ok) {
+            // A certificate with chosen dates: `openssl ca` takes -startdate and -enddate in every version, unlike
+            // `openssl x509 -not_before`, which only exists from OpenSSL 3.4.
+            const std::string base = dir_.file(name + ".ca");
+            dir_.write(name + ".ca.cnf",
+                       "[ca]\ndefault_ca=CA_default\n[CA_default]\ndatabase=" + base + ".index\nnew_certs_dir=" + dir_.file("") +
+                           "\nserial=" + base + ".serial\ndefault_md=sha256\npolicy=policy_any\nunique_subject=no\ncopy_extensions=none\n"
+                           "[policy_any]\ncommonName=supplied\n");
+            dir_.write(name + ".ca.index", "");
+            dir_.write(name + ".ca.serial", "1000\n");
+            l.ok = run("openssl ca -batch -config " + base + ".cnf -cert " + ca_cert() + " -keyfile " + dir_.file(ca_name_ + ".key") +
+                       " -in " + csr + " -extfile " + ext + " -startdate " + not_before + " -enddate " + not_after + " -notext -out " + l.cert);
+        }
         return l;
     }
 
@@ -82,8 +94,12 @@ private:
 class TlsTestServer {
 public:
     using Handler = std::function<std::string(const std::string& request)>;
+    // A streaming handler writes the response in pieces (a slow download): it is given the request and a
+    // function that sends bytes; the function returns false when the client has gone.
+    using Streamer = std::function<void(const std::string& request, const std::function<bool(const std::string&)>& write)>;
 
-    TlsTestServer(const std::string& cert, const std::string& key, Handler handler) : handler_(std::move(handler)) {
+    TlsTestServer(const std::string& cert, const std::string& key, Handler handler, Streamer streamer = nullptr)
+        : handler_(std::move(handler)), streamer_(std::move(streamer)) {
         ::signal(SIGPIPE, SIG_IGN);  // a client that aborts the handshake must not kill the test
         ctx_ = SSL_CTX_new(TLS_server_method());
         if (!ctx_ || SSL_CTX_use_certificate_chain_file(ctx_, cert.c_str()) != 1 ||
@@ -187,13 +203,18 @@ private:
             std::lock_guard<std::mutex> l(mu_);
             requests_.push_back(req);
         }
-        const std::string resp = handler_(req);
-        SSL_write(ssl, resp.data(), static_cast<int>(resp.size()));
+        if (streamer_) {
+            streamer_(req, [&](const std::string& piece) { return SSL_write(ssl, piece.data(), static_cast<int>(piece.size())) > 0; });
+        } else {
+            const std::string resp = handler_(req);
+            SSL_write(ssl, resp.data(), static_cast<int>(resp.size()));
+        }
         SSL_shutdown(ssl);
         SSL_free(ssl);
     }
 
     Handler handler_;
+    Streamer streamer_;
     SSL_CTX* ctx_ = nullptr;
     int listen_fd_ = -1;
     int port_ = 0;

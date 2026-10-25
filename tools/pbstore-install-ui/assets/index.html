@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PB Installer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>PB Installer</h1>
+  <p class="note">Puts apps from the PB Store catalog on a PocketBook InkPad One that is connected as USB storage.
+  PB Store is unofficial: it is not made, endorsed or supported by PocketBook.</p>
+</header>
+
+<main id="main">
+  <section id="banner" class="banner" role="alert" hidden></section>
+
+  <section id="step-reader" aria-labelledby="h-reader">
+    <h2 id="h-reader">1. Choose the reader</h2>
+    <p>Connect the reader with the USB cable and set USB storage mode on its screen. Then choose it here.</p>
+    <div id="readers" aria-live="polite"></div>
+    <div class="row">
+      <button type="button" id="refresh-readers">Look for the reader again</button>
+    </div>
+    <details id="by-hand">
+      <summary>Choose a folder by hand</summary>
+      <p>For a reader that is not found, or a copy of a reader on this computer.</p>
+      <div class="row">
+        <label for="folder-input">Folder</label>
+        <input id="folder-input" type="text" size="50" autocomplete="off" spellcheck="false">
+        <button type="button" id="use-folder">Use this folder</button>
+      </div>
+      <p id="browse-path" class="small"></p>
+      <ul id="browse-list" class="plain"></ul>
+    </details>
+  </section>
+
+  <section id="step-apps" aria-labelledby="h-apps" hidden>
+    <h2 id="h-apps">2. Apps</h2>
+    <p id="reader-line" class="small"></p>
+    <div id="interrupted" hidden></div>
+    <div class="row">
+      <button type="button" id="load-catalog">Show the catalog</button>
+      <button type="button" id="change-reader">Choose another reader</button>
+    </div>
+    <p id="catalog-line" class="small"></p>
+    <div class="confirm">
+      <input type="checkbox" id="opt-delete-data">
+      <label for="opt-delete-data">When I remove an app, also offer to delete its data folder afterwards. The data folder is kept unless I confirm twice.</label>
+    </div>
+    <div id="apps" aria-live="polite"></div>
+    <details id="local-file">
+      <summary>Install a package from this computer</summary>
+      <p>Such a package is not from the catalog and not signed by the maintainer. It is checked by the same rules.</p>
+      <div class="row">
+        <label for="local-input">Package file</label>
+        <input id="local-input" type="text" size="50" autocomplete="off" spellcheck="false">
+        <button type="button" id="plan-local">Show the plan</button>
+      </div>
+    </details>
+  </section>
+
+  <section id="step-plan" aria-labelledby="h-plan" hidden>
+    <h2 id="h-plan">3. The plan</h2>
+    <p id="plan-summary"></p>
+    <pre id="plan-text" class="plan"></pre>
+    <details id="plan-files">
+      <summary>All files</summary>
+      <div id="plan-file-list"></div>
+    </details>
+    <fieldset id="confirmations">
+      <legend>Confirm</legend>
+      <div id="confirmation-list"></div>
+    </fieldset>
+    <div class="row">
+      <button type="button" id="carry-out" disabled>Carry out the plan</button>
+      <button type="button" id="preview">Preview only</button>
+      <button type="button" id="plan-back">Back</button>
+    </div>
+    <p id="preview-note" class="small" hidden>This is a preview: nothing is written to the reader.</p>
+  </section>
+
+  <section id="step-progress" aria-labelledby="h-progress" hidden>
+    <h2 id="h-progress">Working</h2>
+    <p id="progress-text" aria-live="polite">Please wait.</p>
+    <progress id="progress-bar" max="100" value="0"></progress>
+    <div class="row"><button type="button" id="cancel">Cancel</button></div>
+  </section>
+
+  <section id="step-result" aria-labelledby="h-result" hidden>
+    <h2 id="h-result">Result</h2>
+    <pre id="result-text" class="plan"></pre>
+    <div id="deletion" hidden>
+      <h3>The data folder</h3>
+      <p id="deletion-text"></p>
+      <div class="row">
+        <label for="token-1" id="question-1"></label>
+        <input id="token-1" type="text" size="30" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="row">
+        <label for="token-2" id="question-2"></label>
+        <input id="token-2" type="text" size="10" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="row"><button type="button" id="delete-data" disabled>Delete the data folder</button></div>
+    </div>
+    <div class="row">
+      <button type="button" id="back-to-apps">Back to the apps</button>
+      <button type="button" id="close">Close the installer</button>
+    </div>
+  </section>
+</main>
+
+<footer class="bottom small">
+  <p>Nothing is written to the reader before you have seen the plan and confirmed it. A log without personal data is kept on this computer only.</p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

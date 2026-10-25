@@ -35,3 +35,8 @@ add_library(pbstore_core STATIC ${PBSTORE_CORE_SOURCES})
 target_include_directories(pbstore_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(pbstore_core PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
 target_link_libraries(pbstore_core PUBLIC OpenSSL::Crypto CURL::libcurl pbstore_miniz Threads::Threads)
+
+# The installer engine (core/install) sits on top of pbstore_core; it is added when it exists.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/install/CMakeLists.txt)
+    add_subdirectory(install)
+endif()
