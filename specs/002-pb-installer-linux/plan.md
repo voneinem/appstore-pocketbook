@@ -123,8 +123,8 @@ No unjustified violation. The Complexity Tracking table records the choices that
 ### Post-design re-check (after Phase 1)
 
 All rows above still pass with the data model and contracts written. Two points are carried to the owner
-rather than hidden: the browser-based assistant (research §17.6); the Principle IV wording was resolved
-by the v2.0.0 amendment (research §17.1). New findings from the design that change user-visible behavior but not the spec's text: adoption can
+rather than hidden: the Principle IV wording was resolved by the v2.0.0 amendment (research §17.1), and
+the browser-based assistant was confirmed by the owner on 2026-10-25 (research §17.6). New findings from the design that change user-visible behavior but not the spec's text: adoption can
 only be judged after the package is downloaded (§16), and "apps found on the reader" means `U_` entries
 (§16). None needs an amendment to proceed.
 
@@ -207,7 +207,7 @@ examples.
 | Addition | Why needed | Simpler alternative rejected because |
 |----------|------------|--------------------------------------|
 | Second library `pbstore_install` | Keeps file-system, locking and OS code out of the library the catalog tools link; boundary for the "OS specifics behind small interfaces" rule | Putting everything into `pbstore_core`: the signing/build tools would link code they never use and the OS boundary would have no place |
-| **Graphical assistant as a local browser page** with a hand-written loopback HTTP server | The only candidate that is one download with no runtime to install on a stock Ubuntu desktop; smallest; no Qt licence question; testable without a display; Windows later is cheap | **Qt Widgets AppImage** (needs FUSE 2, not installed by default on Ubuntu 22.04/24.04; Qt 6.5+ needs `libxcb-cursor`); **static Qt** (heavy CI build, still needs `libxcb-cursor`, LGPL relink obligations); **bundled-Qt tarball** (a folder, not one file, 40–80 MB). A native window is not required by the spec's wording; confirm (research §17.6) |
+| **Graphical assistant as a local browser page** with a hand-written loopback HTTP server | The only candidate that is one download with no runtime to install on a stock Ubuntu desktop; smallest; no Qt licence question; testable without a display; Windows later is cheap | **Qt Widgets AppImage** (needs FUSE 2, not installed by default on Ubuntu 22.04/24.04; Qt 6.5+ needs `libxcb-cursor`); **static Qt** (heavy CI build, still needs `libxcb-cursor`, LGPL relink obligations); **bundled-Qt tarball** (a folder, not one file, 40–80 MB). A native window is not required; confirmed by the owner on 2026-10-25 (research §17.6) |
 | Hand-written HTTP server (about 400 lines) | Two verbs, a few routes, loopback only | Vendoring `cpp-httplib` (large dependency to pin and review for little use); Qt network (no Qt) |
 | Lossless `view.json` splice (needs byte spans from the JSON parser) | Makes "only that entry changed" a byte-level, testable statement on a device-owned file | Parse and re-serialize with `json::write`: reformats numbers, escapes and whitespace of a file the device owns, and the claim becomes unprovable |
 | Journal with prepare / apply / commit / cleanup | FAT has no atomic directory move or replace; recovery needs both old and new states | In-place overwrite or copy-then-rename-folder: a pulled cable leaves a mix with no way back |
@@ -225,7 +225,7 @@ examples.
    spec FR-013 and US2 (the owner may reclassify the amendment as a PATCH).
 2. Adoptability can only be decided after downloading the package (the catalog has no per-file hashes).
 3. "Apps found on the reader that are not in the catalog" is read as `U_` entries only.
-4. The assistant is a browser page opened by the program; confirm that meets "guided graphical assistant".
+4. The assistant is a browser page opened by the program: confirmed by the owner on 2026-10-25 as meeting "guided graphical assistant".
 5. Model and firmware sources on the reader are unknown (F12): at first both "unknown" confirmations are the
    normal path until task D-02 finds a source.
 6. Manual device tasks D-01 to D-06 need the owner's approval before anything is written to the reader.

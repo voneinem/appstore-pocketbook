@@ -110,6 +110,9 @@ assistant for ordinary users, and a command-line mode for scripting and for the 
 - Q: May the catalog offer an update to an app that was installed from a local file? → A: Yes, only
   when the catalog version is newer than the installed one; the plan marks the change of source from
   "local file" to "catalog" and the user confirms as for any update.
+- Q: Does a page that the program serves locally and opens in the user's browser count as the "guided
+  graphical assistant"? → A: Yes (owner, 2026-10-25). The assistant is a page served on the loopback
+  interface by the program itself; the command line needs no browser.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -638,7 +641,8 @@ Story 8.
 - **FR-028**: The program MUST provide a guided graphical assistant and a command-line mode that offer
   the same actions in the same order of steps and produce the same reader contents and the same plan
   for the same inputs. Both are front ends to one engine; the tests drive the command line and the
-  engine. Identical in both are the order of the steps, the plan text, the final message and the
+  engine. The assistant is a page that the program serves on the loopback interface and opens in the
+  user's browser. Identical in both are the order of the steps, the plan text, the final message and the
   reader contents; the layout and the form of the questions may differ.
 - **FR-029**: The command-line mode MUST be fully usable without interaction when the confirmations
   are given as explicit options, MUST never confirm on the user's behalf by default, and MUST use
@@ -666,7 +670,9 @@ Story 8.
   unchanged, so that both behave identically for the same package; it MUST be testable on a desktop
   computer against a fake reader folder without a device.
 - **FR-033**: The program MUST be a single self-contained program for Linux (64-bit only in this feature) that
-  needs no separately installed runtime, published with the SHA-256 of each download in the release
+  needs no separately installed runtime (the assistant additionally uses the web browser that the
+  user's desktop already has; the command line needs nothing), published with the SHA-256 of each
+  download in the release
   notes and in a `SHA256SUMS` file. The checksums are not signed; the README MUST say that they show
   integrity and not authenticity, MUST give the command that checks a download, and MUST point to
   the official release page. The download MUST contain everything it needs: the key list, the

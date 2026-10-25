@@ -295,9 +295,9 @@ typical builds; none were measured here.
   (heavy CI, still a runtime dependency, licence read needed); C (a folder, not one download; large);
   GTK (not present on every desktop); Dear ImGui (bundled but not native, poor accessibility); a terminal UI
   (not "graphical" in the spec's sense).
-- **What the owner should confirm**: the spec says "guided graphical assistant". A browser page that the
-  program opens satisfies that; if a native window is a requirement, B or C is the fall-back and the engine
-  is unaffected, because front ends are thin.
+- **Confirmed by the owner, 2026-10-25**: the spec says "guided graphical assistant", and a browser page
+  that the program opens satisfies that. (Had a native window been required, B or C would have been the
+  fall-back; the engine is unaffected either way, because front ends are thin.)
 
 ## 11. Trust, network, state and logs
 
@@ -452,7 +452,7 @@ configuration editor, adoption and the assistant's pages contain no `#ifdef` and
 5. **The installer's own rule ids** are `E-INS-nn` (table in [contracts/rules.md](contracts/rules.md)),
    a registry separate from the catalog/package contract; the spec asked for the contract id "where there is
    one", and for the installer's own conditions there is none, so one is created.
-6. **Browser-based assistant** (§10): confirm it satisfies "guided graphical assistant".
+6. **Browser-based assistant** (§10): confirmed by the owner on 2026-10-25.
 7. **Icon paths are relative** (F5) while the task text only said `icon {path}`; the documents decide.
 
 ## 18. Manual device tasks (the owner's explicit approval is needed before anything is written)
