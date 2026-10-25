@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- The version-bump check no longer counts a trusted public key under `keys/trusted/` as a change
+  of the tool, so adding the next key (rotation) by pull request needs no `VERSION` bump.
+- Maintainer guide, from the rehearsal on a throw-away repository: how to get the tool, that the
+  very first key goes straight to `main`, that the `catalog-signing` environment may already
+  exist, and that GitHub Pages can serve the previous catalog for up to ten minutes.
+
 ## 0.1.2
 
 - The version-bump check no longer counts an app entry under `catalog/entries/` as a change of the

@@ -170,6 +170,32 @@ the previous catalog online; a pull request from a fork runs the check but no si
 merged tree makes the publish run fail with nothing deployed and the findings in the job summary;
 the published directory scan finds no key material.
 
+**Rehearsal result (2026-10-25, throw-away repository, keys A, B and C, then deleted).** Rehearsed
+and as expected:
+
+- first publication with `first_publish`; the catalog verified with key A and was rejected with
+  `E-CAT-01` by a verifier that trusts only another key;
+- an entry-only pull request passed its check against the live catalog, and the merge published a
+  catalog with a higher serial;
+- rotation: key B added by pull request, published with A still signing, secret switched to B,
+  published again: the catalog verified with A and B, with B alone, and an old store trusting only A
+  rejected it with `E-CAT-01`;
+- wrong secret (a valid key that is not trusted): the publish job stopped at "Verify the signed
+  catalog" with `E-CAT-01`, `deploy` was skipped and the live serial did not change;
+- a deliberately failing entry (release asset answers 404) on `main`: the run failed with
+  `E-ENT-12` and `E-BLD-07`, `deploy` was skipped, GitHub's notification arrived about a minute
+  later, and removing the entry let the next run publish again;
+- the "Scan the site for secrets" step ran and passed in every successful publish.
+
+Not rehearsed: the pull request **from a fork** (needs a second GitHub account; the workflow gives
+fork runs a read-only token and no secrets, see the maintainer guide).
+
+Findings fixed by this rehearsal: the maintainer guide did not say how to get the tool; a pull
+request that only adds a public key under `keys/trusted/` was asked for a `VERSION` bump; the first
+key cannot go in by pull request (no live catalog yet), so the guide now says to push it to `main`;
+the guide now explains that GitHub creates the `catalog-signing` environment by itself, and that
+GitHub Pages can serve the previous catalog for up to ten minutes.
+
 ## Scenario 8: Documentation check (User Story 6, SC-009)
 
 Give `docs/developer-guide.md` to someone who has not seen the project. Expected: they reach a
