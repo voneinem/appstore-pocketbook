@@ -2,8 +2,10 @@
 
 PB Store is an app store for PocketBook e-readers. It consists of (a) a native store app that runs
 on the PocketBook InkPad One, (b) a signed app catalog published on GitHub Pages, and (c) an
-installer for Windows and Linux that puts the store app onto the reader. Author: Volker von Einem.
-Sibling projects: notes-pocketbook, nextcloud-pocketbook and office-pocketbook (all MIT).
+installer that puts apps from the catalog onto the reader over USB, starting with Linux, with the
+store app as one of those apps. The native store app on the reader and the installer share one
+tested install logic. Author: Volker von Einem. Sibling projects: notes-pocketbook,
+nextcloud-pocketbook and office-pocketbook (all MIT).
 
 ## Core Principles
 
@@ -52,8 +54,10 @@ belongs to the app being installed or removed.
 - Before every write to `view.json`, a timestamped backup MUST be made. If the file does not have
   the expected structure, nothing MUST be written and the user MUST be told why.
 - Every install MUST be staged in a temporary folder, verified, then moved into place. An
-  interrupted install (battery pull, USB removal) MUST leave either the old or the new complete
-  version, never a mix.
+  interrupted install (battery pull, USB removal) MUST leave a state from which the next run
+  restores, without loss, either the old or the new complete version. The interval in which staged
+  files are renamed into place MUST contain no copying of data and MUST be as short as the medium
+  allows, and the program MUST detect and repair such a state before any new action.
 - Every installed app MUST have an install record listing the files placed, so that removal
   deletes exactly those files and nothing else.
 - User data folders of apps (for example `system/pbnotes/`) MUST NOT be deleted by the store
@@ -76,12 +80,16 @@ starts a refresh, install or update.
 ### VI. Host-Testable Core
 
 Catalog parsing, signature and hash verification, version comparison, install planning, staging,
-`view.json` editing, install records and rollback MUST be buildable and unit-testable on a desktop
-host without Qt Quick, InkView, the PocketBook SDK or a device.
+the journal and recovery, `view.json` editing, install records, rollback and reader detection logic
+MUST be buildable and unit-testable on a desktop host without Qt Quick, InkView, the PocketBook SDK
+or a device.
 
+- This install logic lives in the Qt-free core and is shared by the installer and the store app;
+  neither MAY carry its own copy. Both MUST be tested against a fake reader tree.
 - Tests MUST use a fake reader directory tree and anonymized fixtures, never a real reader's data.
-- The installer for Windows and Linux MUST reuse the same verified logic or an equally tested
-  equivalent, and MUST be tested against a fake reader folder on both operating systems.
+- The installer MUST be tested against a fake reader folder on each operating system it supports at
+  the time (the requirement applies to every operating system the installer ships for, not to ones
+  that are only planned).
 
 ### VII. Versioned Contracts
 
@@ -109,8 +117,10 @@ license, its source repository, its required firmware and its target device.
 - Anything the store did not create MUST NOT be deleted or overwritten.
 - Logs MUST NOT contain personal data.
 - Dependencies MUST be pinned and reviewed.
-- The SHA-256 of every installer release MUST be published in the release notes. The Windows
-  installer is not code-signed; the README MUST say so and explain the SmartScreen warning.
+- The installer is a program that is downloaded and run, so the SHA-256 of every installer release
+  MUST be published in the release notes and as a `SHA256SUMS` file.
+- When a Windows build exists and is not code-signed, the README MUST say so and explain the
+  SmartScreen warning.
 
 ## Technology Stack & Build Constraints
 
@@ -122,7 +132,10 @@ license, its source repository, its required firmware and its target device.
 - The catalog tooling (validation, hashing, signing in CI) and the PC installer MAY use a
   different language if the plan justifies it in Complexity Tracking.
 - The installer MUST ship as one self-contained program per operating system that needs no
-  installed runtime, and MUST build for Windows and Linux from CI.
+  installed runtime.
+- The installer MUST build for Linux from CI now. The Windows build is delivered by its own
+  feature; until that exists, no release MAY claim Windows support, and no design choice MAY
+  prevent it (portable code, operating-system specifics behind small interfaces).
 
 ## Licensing & Attribution
 
@@ -154,4 +167,4 @@ section or materially expanded guidance, PATCH for clarifications and wording.
 Compliance MUST be checked in every pull request and in each plan's Constitution Check.
 Unjustified violations block the merge.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-24 | **Last Amended**: 2026-10-24
+**Version**: 2.0.0 | **Ratified**: 2026-10-24 | **Last Amended**: 2026-10-25
