@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "pboffice",
+  "package_url": "https://github.com/voneinem/office-pocketbook/releases/download/v0.4.1/pboffice-inkpad-one-0.4.1.zip",
+  "release_date": "2026-10-25",
+  "short_description": {
+    "en": "Email, calendar and contacts for the InkPad One, built for e-ink and offline use.",
+    "de": "E-Mail, Kalender und Kontakte für den InkPad One, gebaut für E-Ink und Offline-Nutzung."
+  },
+  "long_description": {
+    "en": "PB Office is an IMAP/SMTP mail client, a CalDAV calendar and a CardDAV address book for the InkPad One, with no background network activity. Mail reads and searches offline, with an outbox that never resends a message of unknown outcome by itself; pictures on the sender's server load only after you tap. The calendar has agenda, day and month views and lets you create, change and delete events. Contacts come from your calendar server account and suggest recipients while you type. Anything changed on both sides keeps both versions until you decide. Other apps, such as PB Cloud, can hand a text to PB Office to start a new message; nothing is sent without your tap. Early software: it has been tried on one InkPad One with its author's own accounts, and behavior with other providers is not yet verified.",
+    "de": "PB Office ist ein IMAP/SMTP-Mailprogramm, ein CalDAV-Kalender und ein CardDAV-Adressbuch für den InkPad One, ohne Netzwerkaktivität im Hintergrund. Mails lassen sich offline lesen und durchsuchen, ein Postausgang sendet eine Nachricht mit unbekanntem Ausgang nie von selbst erneut; Bilder auf dem Server des Absenders werden erst nach deinem Tippen geladen. Der Kalender hat Agenda-, Tages- und Monatsansicht und erlaubt, Termine anzulegen, zu ändern und zu löschen. Kontakte kommen aus dem Konto deines Kalender-Servers und schlagen beim Tippen Empfänger vor. Was auf beiden Seiten geändert wurde, bleibt in beiden Fassungen erhalten, bis du entscheidest. Andere Apps, etwa PB Cloud, können einen Text an PB Office übergeben, der eine neue Nachricht beginnt; ohne dein Tippen wird nichts gesendet. Frühe Software: ausprobiert auf einem InkPad One mit den eigenen Konten ihres Autors, das Verhalten bei anderen Anbietern ist noch nicht geprüft."
+  },
+  "license": "MIT",
+  "source_url": "https://github.com/voneinem/office-pocketbook",
+  "author": "Volker von Einem",
+  "icon_url": "https://raw.githubusercontent.com/voneinem/office-pocketbook/v0.4.1/res/icons/pboffice.bmp",
+  "changelog_url": "https://github.com/voneinem/office-pocketbook/releases/tag/v0.4.1"
+}
