@@ -108,3 +108,16 @@ PB_TEST(the_apps_of_this_project_and_a_plain_name_are_not_reserved) {
         PB_CHECK(check_package(pbtest::build_package(m, app.files)).ok());
     }
 }
+
+// A package may carry the IANA time-zone database: its names contain "+" (GMT+0, Etc/GMT+1 ... Etc/GMT+12).
+PB_TEST(a_package_with_time_zone_names_containing_plus_passes) {
+    auto app = pbtest::make_sample_app();
+    std::vector<pbtest::ZEntry> files = app.files;
+    files.push_back(pbtest::file("applications/zoneinfo/GMT+0", "tz"));
+    files.push_back(pbtest::file("applications/zoneinfo/Etc/GMT+12", "tz"));
+    Value m = app.manifest;
+    pbtest::set_member(m, "files", pbtest::files_value(files));
+    PackageCheckResult r = check_package(pbtest::build_package(m, files));
+    PB_CHECK(r.ok());
+    PB_CHECK(r.findings.empty());
+}

@@ -39,7 +39,7 @@ The same checks run on your machine with `pbstore-catalog check-entry`, see the
 |----|---------------|---------------|
 | `E-PKG-01` | Not a readable ZIP, or an entry is encrypted, unreadable or uses unsupported compression. | Build the package with `pbstore-catalog pack`. |
 | `E-PKG-02` | A limit is exceeded: 64 MiB compressed, 200 MiB uncompressed, 1000 entries, or an entry of 1 MiB or more that expands more than 200 times. | Make the package smaller. |
-| `E-PKG-03` | A file name is unsafe, duplicated, differs from another only by letter case, or is a symbolic link. | Use plain names (`A-Z a-z 0-9 . _ -` and spaces), no hidden files, no links. |
+| `E-PKG-03` | A file name is unsafe, duplicated, differs from another only by letter case, or is a symbolic link. | Use plain names (`A-Z a-z 0-9 . _ - +` and spaces), no hidden files, no links. |
 | `E-PKG-04` | Something other than `manifest.json` and the `applications/` tree is at the ZIP root (for example `INSTALL.md`). | Remove it from the ZIP. |
 | `E-PKG-05` | `manifest.json` is missing, larger than 256 KiB or not valid JSON. | Let `pack` write it. |
 | `E-PKG-06` | The manifest's `schema_version` is malformed or newer than the tool understands. | Use `"1.0"`. |

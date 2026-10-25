@@ -48,12 +48,14 @@ PB_TEST(a_valid_archive_opens_and_reads_back) {
 PB_TEST(safe_names_are_accepted) {
     PB_CHECK(with_names({"manifest.json", "applications/pbnotes.app", "applications/icons/a b-c_d.1.bmp"}).empty());
     PB_CHECK(with_names({"applications/" + std::string(150, 'a')}).empty());
+    // IANA time-zone names: "+" is valid on the reader's FAT storage and is part of real zone names
+    PB_CHECK(with_names({"applications/zoneinfo/GMT+0", "applications/zoneinfo/Etc/GMT+12"}).empty());
 }
 
 PB_TEST(unsafe_names_are_rejected_with_the_entry_named) {
     const std::vector<std::string> bad = {
         "/abs.txt", "a//b.txt", "../x", "a/../b", "a/./b", ".hidden", "a/.b", "a\\b", "sp@ce", "caf\xc3\xa9",
-        "a:b", "a*b", "a?b", "a|b", "tab\tname", std::string("nul\0name", 8), "applications/" + std::string(200, 'a')};
+        "a:b", "a*b", "a?b", "a|b", "a,b", "a;b", "a=b", "a&b", "a%b", "a#b", "tab\tname", std::string("nul\0name", 8), "applications/" + std::string(200, 'a')};
     for (const std::string& n : bad) {
         auto f = with_names({n});
         PB_CHECK(has(f, "E-PKG-03"));

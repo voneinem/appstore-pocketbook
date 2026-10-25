@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Package file names may contain `+`. The IANA time-zone database that PB Cloud and PB Office ship
+  has names such as `GMT+0` and `Etc/GMT+1`, which the contract rejected (`E-PKG-03`). `+` is valid
+  on the reader's FAT storage; every other character outside `A-Z a-z 0-9 . _ -` and space is still
+  rejected.
+
 ## 0.1.3
 
 - The version-bump check no longer counts a trusted public key under `keys/trusted/` as a change

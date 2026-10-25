@@ -20,7 +20,7 @@ Rules:
   entries are allowed. (`E-PKG-04`)
 - Every file under `applications/` is listed in the manifest, and every listed file exists.
   (`E-PKG-10`, `E-PKG-11`)
-- Names: relative, `/` separators, characters `A-Za-z0-9._ -` and `/` only, no empty or `..`
+- Names: relative, `/` separators, characters `A-Za-z0-9._ -+` and `/` only, no empty or `..`
   segments, no segment starting with `.`, at most 200 characters, unique ignoring letter case.
   (`E-PKG-03`)
 - No symbolic links, no encrypted entries, compression method stored or deflate only.

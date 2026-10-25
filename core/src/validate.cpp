@@ -121,7 +121,7 @@ bool is_safe_path(const std::string& s) {
             continue;
         }
         const char c = s[i];
-        if (!alnum(c) && c != '.' && c != '_' && c != '-' && c != ' ') return false;
+        if (!alnum(c) && c != '.' && c != '_' && c != '-' && c != ' ' && c != '+') return false;
     }
     return true;
 }
