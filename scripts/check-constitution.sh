@@ -27,6 +27,15 @@
 #   R10 publish.yml never passes --package-dir or --now.
 #   R11 publish.yml runs "pre-merge.sh --secrets" before the Pages deployment.
 #   R12 pull-request.yml runs "check-pr-paths" and passes --live-url to check-entry.
+#   R13 PBSTORE_TEST_* names and any catalog-address, key or CA override appear only under
+#        "#ifdef PBSTORE_TEST_BUILD" and in tests/ (the released installer has no override).
+#   R14 POSIX headers (<unistd.h>, <fcntl.h>, <signal.h>, <sys/...>) in core/install/ and tools/ only
+#        in core/install/src/posix_*.cpp, tools/pbstore-install-ui/{http_server,open_url_xdg}.cpp and
+#        tools/pbstore-install/{signals,prompts,progress_terminal}.cpp.
+#   R15 The assistant (tools/pbstore-install-ui/) never binds INADDR_ANY, "0.0.0.0" or "::".
+#   R16 No system( or popen( in core/install/ and tools/pbstore-install*.
+#   R17 release-installer.yml: triggers only on tags v*, "contents: write" only on the release job,
+#        no secrets, container image pinned by @sha256: digest, a step creating SHA256SUMS.
 set -u
 
 SELF="$(basename "${BASH_SOURCE[0]}")"
@@ -99,6 +108,70 @@ scan() {
                 report R7 "$f" 'pull_request_target' "$p" && bad=1
                 # R9: signing key never echoed or passed on a command line
                 report R9 "$f" '(echo|printf|cat)[^#]*PBSTORE_SIGNING_KEY|--key[= ][^#]*(secrets\.|PBSTORE_SIGNING_KEY)|run:[^#]*\$\{\{[[:space:]]*secrets\.PBSTORE_SIGNING_KEY' "$p" && bad=1
+                ;;
+        esac
+        case "$f" in
+            core/install/*|tools/pbstore-install*)
+                # R13: test-only names only under #ifdef PBSTORE_TEST_BUILD
+                if grep -nE 'PBSTORE_TEST_(CATALOG_URL|CA_FILE|STATE_DIR|KEY|[A-Z_]+)' "$p" >/dev/null 2>&1; then
+                    case "$f" in
+                        *CMakeLists.txt|*.cmake) ;;
+                        *)
+                            if ! awk '
+                                /^[[:space:]]*#[[:space:]]*(ifdef[[:space:]]+PBSTORE_TEST_BUILD|if[[:space:]]+defined\(PBSTORE_TEST_BUILD\))/ { depth=1; next }
+                                depth>0 && /^[[:space:]]*#[[:space:]]*if/ { depth++ }
+                                depth>0 && /^[[:space:]]*#[[:space:]]*endif/ { depth--; next }
+                                depth>0 && /^[[:space:]]*#[[:space:]]*else/ && depth==1 { depth=0; next }
+                                depth==0 && /PBSTORE_TEST_(CATALOG_URL|CA_FILE|STATE_DIR|KEY|[A-Z_]+)/ && !/PBSTORE_TEST_BUILD/ { print FILENAME ":" NR ": " $0; bad=1 }
+                                END { exit bad }' "$p" > "$p.r13.$$" 2>/dev/null; then
+                                sed "s#^#R13 $f:#" "$p.r13.$$"; bad=1
+                            fi
+                            rm -f "$p.r13.$$"
+                            ;;
+                    esac
+                fi
+                # R14: POSIX headers only in the posix_*.cpp files and a few named tool files
+                case "$f" in
+                    core/install/src/posix_*.cpp|tools/pbstore-install-ui/http_server.cpp|tools/pbstore-install-ui/open_url_xdg.cpp|tools/pbstore-install/signals.cpp|tools/pbstore-install/prompts.cpp|tools/pbstore-install/progress_terminal.cpp) ;;
+                    *.cpp|*.h|*.hpp)
+                        report R14 "$f" '#[[:space:]]*include[[:space:]]*<(unistd|fcntl|signal|poll|dirent|termios|pthread|netdb)\.h>|#[[:space:]]*include[[:space:]]*<(sys|netinet|arpa)/' "$p" && bad=1
+                        ;;
+                esac
+                # R16: no shell
+                case "$f" in
+                    *.cpp|*.h|*.hpp)
+                        report R16 "$f" '(^|[^A-Za-z0-9_.>:])(system|popen)[[:space:]]*\(' "$p" && bad=1
+                        ;;
+                esac
+                ;;
+        esac
+        case "$f" in
+            tools/pbstore-install-ui/*)
+                # R15: loopback only
+                report R15 "$f" 'INADDR_ANY|"0\.0\.0\.0"|"::"|in6addr_any' "$p" && bad=1
+                ;;
+        esac
+        case "$f" in
+            .github/workflows/release-installer.yml)
+                # R17: release workflow shape
+                if grep -nE '^[[:space:]]*(pull_request|pull_request_target|schedule|workflow_run|workflow_dispatch):' "$p" >/dev/null 2>&1 \
+                   || grep -nE '^[[:space:]]*branches:' "$p" >/dev/null 2>&1; then
+                    echo "R17 $f: the release workflow may only trigger on tags v*"; bad=1
+                fi
+                grep -qE "^[[:space:]]*tags:[[:space:]]*\[[[:space:]]*['\"]?v\*['\"]?[[:space:]]*\]" "$p" || { echo "R17 $f: no tags: ['v*'] trigger"; bad=1; }
+                report R17 "$f" 'secrets\.' "$p" && bad=1
+                # contents: write only on the release job (everything at the top level must be read-only)
+                if ! awk '
+                    /^permissions:/ { top=1; next }
+                    top && /^[^[:space:]]/ { top=0 }
+                    top && /contents:[[:space:]]*write/ { bad=1 }
+                    END { exit bad }' "$p"; then
+                    echo "R17 $f: top-level permissions must not grant contents: write"; bad=1
+                fi
+                grep -qE '^[[:space:]]*contents:[[:space:]]*write' "$p" || { echo "R17 $f: the release job has no contents: write"; bad=1; }
+                if [ "$(grep -cE 'contents:[[:space:]]*write' "$p")" -gt 1 ]; then echo "R17 $f: contents: write more than once"; bad=1; fi
+                grep -qE '@sha256:[0-9a-f]{64}' "$p" || { echo "R17 $f: container image not pinned by @sha256: digest"; bad=1; }
+                grep -qE 'SHA256SUMS' "$p" || { echo "R17 $f: no step creating SHA256SUMS"; bad=1; }
                 ;;
         esac
         case "$f" in
@@ -244,6 +317,80 @@ YAML
     expect fail "R11: no secret scan"
     good_publish | awk '/deploy-pages/ {print; print "      - run: scripts/pre-merge.sh --secrets out"; next} /pre-merge.sh --secrets/ {next} {print}' > "$tmp/.github/workflows/publish.yml"
     expect fail "R11: secret scan after the deployment"
+    # R13 .. R17 (installer)
+    rm -f "$tmp/.github/workflows/publish.yml"
+    mkdir -p "$tmp/core/install/src" "$tmp/tools/pbstore-install" "$tmp/tools/pbstore-install-ui"
+    printf '#include <string>\nint f();\n' > "$tmp/core/install/src/planner.cpp"
+    expect pass "R14: a planner without POSIX headers passes"
+    violate core/install/src/planner.cpp '#include <unistd.h>' "R14: unistd.h in core/install/src/planner.cpp"
+    violate core/install/src/planner.cpp '#include <sys/stat.h>' "R14: sys/stat.h in the planner"
+    violate tools/pbstore-install/args.cpp '#include <signal.h>' "R14: signal.h in tools/pbstore-install/args.cpp"
+    printf '#include <unistd.h>\n#include <fcntl.h>\n' > "$tmp/core/install/src/posix_reader_fs.cpp"
+    expect pass "R14: POSIX headers are allowed in posix_*.cpp"; rm "$tmp/core/install/src/posix_reader_fs.cpp"
+    printf '#include <sys/socket.h>\n#include <netinet/in.h>\n' > "$tmp/tools/pbstore-install-ui/http_server.cpp"
+    expect pass "R14: POSIX headers are allowed in http_server.cpp"; rm "$tmp/tools/pbstore-install-ui/http_server.cpp"
+    printf '#include <termios.h>\n#include <unistd.h>\n' > "$tmp/tools/pbstore-install/prompts.cpp"
+    expect pass "R14: POSIX headers are allowed in prompts.cpp"; rm "$tmp/tools/pbstore-install/prompts.cpp"
+    violate tools/pbstore-install-ui/api.cpp '#include <poll.h>' "R14: poll.h in api.cpp"
+
+    printf 'const char* u = "x";\n#ifdef PBSTORE_TEST_BUILD\nconst char* t = getenv("PBSTORE_TEST_CATALOG_URL");\n#endif\n' > "$tmp/core/install/src/build_config.cpp"
+    expect pass "R13: test names inside #ifdef PBSTORE_TEST_BUILD pass"
+    printf '#ifdef PBSTORE_TEST_BUILD\n#if 1\nint a;\n#endif\nconst char* t = getenv("PBSTORE_TEST_CA_FILE");\n#endif\n' > "$tmp/core/install/src/build_config.cpp"
+    expect pass "R13: nested conditionals inside the test block pass"
+    rm "$tmp/core/install/src/build_config.cpp"
+    violate core/install/src/build_config.cpp 'const char* t = getenv("PBSTORE_TEST_CATALOG_URL");' "R13: test name outside the ifdef"
+    violate tools/pbstore-install/main.cpp 'auto s = std::getenv("PBSTORE_TEST_STATE_DIR");' "R13: PBSTORE_TEST_STATE_DIR in main.cpp"
+    violate core/install/src/build_config.cpp '#ifdef PBSTORE_TEST_BUILD
+int a;
+#else
+const char* t = getenv("PBSTORE_TEST_CA_FILE");
+#endif' "R13: test name in the #else branch"
+
+    violate core/install/src/planner.cpp 'int r = system("ls");' "R16: system( in core/install"
+    violate tools/pbstore-install/main.cpp 'FILE* p = popen("ls", "r");' "R16: popen( in tools/pbstore-install"
+    printf 'int a = fsystem(1);\nbool b = fs.system_ok();\n' > "$tmp/core/install/src/ok16.cpp"
+    expect pass "R16: names that merely contain system pass"; rm "$tmp/core/install/src/ok16.cpp"
+
+    violate tools/pbstore-install-ui/http_server.cpp 'addr.sin_addr.s_addr = htonl(INADDR_ANY);' "R15: INADDR_ANY"
+    violate tools/pbstore-install-ui/http_server.cpp 'inet_pton(AF_INET, "0.0.0.0", &a);' "R15: 0.0.0.0"
+    violate tools/pbstore-install-ui/http_server.cpp 'inet_pton(AF_INET6, "::", &a);' "R15: ::"
+    printf 'inet_pton(AF_INET, "127.0.0.1", &a);\n' > "$tmp/tools/pbstore-install-ui/http_server.cpp"
+    expect pass "R15: 127.0.0.1 passes"; rm "$tmp/tools/pbstore-install-ui/http_server.cpp"
+
+    good_release() {
+        cat <<'YAML'
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  release:
+    permissions:
+      contents: write
+    container: docker.io/library/alpine@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567 # v7
+      - run: sha256sum pbstore-install-1 > SHA256SUMS
+YAML
+    }
+    good_release > "$tmp/.github/workflows/release-installer.yml"
+    expect pass "R17: a good release-installer.yml passes"
+    good_release | sed "s/tags: \['v\*'\]/branches: [main]/" > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: branch trigger"
+    good_release | sed 's/^on:/on:\n  workflow_dispatch:/' > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: workflow_dispatch trigger"
+    good_release | sed 's/contents: read/contents: write/' > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: contents: write at the top level"
+    good_release | grep -v 'contents: write' > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: release job without contents: write"
+    good_release | sed 's/$/\n/;s/steps:/env:\n      T: ${{ secrets.X }}\n    steps:/' > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: secrets"
+    good_release | sed 's/@sha256:[0-9a-f]*/:latest/' > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: image without digest"
+    good_release | grep -v SHA256SUMS > "$tmp/.github/workflows/release-installer.yml"
+    expect fail "R17: no SHA256SUMS step"
+    rm -f "$tmp/.github/workflows/release-installer.yml"
     exit $fail
 fi
 

@@ -83,7 +83,7 @@ namespace {
 
 class Parser {
 public:
-    explicit Parser(const std::string& text) : s_(text) {}
+    Parser(const std::string& text, bool spans) : s_(text), spans_(spans) {}
 
     bool parse_document(Value* out, std::string* error) {
         skip_ws();
@@ -117,6 +117,16 @@ private:
     }
 
     bool parse_value(Value* out, int depth) {
+        const size_t begin = pos_;
+        if (!parse_value_inner(out, depth)) return false;
+        if (spans_) {
+            out->span.begin = begin;
+            out->span.end = pos_;
+        }
+        return true;
+    }
+
+    bool parse_value_inner(Value* out, int depth) {
         if (depth > kMaxDepth) return fail("nesting too deep");
         if (pos_ >= s_.size()) return fail("unexpected end");
         const char c = s_[pos_];
@@ -261,6 +271,7 @@ private:
         while (true) {
             skip_ws();
             if (pos_ >= s_.size() || s_[pos_] != '"') return fail("object key expected");
+            const size_t key_at = pos_;
             std::string key;
             if (!parse_string(&key)) return false;
             skip_ws();
@@ -272,6 +283,7 @@ private:
             Value v;
             if (!parse_value(&v, depth + 1)) return false;
             out->object.emplace_back(std::move(key), std::move(v));
+            if (spans_) out->key_begin.push_back(key_at);
             skip_ws();
             if (pos_ >= s_.size()) return fail("unterminated object");
             if (s_[pos_] == ',') { ++pos_; continue; }
@@ -281,19 +293,20 @@ private:
     }
 
     const std::string& s_;
+    bool spans_ = false;
     size_t pos_ = 0;
     std::string error_;
 };
 
 }  // namespace
 
-std::optional<Value> parse(const std::string& text, std::string* error, size_t max_bytes) {
+std::optional<Value> parse(const std::string& text, std::string* error, size_t max_bytes, bool spans) {
     if (text.size() > max_bytes) {
         if (error) *error = "document too large";
         return std::nullopt;
     }
     Value v;
-    Parser p(text);
+    Parser p(text, spans);
     if (!p.parse_document(&v, error)) return std::nullopt;
     return v;
 }

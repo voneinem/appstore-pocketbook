@@ -107,7 +107,10 @@ PB_TEST(each_contract_has_migration_notes_and_the_readme_says_it_is_unofficial) 
     PB_CHECK(has(readme, "unofficial and not made, endorsed or supported by PocketBook"));
     PB_CHECK(has(readme, "docs/developer-guide.md"));
     PB_CHECK(has(readme, "scripts/pre-merge.sh"));
-    PB_CHECK(has(readme, "SmartScreen"));
+    // feature 002: no Windows or SmartScreen text until a Windows build exists; the checksum and its limits are stated
+    PB_CHECK(!has(readme, "SmartScreen"));
+    PB_CHECK(has(readme, "sha256sum -c SHA256SUMS"));
+    PB_CHECK(has(readme, "docs/installer-guide.md"));
     PB_CHECK(has(readme, "MIT"));
 }
 

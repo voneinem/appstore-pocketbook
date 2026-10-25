@@ -102,4 +102,66 @@ PB_TEST(writer_is_deterministic_two_space_indented_in_given_order) {
     PB_CHECK_EQ(json::write(*back), expected);
 }
 
+// ---- byte spans (feature 002, T009): the desktop configuration editor splices text by span ---------------
+namespace {
+std::string cut(const std::string& text, const json::Value::Span& s) { return text.substr(s.begin, s.end - s.begin); }
+}  // namespace
+
+PB_TEST(spans_give_the_exact_text_of_every_value) {
+    const std::string text =
+        "  {\"a\": 1.0, \"b\": [1e3, 12345678901234567890, \"x\\n\\u00e9\", true, null],\n"
+        "\t\"c\" : { \"d\" : \"v\" }, \"e\": {}, \"f\": [ ] }  \n";
+    std::string err;
+    auto v = json::parse(text, &err, 1 << 20, /*spans=*/true);
+    PB_CHECK(v.has_value());
+    PB_CHECK_EQ(cut(text, v->span), text.substr(2, text.rfind('}') - 2 + 1));
+    PB_CHECK_EQ(cut(text, v->find("a")->span), std::string("1.0"));
+    const json::Value* b = v->find("b");
+    PB_CHECK_EQ(cut(text, b->span), std::string("[1e3, 12345678901234567890, \"x\\n\\u00e9\", true, null]"));
+    PB_CHECK_EQ(cut(text, b->array[0].span), std::string("1e3"));
+    PB_CHECK_EQ(cut(text, b->array[1].span), std::string("12345678901234567890"));
+    PB_CHECK_EQ(cut(text, b->array[2].span), std::string("\"x\\n\\u00e9\""));
+    PB_CHECK_EQ(cut(text, b->array[3].span), std::string("true"));
+    PB_CHECK_EQ(cut(text, b->array[4].span), std::string("null"));
+    PB_CHECK_EQ(cut(text, v->find("c")->span), std::string("{ \"d\" : \"v\" }"));
+    PB_CHECK_EQ(cut(text, v->find("c")->find("d")->span), std::string("\"v\""));
+    PB_CHECK_EQ(cut(text, v->find("e")->span), std::string("{}"));
+    PB_CHECK_EQ(cut(text, v->find("f")->span), std::string("[ ]"));
+}
+
+PB_TEST(object_members_record_where_the_key_starts) {
+    const std::string text = "{ \"first\": 1,\n  \"second\" : [2], \"t\":\"x\" }";
+    auto v = json::parse(text, nullptr, 1 << 20, true);
+    PB_CHECK(v.has_value());
+    PB_CHECK_EQ(v->key_begin.size(), v->object.size());
+    for (size_t i = 0; i < v->object.size(); ++i) {
+        PB_CHECK_EQ(text[v->key_begin[i]], '"');
+        PB_CHECK(text.compare(v->key_begin[i], v->object[i].first.size() + 2, "\"" + v->object[i].first + "\"") == 0);
+        PB_CHECK(v->key_begin[i] < v->object[i].second.span.begin);
+    }
+}
+
+PB_TEST(spans_do_not_change_what_is_accepted_or_rejected) {
+    for (const char* ok : {"{}", "[]", "[1,2]", " {\"a\":{\"b\":[null]}} ", "\"s\"", "12"})
+        PB_CHECK_EQ(json::parse(ok, nullptr, 1 << 20, false).has_value(), json::parse(ok, nullptr, 1 << 20, true).has_value());
+    for (const char* bad : {"{\"a\":1,\"a\":2}", "{\"a\":}", "[1,]", "{\"a\" 1}", "[1", ""}) {
+        PB_CHECK(!json::parse(bad, nullptr, 1 << 20, false).has_value());
+        PB_CHECK(!json::parse(bad, nullptr, 1 << 20, true).has_value());
+    }
+    std::string deep(40, '[');
+    deep += std::string(40, ']');
+    PB_CHECK(!json::parse(deep, nullptr, 1 << 20, true).has_value());
+    PB_CHECK(!json::parse("[1,2,3]", nullptr, 3, true).has_value());   // the size cap is the same
+}
+
+PB_TEST(without_spans_the_values_carry_none) {
+    auto v = json::parse("{\"a\": [1]}", nullptr, 1 << 20, false);
+    PB_CHECK(v.has_value());
+    PB_CHECK_EQ(v->span.begin, size_t(0));
+    PB_CHECK_EQ(v->span.end, size_t(0));
+    PB_CHECK(v->key_begin.empty());
+    auto def = json::parse("{\"a\": [1]}");   // the old call still works
+    PB_CHECK(def.has_value() && def->key_begin.empty());
+}
+
 PB_TEST_MAIN()

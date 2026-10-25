@@ -25,9 +25,9 @@ inline std::string read_fd(int fd) {
 }
 
 // `env` entries are "NAME=value" added to (or replacing) the environment; names in `unset` are removed.
-inline RunResult run_tool(const std::vector<std::string>& args, const std::vector<std::string>& env = {},
-                          const std::vector<std::string>& unset = {}, const std::string& cwd = "",
-                          const std::string& stdin_text = "") {
+// Runs the program at `program`.
+inline RunResult run_program(const char* program, const std::vector<std::string>& args, const std::vector<std::string>& env = {},
+                             const std::vector<std::string>& unset = {}, const std::string& cwd = "", const std::string& stdin_text = "") {
     int po[2], pe[2], pi[2];
     if (::pipe(po) || ::pipe(pe) || ::pipe(pi)) return {};
     const pid_t pid = ::fork();
@@ -43,10 +43,10 @@ inline RunResult run_tool(const std::vector<std::string>& args, const std::vecto
             ::setenv(e.substr(0, eq).c_str(), e.substr(eq + 1).c_str(), 1);
         }
         std::vector<char*> argv;
-        argv.push_back(const_cast<char*>(PBSTORE_TOOL));
+        argv.push_back(const_cast<char*>(program));
         for (const std::string& a : args) argv.push_back(const_cast<char*>(a.c_str()));
         argv.push_back(nullptr);
-        ::execv(PBSTORE_TOOL, argv.data());
+        ::execv(program, argv.data());
         ::_exit(127);
     }
     ::close(po[1]);
@@ -67,6 +67,14 @@ inline RunResult run_tool(const std::vector<std::string>& args, const std::vecto
     ::waitpid(pid, &status, 0);
     r.code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
     return r;
+}
+
+
+// Runs the pbstore-catalog program (PBSTORE_TOOL).
+inline RunResult run_tool(const std::vector<std::string>& args, const std::vector<std::string>& env = {},
+                          const std::vector<std::string>& unset = {}, const std::string& cwd = "",
+                          const std::string& stdin_text = "") {
+    return run_program(PBSTORE_TOOL, args, env, unset, cwd, stdin_text);
 }
 
 }  // namespace pbtest

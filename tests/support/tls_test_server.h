@@ -82,8 +82,12 @@ private:
 class TlsTestServer {
 public:
     using Handler = std::function<std::string(const std::string& request)>;
+    // A streaming handler writes the response in pieces (a slow download): it is given the request and a
+    // function that sends bytes; the function returns false when the client has gone.
+    using Streamer = std::function<void(const std::string& request, const std::function<bool(const std::string&)>& write)>;
 
-    TlsTestServer(const std::string& cert, const std::string& key, Handler handler) : handler_(std::move(handler)) {
+    TlsTestServer(const std::string& cert, const std::string& key, Handler handler, Streamer streamer = nullptr)
+        : handler_(std::move(handler)), streamer_(std::move(streamer)) {
         ::signal(SIGPIPE, SIG_IGN);  // a client that aborts the handshake must not kill the test
         ctx_ = SSL_CTX_new(TLS_server_method());
         if (!ctx_ || SSL_CTX_use_certificate_chain_file(ctx_, cert.c_str()) != 1 ||
@@ -187,13 +191,18 @@ private:
             std::lock_guard<std::mutex> l(mu_);
             requests_.push_back(req);
         }
-        const std::string resp = handler_(req);
-        SSL_write(ssl, resp.data(), static_cast<int>(resp.size()));
+        if (streamer_) {
+            streamer_(req, [&](const std::string& piece) { return SSL_write(ssl, piece.data(), static_cast<int>(piece.size())) > 0; });
+        } else {
+            const std::string resp = handler_(req);
+            SSL_write(ssl, resp.data(), static_cast<int>(resp.size()));
+        }
         SSL_shutdown(ssl);
         SSL_free(ssl);
     }
 
     Handler handler_;
+    Streamer streamer_;
     SSL_CTX* ctx_ = nullptr;
     int listen_fd_ = -1;
     int port_ = 0;

@@ -1,0 +1,86 @@
+# Release of the installer (docs/installer-developer-notes.md): runs only when a tag v<version> is pushed.
+# It runs the whole gate, builds the static Linux program in the pinned container, tests that very file,
+# writes SHA256SUMS and attaches both to the GitHub release with the checksum in the notes. The workflow has no
+# secrets; the token of the run is the only credential, and only the release job may write.
+name: release-installer
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      # the digest of the build container; it must equal the one in scripts/static-build.lock (checked below)
+      ALPINE_IMAGE: docker.io/library/alpine@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The tag names the version of the program
+        run: |
+          version="$(head -n 1 VERSION | tr -d '[:space:]')"
+          test "v${version}" = "${GITHUB_REF_NAME}" || { echo "the tag ${GITHUB_REF_NAME} does not match VERSION ${version}" >&2; exit 1; }
+
+      - name: The container image is the pinned one
+        run: grep -q "ALPINE_IMAGE=${ALPINE_IMAGE}" scripts/static-build.lock
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build libcurl4-openssl-dev libssl-dev dosfstools
+
+      - name: The whole gate
+        run: scripts/pre-merge.sh
+
+      - name: Static build in the pinned container
+        run: |
+          docker pull "${ALPINE_IMAGE}"
+          scripts/build-static-linux.sh
+
+      - name: Test the released file
+        run: |
+          version="$(head -n 1 VERSION | tr -d '[:space:]')"
+          PBSTORE_RELEASE_BINARY="${PWD}/dist/pbstore-install-${version}-linux-x86_64" ctest --test-dir build-premerge -L release --output-on-failure
+
+      - name: Checksums
+        run: |
+          version="$(head -n 1 VERSION | tr -d '[:space:]')"
+          cd dist
+          sha256sum "pbstore-install-${version}-linux-x86_64" > SHA256SUMS
+          sha256sum -c SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Release notes
+        run: |
+          version="$(head -n 1 VERSION | tr -d '[:space:]')"
+          sum="$(cut -d' ' -f1 dist/SHA256SUMS)"
+          {
+            echo "PB Installer ${version} for Linux (x86-64). One file, no installation needed."
+            echo
+            echo "SHA-256 of pbstore-install-${version}-linux-x86_64:"
+            echo
+            echo "    ${sum}"
+            echo
+            echo "Check the download (in the folder of both files):"
+            echo
+            echo "    sha256sum -c SHA256SUMS"
+            echo
+            echo "The checksum shows that the file arrived unchanged (integrity). It is not signed, so it does not prove who made it:"
+            echo "take the file and this page only from the official release page of this project."
+            echo
+            echo "PB Store is unofficial. It is not made, endorsed or supported by PocketBook."
+          } > release-notes.md
+
+      - name: Create the release
+        run: |
+          version="$(head -n 1 VERSION | tr -d '[:space:]')"
+          gh release create "${GITHUB_REF_NAME}" "dist/pbstore-install-${version}-linux-x86_64" dist/SHA256SUMS --title "PB Installer ${version}" --notes-file release-notes.md --verify-tag
