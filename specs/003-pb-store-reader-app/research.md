@@ -309,8 +309,8 @@ here as open questions, not answered**; the first real run of the installer (202
 ## R-12. How the store learns its own version
 
 - **The running version**: compiled in from `app/VERSION` as `PBSTORE_APP_VERSION`; `package-device.sh` fails when the
-  binary does not contain the string (as PB Cloud's script does). About, the user agent (`pbstore-app/<version>`), and the
-  record's `installed_by` (`pbstore-app <version>`, E2) use it.
+  binary does not contain the string (as PB Cloud's script does). About and the record's `installed_by` (`pbstore-app <version>`, E2) use it. The version is **not** sent in any request: the store
+  sends no `User-Agent` (spec FR-043, plan flag 2).
 - **The installed (packaged) version**: the engine's install record `installed/pbstore.json`.
 - **When they differ** (after a fallback, or between an update and the next start): `SelfUpdateView` (Qt-free) compares
   them and the launcher's `message`/`failed` files and yields one of: `Current`, `UpdateStaged` (record newer, will take

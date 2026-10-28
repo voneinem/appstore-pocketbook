@@ -47,4 +47,5 @@ drive, a cable, a command-line option or a keyboard.
 
 `tests/store/test_store_rules_docs`: every id the store can emit is in this table; no store-produced text contains `computer`,
 `USB`, `drive`, `mount`, `cable`, `--` or `keyboard` except where this table explicitly names PB Installer on a computer; every
-id has all three parts; the registry equals `docs/store-app-rules.md`.
+id has all three parts; no message is longer than 600 characters and a path in it is at most 60 characters (spec FR-019); the third part
+for "repair needed" says to open PB Store again, for "restored" that nothing needs doing; the registry equals `docs/store-app-rules.md`.

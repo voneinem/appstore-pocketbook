@@ -33,7 +33,19 @@ what the user sees and what must hold; it never describes a second way to instal
 | The reader shows a new menu entry without a restart | **Unverified** |
 | The reader rereads `view.json` by itself or rewrites it | **Unverified** |
 | What the reader does with a menu entry whose file is missing | **Unverified** (the engine writes the entry last and removes it first, so this stays safe either way) |
-| Where the reader's model and firmware version can be read from on the reader itself | **Unverified** |
+| Where the reader's model and firmware version can be read from on the reader itself | **Unverified** (DS-04) |
+| A running app may edit `view.json` while the reader's desktop runs; whether the desktop notices or compares `hash.txt` | **Unverified** (DS-05) |
+| What the home key, sleep and the USB cable send to a running app, and how much time the app has to react; the exit status the launcher sees | **Unverified** (DS-13, DS-08) |
+| Whether the reader switches itself off or sleeps during a long download or write | **Unverified** (DS-13) |
+| The battery API: range, value while charging, value on error | **Unverified** (DS-03) |
+| Whether the radio is really off after the app asks for it; error codes of a failed connect | **Unverified** (DS-02) |
+| Behavior of `renameat2`, `fsync`/`syncfs`, `flock` and `O_NOFOLLOW` on the reader's FAT volume; free space against the reader's own screen | **Unverified** (DS-01) |
+| The device's own certificate store (`/etc/ssl/certs/ca-certificates.crt` exists, 150 certificates, seen by PB Cloud); a handshake with it; the clock source and time zone | Partly **Observed** (file only), handshake **Unverified** (DS-07) |
+| Memory available to the app at start; which launcher tools exist (`cp`, `cmp`, `df`, `sync`) | **Unverified** (DS-09, DS-08) |
+
+The observation "the next start took noticeably longer" is the owner's, from the first run of the installer on 2026-10-25 (feature 002
+research §18); it is not a measurement and the store's texts claim no more than that. Each manual task is defined in
+[research.md](research.md) R-17 and checked in `docs/store-app-device-results.md`.
 
 Until these are verified the store behaves as the installer does: it always says that a restart may be
 needed, and it asks for a confirmation when the firmware version cannot be read.
@@ -92,7 +104,7 @@ needed, and it asks for a confirmation when the firmware version cannot be read.
 - Q: What happens on sleep or when the USB cable is connected during an operation? → A: Handled exactly like the home key
   (FR-025); which events the reader sends is a device fact (DS-13).
 - Q: Which readability rules does the spec add? → A: Every icon control in the top bar also shows a text label (FR-009).
-  A minimum text size of 32 px is added (FR-009); no contrast rule is added now, the device check DS-10 may lead to one.
+  A minimum text size of 32 px is added (FR-009), with black text on white and grey only for disabled controls; the device check DS-10 may tighten this.
 - Q: What does the store say about a withdrawn version that is installed? → A: A note "this version was withdrawn" on the
   list and detail page, PB Store's own included; nothing is changed (FR-013).
 - Q: Is the launcher's one copy of the program at start-up compatible with constitution Principle IV? → A: Yes: the rule
@@ -305,7 +317,7 @@ complete version. Also leave a journal created by the installer and start the st
 
 1. **Given** an interrupted operation (by either program), **When** the store starts, **Then** before
    anything else it shows what was found (which app, finish or undo, why) and asks for one confirmation;
-   after the confirmation it carries the repair out and says which of the two it did.
+   after the confirmation it carries the repair out and says whether it finished or undid the operation.
 2. **Given** the repair is pending, **When** the user declines, **Then** nothing is written, no
    install, update, remove or adopt can be started, and browsing still works with the message that a
    repair is pending.
@@ -400,19 +412,21 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   clock is clearly wrong (earlier than the release date of this store version, or the certificate says it
   is not yet valid or expired in a way that fits a wrong clock), the message says the reader's clock
   looks wrong, shows the date the reader believes it is, and says to set date and time in the reader's
-  settings. For any other certificate failure the message names the certificate as the cause and names the
-  clock as one possible cause. No option skips, weakens or postpones the check.
+  settings. "Clearly wrong" is decided as in research R-10: the clock is earlier than the later of the store's release date and
+  the generation date of the last accepted catalog, or the year is below 2024 or above 2100. For any other certificate failure the
+  message names the certificate as the cause and names the clock as one possible cause. No option skips, weakens or postpones
+  the check, and no message suggests a way round it.
 - **The catalog signature is invalid.** `E-CAT-01`; nothing from that catalog is shown or stored; the
   earlier catalog stays.
 - **The catalog is older than the last accepted one.** `E-CAT-04`; the earlier catalog and serial stay.
-  An equal serial is accepted as unchanged.
+  An equal serial is accepted as unchanged, also when its bytes differ (a residual risk accepted as in the installer).
 - **The catalog schema is newer than the store understands.** `E-CAT-03`: the message says PB Store needs
   an update and that the store cannot fetch that update itself while it cannot read the catalog, so the
   installer on a computer is the way. The cached older catalog is still browsable and removal still works.
 - **The cached catalog fails its signature check when it is loaded.** It is discarded with a message; the
   list falls back to the installed apps and says to tap Refresh.
 - **The download stops, or the battery dies, in the middle of an install.** A stopped download writes
-  nothing to the reader; what was received is dropped. A power loss during the write is repaired at
+  nothing to the reader; what was received is dropped, and a download is never resumed. A power loss during the write is repaired at
   the next start (story 6).
 - **The battery is low before a write.** Install, update, remove, adopt and a repair check the
   charge first. Below the minimum charge (the value is fixed in the plan and shown in the message) the
@@ -446,8 +460,9 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
 - **The firmware version of the reader cannot be read and the app has a minimum firmware.** The install
   continues only after a confirmation that states the risk (the app may not run); the plan shows
   "firmware version unknown". The same for an unreadable model (`E-INS-09`, `E-INS-11`).
-- **The package is larger than the allowed 64 MiB or the free memory of the reader does not allow it.**
-  The package rule or the space rule refuses it before writing; nothing changes.
+- **The package is larger than the allowed 64 MiB.** The package rule refuses it before writing; nothing changes.
+- **Not enough free memory to hold the package.** `E-STO-03`, before the download, with needed and available memory shown;
+  nothing changes. This is separate from storage space (`E-INS-07`).
 - **The user taps a button twice, or starts a second operation.** Only one operation runs at a time; further
   taps are ignored while it runs and a pending operation is shown on screen.
 
@@ -462,27 +477,51 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   start or later, and MUST contain no telemetry, account or identifier. When a user action needs the
   network and Wi-Fi is off, the store switches it on, says so on the screen, and switches it off again
   when the action ends (success, failure, cancel, or the user leaving the store); when Wi-Fi was already
-  on it leaves it on.
+  on it leaves it on. "Network contact" means any DNS lookup, connection attempt, captive-portal or time check, scan for
+  networks or request; it includes the launcher, which uses no network tool. If the earlier Wi-Fi state cannot be
+  read, the store assumes it was on and does not switch it off. If the reader ends the store before it could switch Wi-Fi
+  off, Wi-Fi may stay on (a residual risk, named in the guide). The store never asks for, reads or keeps a network name or
+  password; if the reader needs the user to choose a network, the reader shows its own screen for it. Install, Update and Check
+  first refresh the catalog (so the newest signed entry and the rollback rule apply), then download the package.
 - **FR-002**: Refresh MUST fetch the catalog and its signature from the one stable address and apply
   the consumer rules of the catalog contract in order: size, signature against the keys built into the
   store, parse, schema, rollback protection, offer rule (withdrawn versions). A rejected catalog MUST
   leave the earlier catalog and the remembered serial unchanged.
 - **FR-003**: The store MUST keep the last accepted catalog (the exact bytes and the signature) and its
   serial in `system/pbstore/app/`. Every time the cached catalog is loaded, its signature MUST be checked
-  again; a cached catalog that fails is discarded with a message.
+  again; a cached catalog that fails is discarded with a message. The serial memory is the larger of the serial in
+  `state.json` and the serial of the cached catalog if it verifies, so that a damaged or missing one does not reset
+  protection while the other is intact; when both are missing (first run, or `system/pbstore/app/` deleted) any verified
+  catalog is accepted and the installer's notice `W-INS-03` is shown. On an accepted refresh `state.json` is written first and
+  the catalog second (a power loss between them leaves a serial at or above the cache, never below). The weaker protection
+  (someone who mounts the reader can delete both) is an accepted risk, see Assumptions.
 - **FR-004**: All downloads MUST use HTTPS with certificate checking always on. No setting, flag or
   screen may disable, skip or postpone it. Trust anchors MUST come from the device's own store when it is
   usable, otherwise from the CA file bundled with the store, and the Settings screen MUST say which
-  source is in use. There is no custom CA file: the store MUST NOT read a user-supplied trust file, so the
-  only two sources are the ones the constitution names.
+  source is in use. "Usable" is the rule of feature 002: the system bundle is readable and non-empty. There is no
+  custom CA file: the store MUST NOT read a user-supplied trust file, so the only two sources are the ones the
+  constitution names. Redirects are followed only to HTTPS addresses, at most five, and each download stops at its limit (1 MiB
+  for the catalog; the signed `package_size` for a package). The bundled file is renewed with each store release; when
+  a host's certificate chain changes before that, the certificate message of FR-005 is what the user sees.
 - **FR-005**: When the reader's clock is wrong the message MUST follow the edge case above: it says so, shows
-  the date the reader believes, and offers no bypass.
+  the date the reader believes (as `YYYY-MM-DD`, UTC), and offers no bypass. The reader's clock plays no part in the
+  signature check, the serial comparison or the offer rule; it matters only to the certificate check, and the guess "the
+  clock looks wrong" changes only the wording of a message, never a check. Transport failures have distinct plain messages:
+  no connection (`E-STO-02`), the server could not be reached (`E-INS-26`), a certificate that cannot be accepted, including a
+  wrong host name (`E-INS-26`, naming the certificate and the clock as one possible cause), a wrong clock (`E-STO-04`) and no
+  progress (`E-INS-36`). No message suggests a way round a certificate failure, also not when a network intercepts HTTPS.
 - **FR-006**: A network step that makes no progress for 30 seconds MUST end with `E-INS-36` and an
-  unchanged reader.
+  unchanged reader. The steps are: making the connection (`E-STO-02` after 30 seconds), fetching the catalog, and
+  downloading the package. A connection that is up and delivers bytes, however slowly, is not "no progress"; the user ends it
+  with Cancel. A download is never resumed: it starts again from the beginning, and nothing of it is written to the reader.
 - **FR-007**: The catalog address MUST be shown in Settings and MUST NOT be changeable in the released
   store. The released store MUST have no override of the catalog address, the trusted keys (the short list of built-in
-  keys of feature 002, at most three) or the trust anchors (no option, environment variable or hidden file); the tests drive a separate test build that is
-  never shipped.
+  keys of feature 002, at most three) or the trust anchors (no option, environment variable, hidden file, or file in
+  `system/pbstore/app/`); the tests drive a separate test build that runs only on the computer, is never packaged for the
+  reader and has its own program name (`pbstore-app-test`). The packaging step MUST inspect the device program (no test-only
+  strings, exactly the built-in key list, the version string) and fail otherwise, and the installer's source-level rules
+  (test names only under the test-build switch, no `system(` or `popen(`, no hard-coded SDK path) apply to the store's sources
+  and are checked by `scripts/check-constitution.sh`.
 
 **List and detail**
 
@@ -493,18 +532,35 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   the catalog (menu entries whose id starts with `U_`) MUST be listed with the label "not in the catalog" (a fifth
   label for those apps only: every offered app has exactly one of the four states); the
   vendor's own entries MUST NOT be listed or touched.
-- **FR-009**: The list MUST be paged. Every control that can be tapped MUST be at least 10 mm high and
-  wide on the screen of the InkPad One and have a clear gap to the next one; page buttons MUST show the
-  position ("page n of m"); nothing may animate or scroll continuously. Every icon control in the top bar also
+- **FR-009**: The list MUST be paged. Every control of the store that can be tapped (list rows, page buttons,
+  top-bar controls, dialog buttons) MUST be at least 10 mm high and wide on the screen of the InkPad One, which is
+  120 px at its 300 ppi (10.2 mm), with a gap of at least 16 px to the next one; the keys of the reader's own on-screen
+  keyboard are the reader's and outside this rule. Page buttons MUST show the position ("page n of m") and are the only
+  way to page (hardware page keys are not used in this feature); at the first and last page the unusable button is
+  drawn disabled, not hidden, and a list that fits on one page shows no page buttons. The number of rows per page follows from the
+  list height and a fixed row height of 160 px (about 9 rows); the order is the catalog's apps by name (ignoring case),
+  then the "not in the catalog" apps by name. After a detail page, a plan, a message or a finished operation the user is back
+  on the same page of the same list (the same search). Nothing may animate: "animation" is any change of the screen that
+  no tap and no progress step caused, such as a spinner, a blinking cursor, a fade, kinetic scrolling or a moving
+  indeterminate bar; the flash of a full refresh is not animation. A tapped control is drawn in its pressed (inverted) state at
+  once; while an operation runs the action controls are drawn disabled. Every icon control in the top bar also
   shows a short text label (Refresh, Search, Update all, Settings, About). Text is at least 32 px high (about 7.7 pt
-  at 300 ppi) on every screen. Hardware page keys MAY also
-  turn the pages.
+  at 300 ppi) on every screen and is black on white; grey is used only for disabled controls, never for text the user must read.
+  A full screen refresh is requested at start, when the kind of page changes (list, plan, progress, result), after every
+  tenth page turn and on leaving; the constants are tuned after the device check DS-10 (contracts/ui-pages.md).
 - **FR-010**: A search field MUST narrow the list to apps whose name contains the typed text, ignoring
-  case. No other filtering or categories.
+  case. No other filtering or categories. The search is applied when the user confirms it on the reader's keyboard (one screen
+  update, not one per letter); the result is paged again from page 1 and shows "n of m apps"; an empty result says "No app
+  matches"; an empty catalog says "The catalog has no apps".
 - **FR-011**: The detail page MUST show the long description, license, author, source repository, package
-  size, minimum firmware and the changelog link (as readable text; opening it is optional).
-- **FR-012**: The list MUST carry "last updated <date>" (the date of the last successful refresh). When no
-  catalog was ever downloaded, it MUST say so and show only what is on the reader.
+  size, minimum firmware, the address the package is downloaded from, and the changelog link (as readable text; opening
+  it is optional). Every text that comes from the catalog or a package (names, descriptions, file names) is shown as plain text, with control and
+  direction-changing characters removed and cut at the limits of the catalog contract, on every screen and in the log.
+- **FR-012**: The list MUST carry "last updated <date>" (the date of the last successful refresh by the reader's clock,
+  which may be wrong; the catalog's own date is shown in Settings). The list is always built from the cached catalog and the reader's
+  contents, whatever the state of Wi-Fi: "offline" needs no definition because nothing is requested before a tap, and
+  Refresh is always offered. When no catalog was ever downloaded, it MUST say so and show only what is on the reader; when the cached
+  catalog was discarded (FR-003) it says so with the reason (`E-STO-09`), which differs visibly from "never downloaded".
 - **FR-013**: A version listed in `withdrawn_versions` MUST NOT be offered for install or update; an
   installed copy MUST NOT be changed or removed because of a withdrawal. The list and the detail page MUST show
   the note "this version was withdrawn" for an installed copy of a withdrawn version, PB Store's own included;
@@ -523,14 +579,29 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   folder conflicts, allowed paths, links, free space, writability), then show the plan: files, the menu
   entry with title and group, the data folder (or "none"), space needed and free, changed files that
   need an extra confirmation. It MUST write only after the user confirms the plan. The package is held in
-  memory, verified once, and the bytes written are the bytes verified; nothing of it is kept after the operation.
+  memory, verified once, and the bytes written are the bytes verified; nothing of it is kept after the operation
+  and no download file exists on the reader, so no clean-up of one is ever needed. The checks run in the engine's order:
+  size, SHA-256 against the signed entry, and only then the archive, the manifest and the package rules; nothing of
+  the package is interpreted before its hash matched. The space rule of feature 002 applies unchanged (new files
+  rounded to clusters, staging, backup, record, journal, a 10 MiB margin; for an update the old version counts until the
+  commit). Because that check comes after the download, the store also refuses before downloading when the free space is
+  below the signed `package_size` plus 10 MiB (`E-INS-07`), and when the available memory is below twice the package size plus
+  32 MiB (`E-STO-03`); memory and storage are separate conditions with separate ids.
 - **FR-016**: Before the first write of any operation or repair the store MUST check the battery. Below the minimum charge (fixed in
   the plan, named in the message) it MUST refuse with a message that says to charge the reader. The same
   check MUST be repeated immediately before the first write. It MUST also repeat the space and
-  writability checks.
+  writability checks. The minimum is fixed in the plan (research R-07): 25 %; 10 % while the reader is charging and for any
+  repair, so a pending repair is never left waiting for more charge than that (below it the repair waits, browsing works and the
+  message says to charge the reader). When the level cannot be read (`E-STO-05`) the action continues only after an explicit tap
+  that states the risk. A level that falls during an operation changes nothing: stopping half-way is not safer than finishing.
 - **FR-017**: During a download and an operation the store MUST show what is happening as plain text and a
   progress figure (step, bytes or files done of total), redrawn no more often than once every 2
   seconds (the Cancel control answers at once, outside this limit), with a Cancel control until the commit point. The store MUST NOT animate.
+  The *commit point* is the instant the engine writes the `30-commit` marker of the journal (journal contract of feature 002);
+  "before the commit point" means undo, "after" means finish, in the messages, the Cancel control and FR-025 alike. After it Cancel
+  is hidden and the screen says "Finishing; this cannot be cancelled". A step without a known total shows the count done and the
+  seconds elapsed, so that a working reader can be told from a frozen one; "Update all" shows "app n of m". A line on the progress
+  page says while Wi-Fi is on because the store switched it on, and the result page says it was switched off again.
 - **FR-018**: A successful install or update MUST be reported only after all written data was flushed,
   and the result MUST say: the menu group where the app will appear; that the reader may have to be
   restarted if it is not there (until the device facts are verified); that the next start of the reader
@@ -540,12 +611,18 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   id), whether the reader was changed ("unchanged", "restored to the previous state" or "repair needed"),
   and what to do. A message is never only a code or a trace. The texts for conditions that also exist in
   the installer MUST be the installer's wording, except the next step where it names a computer, a drive, a
-  cable or a command-line option.
+  cable or a command-line option. A message has at most 600 characters in total and fits one screen without paging: a path is
+  shortened in the middle to 60 characters (the full path is in the log), and the rule id and the third part are never cut. The
+  third part says, for "unchanged", the step to try again; for "restored to the previous state", that nothing needs doing and the app
+  works as before; for "repair needed", to open PB Store again and confirm the repair. A failure page has one OK button; the
+  message is also written to the log and can be read on the log screen afterwards.
 - **FR-020**: Update MUST keep the app's data folder, MUST leave the previous version working when it
   fails, and MUST need an extra confirmation naming any recorded file the user changed since the install.
 - **FR-021**: "Update all" MUST process the outdated apps one after the other, showing each plan and
   waiting for its own confirmation, MUST stop at the first failure and show a summary (updated, failed,
-  not tried), and MUST process the store itself last.
+  not tried), and MUST process the store itself last. Each app is its own journaled operation and no queue is kept on the
+  reader: after an interruption the next start repairs the one app that was in flight (FR-028), and the apps not yet
+  reached simply still show "update available". An app is therefore never left half-updated without a message.
 - **FR-022**: Remove MUST delete the recorded files that still equal the record and the app's menu entry,
   MUST keep files the user changed (naming them), and MUST keep the data folder by default. Deleting the
   data folder MUST be a separate choice, confirmed twice, each time naming the folder, the number of
@@ -553,10 +630,18 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   a network connection.
 - **FR-023**: The store MUST NOT offer to remove itself. Its detail page and its list entry MUST say that
   PB Installer on a computer can remove it.
-- **FR-024**: Only one operation MUST run at a time; taps on actions are ignored while one runs.
+- **FR-024**: Only one operation MUST run at a time; taps on actions are ignored while one runs. A second launch of the
+  store while one is running (or while the installer holds the reader) meets the engine's lock and ends with `E-INS-34`
+  ("Another PB Store is working on this reader. Close it and try again.") without touching anything.
 - **FR-025**: Leaving the store (the home key, the reader going to sleep, the USB cable being connected, or the reader
-  ending the app) MUST be handled as in the edge case above, and all of these are handled the same way: a download stops without writing; an operation before its commit point is undone; after it, it is
-  finished first.
+  ending the app) MUST be handled as in the edge case above, and all of these are handled the same way: a download stops without writing; an operation (install, update, remove,
+  adopt or repair) before its commit point (FR-017) is undone; after it, it is finished first. "Finished first" is only
+  renames and deletions (no copying of data) and the store shows "Finishing"; its duration on the reader is measured in DS-13
+  (target: under 10 seconds). If the reader ends the app earlier, or if the volume is unmounted because the cable was connected,
+  further writes fail with `E-STO-10`, and the next start repairs the rest (story 6). The store does not change the reader's
+  power settings and does not keep it awake: an automatic switch-off during an operation is treated as a leave request. The note
+  that lets the next start say "cancelled, nothing changed" (`W-STO-01`) is the pending note of the data model, written before the
+  first write of an operation and removed when its result is shown; it lives in `system/pbstore/app/`.
 
 **Adopt**
 
@@ -575,14 +660,27 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   for an interrupted operation (install, update, remove, adopt, replace, or a deferred self-update) left
   by the store or by the installer, using the same journal. If one is found, it MUST show what it found
   (which app, finish or undo, why), and after one confirmation carry out the repair and say which of the
-  two it did. No install, update, remove or adopt MUST start until the repair is done; if the user
-  declines, only browsing is possible.
+  two it did ("finish" or "undo", which the journal's commit marker decides; the journal does not record which program wrote
+  it and no message depends on that). The outcomes of a repair are: finished or undone (a success text, contracts/ui-pages.md), or
+  could not finish (`E-INS-24`, a three-part message, the app marked "needs repair"). No install, update, remove or adopt MUST
+  start until the repair is done; if the user declines, only browsing is possible. The start-up order is fixed: (1) the launcher
+  swaps a staged self-update, unless a journal exists (FR-033); (2) the program shows the launcher's message, if any; (3) the
+  program checks for an interrupted operation and, if there is one, asks for the repair; (4) the first screen (the repair
+  prompt or the list) is shown and only then the start counts as successful (FR-034). The reader's own menu can still open the app
+  that waits for repair; the repair page therefore says that this app may be incomplete or unusable until it is repaired.
+  The repair's battery minimum is the lower one of FR-016.
 - **FR-029**: The repair MUST be repeatable: after any number of interruptions of the repair itself the
   result is the old or the new complete version, never a mix. A path that matches neither state MUST be
   left alone and named (`E-INS-24`). A journal or record from a newer format MUST be left untouched with
-  `E-INS-35` and the message that the store needs updating.
+  `E-INS-35` and the message that the store needs updating. Because the store cannot update itself while it cannot read the
+  journal or the catalog, the message also says that PB Installer on a computer can update it (as for `E-CAT-03`).
 - **FR-030**: The installer on a computer MUST be able to repair an operation the store left, and the
-  store one that the installer left; this holds because both use the same journal contract.
+  store one that the installer left; this holds because both use the same journal contract. No change to the installer's
+  repair is needed for this: the journal and the install records are not changed by this feature, and the store's own state
+  (`system/pbstore/app/`, including the launcher's `run/` files) is outside the journal, so a repair by the installer never
+  reads it. A power loss while the engine replaces the store's package files is repaired like any other (the store keeps running
+  its run copy, the launcher does not swap while a journal exists); a power loss during the launcher's own copy is repaired by
+  the launcher at the next start (contracts/launcher.md).
 
 **Updating the store itself**
 
@@ -590,49 +688,72 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   contract, entry file by pull request) and MUST be installable by the installer and updatable by the store.
 - **FR-032**: Updating the store MUST download, verify and install the new version with the engine like any update (its
   program file is staged next to the others), keep the running version running, and tell the user that the update takes effect when PB
-  Store is opened the next time.
+  Store is opened the next time. The plan page of this update carries that sentence below the engine's plan text (the plan text
+  itself stays equal to the installer's). From the commit on, the install record names the new version; the list shows it with
+  the note "update staged: takes effect when you open PB Store again" and About shows the version that is running. Only the newest
+  staged program matters: a second update replaces the first, and if the installer on a computer changes or removes the store
+  before the swap, the launcher compares whatever is there at the next start.
 - **FR-033**: At the next start the launcher MUST start the staged program from a private copy (the *run copy*)
   before the first screen appears, and keep the previous run copy. The copy MUST be compared with the staged
   program; if they differ or the copy cannot be made, the update MUST be skipped with a message (`E-STO-07`)
-  and the previous version keeps running. The integrity of the staged program rests on the engine's
-  verification at install time (threat model, research R-19).
+  and the previous version keeps running; this involves no journal, the update stays staged and the swap is tried again at the
+  next start, with the message shown by the store program each time. The swap checks that there is room for one more copy of the
+  program (the run copy, the previous copy and the staged program exist at the same time); it checks no battery level, because
+  nothing but one verified copy happens before the rename and every cut is covered by the launcher's power-loss table. The
+  user's confirmation of the update plan covers the swap; every outcome (applied, skipped, undone) is shown on the first screen.
+  The integrity of the staged program rests on the engine's verification at install time and is not anchored to the signed
+  catalog again at the swap (threat model, research R-19; accepted).
 - **FR-034**: The old version MUST be kept until the new version has started successfully once. A start is
   successful when the new version has finished the start-up check of FR-028 and shown its first screen, which
-  may be the repair prompt. Only then
-  MUST the old version and the rest of the update be deleted.
+  may be the repair prompt (declining the repair, or browsing in the browse-only mode, still counts). Only then
+  MUST the old version and the rest of the update be deleted, at the following start by the launcher. Leaving by the home key
+  before the first screen, with exit status 0, is not a failure: the new version is tried again at the next opening, without
+  a second swap.
 - **FR-035**: If the new version does not start (it ends abnormally, or does not reach its first screen), the old
   version MUST be restored as the run copy and run at the latest on the next opening of PB Store, with a message
   that the update failed and was undone. This MUST hold even when the new version is entirely
-  unable to run. A failed self-update MUST NOT be tried again by itself.
+  unable to run. A failed self-update MUST NOT be tried again by itself. A start fails when the program ends with a non-zero
+  status or a signal before its first screen, or when the launcher itself was ended (power off, a hang the user ended) before
+  the program reached it; there is no timer. After a fallback the install record still names the failed version, so the list shows
+  no update for it, with the note "version X failed to start; version Y is running"; a newer version is offered as usual, and trying
+  the same version again is a job for PB Installer on a computer. A store release MUST trust the next signing key before the catalog is
+  signed with it (`docs/maintainer-keys.md`), so that a fallback to the previous release can still verify the catalog.
 - **FR-036**: A power loss at any step of a self-update MUST leave the old or the new complete version,
-  repaired by story 6.
+  repaired by story 6 (the engine's part) or by the launcher (its copy and swap, contracts/launcher.md). The state after the
+  new version has started once but before the old copy is deleted (two complete versions) is not an error: the launcher removes
+  the old copy at the next start without a message.
 
 **About, settings, log**
 
 - **FR-037**: About MUST show the store's version, the name and license of every third-party library in the
   build (the same list as the project's `NOTICE`/third-party list), and the sentence "PB Store is
   unofficial and is not made, endorsed or supported by PocketBook." The word PocketBook MUST be used only
-  to name the device, and no PocketBook logo may be used.
+  to name the device, and no PocketBook logo may be used. About also says which hosts the store contacts: the catalog
+  host, and the host of the package address in the signed entry (which may redirect to others of the same provider), and nothing else.
 - **FR-038**: Settings MUST show the catalog address, the date of the last refresh, the generation date of
   the cached catalog, the trust source in use (with "custom CA file: not supported"), and where the
   log is kept. Settings MUST NOT contain any switch that weakens a check.
 - **FR-039**: The store MUST write a log of what it did (action, app id, version, result, rule ids) in its
   `system/pbstore/app/`, bounded to the three most recent files of at most 512 KiB each. The log and every
   message MUST contain no personal data and no secrets: no Wi-Fi name or password, no device serial
-  number, no e-mail address, no user name. The log screen MUST show the most recent entries. The log sits on the
+  number, no e-mail address, no user name, no network or hardware address, no reader name, no account name, and no text that a
+  network library puts into an error string. The log screen MUST show the most recent entries (the last 50 lines, the same text
+  as the file); the store has no way to send or copy the log other than the user mounting the reader. The log sits on the
   reader's FAT storage, which has no per-user permissions, so anyone who mounts the reader can read it; that is
   acceptable because it holds no personal data.
 
 **Scope of writes**
 
-- **FR-040**: The store MUST write only where the reader-layout contract allows: files of the apps it
+- **FR-040**: The root of all writes is the reader's storage `/mnt/ext1`, fixed in the program and not chosen by the user.
+  The store MUST write only where the reader-layout contract allows (extended by the line for `system/pbstore/app/**`): files of the apps it
   installs, the one desktop-configuration entry of the app being installed or removed (with a backup
   first), and `system/pbstore/` (including `system/pbstore/app/`). It MUST NOT touch the firmware, system folders,
   other vendors' entries or any file it did not create. If the desktop configuration does not have the
   expected shape it MUST write nothing (`E-INS-12`, `E-INS-13`).
 - **FR-041**: The store's package MUST declare `data_dir: null`. Everything the store keeps for itself
   (cache, serial, settings, log) lives under `system/pbstore/app/`. The store has no data folder of its own,
-  so its detail page offers no data deletion. When the installer on a computer removes the store, it
+  so its detail page offers no data deletion. The state is bounded: the log at most three files of 512 KiB, the catalog and
+  its signature at most 1 MiB plus 1 KiB, and `run/` at most four copies of the program (run, previous, in progress, failed). When the installer on a computer removes the store, it
   deletes only the files in the store's install record and keeps `system/pbstore/app/` (so the remembered
   serial still protects a reinstalled store), and its removal message names that folder.
 - **FR-042**: The look MUST follow PB Notes (feature 010) and PB Cloud: a top bar with icon controls, rounded
@@ -653,6 +774,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   available, installed outside the store, plus notes) and the actions that fit it.
 - **Install record**: the file in `system/pbstore/installed/` listing exactly the files placed; shared
   with the installer.
+- **Pending note**: one line in `system/pbstore/app/`, written before the first write of an operation and removed when its
+  result is shown; at the next start, with no journal, it makes the store say "cancelled, nothing changed".
 - **Operation and journal**: the plan being carried out and its journal in `system/pbstore/journal/`;
   shared with the installer; at most one at a time.
 - **Plan**: the exact list of what an operation writes, changes or deletes, the space needed and free,
@@ -673,7 +796,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   on equal fake readers by the store and by the installer, the plan texts are equal and the resulting
   reader trees are equal (apart from the program name in the install record).
 - **SC-003**: In the fault test for install, update, remove, adopt and self-update (power lost after every
-  write step, with and without loss of unflushed data, also during the repair), 100% of the survivors hold
+  write step, with and without loss of unflushed data, also during the repair; the same suite as feature 002's fault matrix,
+  run through the store's entry points on the same fake reader tree), 100% of the survivors hold
   exactly the old or exactly the new complete version of the app, a desktop configuration that parses and
   keeps every other entry, and an untouched data folder; the repair by the store and by the installer
   gives the same result.
@@ -683,8 +807,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
 - **SC-005**: With no Wi-Fi, the cached list appears within 5 seconds of opening the store, and the user can
   still open detail pages and remove an installed app.
 - **SC-006**: In 100% of the tested rejections (invalid signature, lower serial, newer schema, wrong package
-  hash, broken contract rule, path outside the allowed folders, wrong clock, no Wi-Fi, low battery, full
-  storage, desktop configuration of the wrong shape, missing menu group) the message has the three parts
+  hash, broken contract rule, path outside the allowed folders, wrong clock, no Wi-Fi, Wi-Fi lost during a download,
+  low battery, full storage, too little memory, desktop configuration of the wrong shape, missing menu group) the message has the three parts
   and the reader tree is byte-identical to before.
 - **SC-007**: A deliberately broken new version of the store (crashes at start, hangs at start, cannot be
   executed) is replaced by the old version after at most one further opening of PB Store, in 100% of the
@@ -693,7 +817,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   shows each as "installed outside the store" and offers adoption exactly where the files equal the
   catalog package (as the installer does).
 - **SC-009**: Every tappable control on the list, detail, plan and confirmation screens measures at least
-  10 mm in both directions on the InkPad One (checked on the real reader).
+  120 px (10.2 mm at 300 ppi) in both directions with a gap of 16 px, and all text is at least 32 px (checked by
+  `scripts/check-ui-style.sh` on the host and by DS-10 on the real reader).
 - **SC-010**: A search of the log and of all screens produced by a full test cycle finds no Wi-Fi name,
   password, serial number, e-mail address or user name.
 - **SC-011**: In a first real-reader check (manual, before release), after each of install, update, remove
@@ -702,12 +827,33 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
 - **SC-012**: After every Refresh, Install, Update and Check, whether it succeeds, fails, is cancelled or the user
   leaves the store, Wi-Fi is in the state it was in before the action (checked in tests with a fake network
   switch, and once on the real reader).
+- **SC-013**: For every step of a download, install, update, remove, adopt and repair, a leave request (home key, sleep or
+  cable, simulated in the host test) leaves a tree that is the old or the new complete version, restores Wi-Fi to its earlier state,
+  and makes the next start say what happened ("cancelled, nothing changed" or the repair). On the real reader the same is
+  checked once for each of the three events (DS-13).
+- **SC-014**: The inspection of the device program finds, in 100% of release builds, no test-only string, no override of the
+  catalog address, keys or trust anchors, exactly the built-in key list, and the version string (`scripts/check-store-binary.sh`);
+  a build that fails it is not packaged.
 
 ## Assumptions
 
 - The store has no exit control of its own: the reader's home key leaves it (decided 2026-10-28). Which events the
   reader sends to an app when it goes to sleep or the cable is connected is a device fact (manual task DS-13); the
   store treats every one of them as a leave request.
+- Threat model (research R-19): in scope are a hostile or tampered network, a hostile or buggy catalog or package, a retired key,
+  power loss and the user's mistakes; out of scope is anyone who can mount the reader's storage or hold the unlocked reader (they can
+  change any file, the launcher and the cache included, and reset the remembered serial). That is why keeping the serial on the reader,
+  where a computer can delete it, is accepted; feature 002 keeps it on the computer, which the reader does not have.
+- The reader's desktop may itself read or rewrite `view.json` while the store works. The engine writes it through a rename, so
+  a partial file is never visible, and it re-verifies the reader before the commit (`E-INS-25` when something changed since the
+  plan). Whether the desktop reacts is the device fact DS-05; the guarantee of "old or new complete version" concerns the
+  store's own writes.
+- What the guarantee covers: install, update, remove, adopt, replace, repair and the engine's part of a self-update. Deleting
+  an app's data folder (a separately confirmed step, FR-022) has no journal and may end partly done; the result then says that the
+  folder is partly deleted and that the step can be run again to finish it (`E-INS-33`, `E-INS-37` of the engine). It never touches
+  anything but that folder.
+- Dependencies that must exist before the store writes: the `system/pbstore/app/**` line in `docs/contracts/reader-layout.md`,
+  and the key-rotation rule in `docs/maintainer-keys.md` (quickstart §5).
 - The store runs only on the InkPad One. The same model and firmware checks as in the installer apply, and
   an unreadable firmware version or model needs the same confirmation. How the store reads them on the
   reader is a matter for the plan.

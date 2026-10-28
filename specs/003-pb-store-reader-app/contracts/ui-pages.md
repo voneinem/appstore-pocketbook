@@ -8,11 +8,15 @@ controls, rounded dialogs, paged lists, no animation); the components are adapte
 
 - Sizes are panel pixels (1404 × 1872, 300 ppi). Every tappable item is at least **120 × 120 px** (10.2 mm) with a gap of at
   least 16 px to the next; `scripts/check-ui-style.sh` fails smaller ones.
-- Text is at least 32 px high (`Style.bodySize`); `scripts/check-ui-style.sh` fails smaller text.
+- Text is at least 32 px high (`Style.bodySize`) and is black on white; grey is only for disabled controls; `scripts/check-ui-style.sh`
+  fails smaller text and text colours other than these.
+- A tapped control is drawn pressed (inverted) at once; while an operation runs the action controls are drawn disabled.
+- The reader's own on-screen keyboard (search) is the reader's; the 120 px rule applies to the store's own controls.
 - No animation: no `NumberAnimation`, `PropertyAnimation`, `Behavior`, `Transition`, `BusyIndicator`, indeterminate bar, kinetic scroll,
   blinking cursor. The progress bar is a static rectangle whose width is set.
-- Lists move by whole pages (`PageButtons`, `snap` = row height, `showIndicator` = "2 / 3"); a list that fits shows no page buttons and
-  no indicator.
+- Lists move by whole pages (`PageButtons`, `snap` = row height 160 px, `showIndicator` = "2 / 3"); a list that fits shows no page buttons
+  and no indicator; on the first and last page the unusable button is drawn disabled, not hidden. Hardware page keys are not used.
+  After a detail page, plan, message or finished operation the user returns to the same page of the same list (same search).
 - State is shown by **words and an icon**, never by colour or grey tone alone. Every icon control in the top bar also shows a short word (`label`): Refresh, Search, Update all, Settings, About.
 - There is no exit control: the reader's home key leaves the store, and sleep and the USB cable are handled as the same leave request.
 - All texts come from the strings table (English). Untrusted texts (names, descriptions, file names) are shown as plain text with
@@ -23,15 +27,15 @@ controls, rounded dialogs, paged lists, no animation); the components are adapte
 
 | Page | Content | Controls (top bar unless noted) |
 |------|---------|---------------------------------|
-| **Home** (list) | catalog line "Catalog last updated <date>" (or "No catalog yet. Tap Refresh."), search field, the apps of the page, page buttons (bottom) | Refresh, Search, Update all (only when something is outdated), Settings, About |
-| **Detail** | name, version (and offered version), state words, long description, license, author, source repository (text), package size, minimum firmware, changelog link (text), notes | Back; actions by state (below) |
-| **Plan** | the engine's `render_plan` text (scrollable, page buttons), the confirmations the plan names (separate unchecked tap controls), space needed against free, battery line | Confirm, Cancel |
-| **Progress** | title ("Installing PB Notes", or "Updating 2 of 3: …"), phase text, a figure ("3.1 of 7.4 MB", "file 12 of 80"), a static bar; redrawn at most every 2 s | Cancel (until the commit point; afterwards hidden with the line "Finishing; this cannot be cancelled") |
-| **Result** | the three-part message or the success text (group, restart wording, "next start may take longer", Wi-Fi notice) | OK; "Delete data too?" (Remove only, two steps) |
-| **Repair** | what was found (which app, finish or undo, why) | Repair, Not now (browse only) |
+| **Home** (list) | catalog line "Catalog last updated <date>" (or "No catalog yet. Tap Refresh." or the `E-STO-09` line when the cache was discarded), search field (applied on the keyboard's confirm; then "n of m apps", or "No app matches"; an empty catalog says "The catalog has no apps"), the apps of the page in catalog-name order then "Not in the catalog" apps, the apps of the page, page buttons (bottom) | Refresh, Search, Update all (only when something is outdated), Settings, About |
+| **Detail** | name, version (and offered version), state words, long description, license, author, source repository (text), the address the package is downloaded from (text), package size, minimum firmware, changelog link (text), notes | Back; actions by state (below) |
+| **Plan** | the engine's `render_plan` text (scrollable, page buttons), the confirmations the plan names (separate unchecked tap controls), space needed against free, battery line; for an update of PB Store the line "The update takes effect when you open PB Store again." below the plan text | Confirm, Cancel |
+| **Progress** | title ("Installing PB Notes", or "Updating 2 of 3: …"), phase text, a figure ("3.1 of 7.4 MB", "file 12 of 80"; with no known total the count done and "42 s"), a static bar, and "Wi-Fi was switched on by PB Store" while it applies; redrawn at most every 2 s | Cancel (until the commit point; afterwards hidden with the line "Finishing; this cannot be cancelled") |
+| **Result** | the three-part message (at most 600 characters, a path shortened to 60, rule id and third part never cut) or the success text (group, restart wording, "next start may take longer", Wi-Fi notice); the message is also in the log | OK (one button; also on failure); "Delete data too?" (Remove only, two steps) |
+| **Repair** | what was found (which app, finish or undo, why) and "This app may be incomplete or unusable until it is repaired." (the reader's menu can still open it) | Repair, Not now (browse only) |
 | **Confirm dialogs** | rounded `ConfirmDialog`; Cancel is first; the second confirmation of data deletion names the folder, the number of files and the size | |
 | **Settings** | catalog address (text), "Catalog last updated" (refresh date) and "catalog dated" (`generated_at`), trust source in use, "custom CA file: not supported", where the log is, storage free, battery level | Back, Log |
-| **About** | version (`app/VERSION`), the self-update note (R-12), the licenses of the libraries (list, page for each text), the sentence "PB Store is unofficial and is not made, endorsed or supported by PocketBook." | Back |
+| **About** | version (`app/VERSION`), the self-update note (R-12), the licenses of the libraries (list, page for each text), the hosts the store contacts (the catalog host and the host of the package address; redirects may lead to others of the same provider), the sentence "PB Store is unofficial and is not made, endorsed or supported by PocketBook." | Back |
 | **Log** | the last 50 lines of `pbstore.log` | Back |
 
 ## States and the actions that fit (FR-008)
