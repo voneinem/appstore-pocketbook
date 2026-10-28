@@ -8,7 +8,7 @@ section. The data model is in [../data-model.md](../data-model.md).
 
 | Writer | Files |
 |--------|-------|
-| The store program (through `PosixStateDirs`) | `catalog.json`, `catalog.json.sig`, `catalog.meta`, `state.json`, `pbstore.log*`, `pending-note.txt`, `last-run-version`, `run/trying` (removes), `run/message` (removes) |
+| The store program (through `PosixStateDirs`) | `catalog.json`, `catalog.json.sig`, `catalog.json.tmp`, `catalog.json.sig.tmp`, `catalog.meta`, `state.json`, `pbstore.log`, `pending-note.txt`, `last-run-version`, `run/trying` (removes), `run/message` (removes) |
 | The launcher (`pbstore.app`, shell) | everything else under `run/` |
 | The installer on a computer | nothing in this folder. When it removes the store it deletes only the recorded files and **keeps this folder** (spec FR-041); its message names the folder |
 | The probe program (manual task DS-01) | `probe/` only |
@@ -23,9 +23,11 @@ everything else in the folder.
 |------|--------|-------|----------|
 | `catalog.json` | the catalog bytes (catalog-format.md) | 1 MiB | fails verification → discarded |
 | `catalog.json.sig` | one line, base64 | 1 KiB | fails verification → both discarded |
+| `catalog.json.tmp` | the new catalog while it is written | 1 MiB | transient; replaced by the next refresh, removed by a discard |
+| `catalog.json.sig.tmp` | its signature while it is written | 1 KiB | transient; as above |
 | `catalog.meta` | `refreshed_at=<YYYY-MM-DDTHH:MM:SSZ>` one line | 128 bytes | treated as "never" |
 | `state.json` | `{"schema_version":"1.0","last_serial":N}` (the engine's) | 256 bytes | treated as absent (R-09) |
-| `pbstore.log`, `.1`, `.2` | text lines, engine `Log` | 512 KiB each | rotated by the engine |
+| `pbstore.log` | text lines, engine `Log` | 512 KiB | rotated by the engine into `pbstore.log.1` and `pbstore.log.2` (512 KiB each) |
 | `pending-note.txt` | `<kind> <app-id> <from|-> <to|->` one line | 256 bytes | removed |
 | `last-run-version` | a semantic version, one line | 32 bytes | treated as absent (no "updated" notice) |
 | `run/trying` | the text of the attempt: `<version>` | 64 bytes | |

@@ -57,7 +57,8 @@ Order of the notes: the self-update note, then "needs repair", then "this versio
 
 | Operation | Text now (RestartNeeded = Unverified) |
 |-----------|---------------------------------------|
-| Install, update | "<App> is installed. It will appear in <group>. If it is not there, restart the reader. The next start of the reader may take noticeably longer; wait for it." |
+| Install | "<App> is installed. It will appear in <group>. If it is not there, restart the reader. The next start of the reader may take noticeably longer; wait for it." |
+| Update | the same, with "Its data was kept." after the first two sentences (spec FR-018) |
 | Remove | "<App> was removed. If it is still in the menu, restart the reader. Its data was kept in <folder> (or: deleted)." |
 | Adopt | "<App> is now managed by PB Store. Nothing else on the reader was changed." (no restart text: only a record was written) |
 | Repair | "The interrupted <kind> of <App> was <finished|undone>. If the menu looks wrong, restart the reader." |
