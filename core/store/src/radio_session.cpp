@@ -29,9 +29,9 @@ std::optional<Finding> RadioSession::end() {
         return std::nullopt;
     }
     ended_ = true;
-    const bool off = radio_.disconnect();
-    const std::optional<bool> now = radio_.is_on();
-    if (off && now && !*now) return make_store_finding("W-STO-03", "wifi");
+    radio_.disconnect();
+    const std::optional<bool> now = radio_.is_on();   // what counts is the radio's state, not what disconnect() says
+    if (now && !*now) return make_store_finding("W-STO-03", "wifi");
     return make_store_finding("W-STO-02", "wifi");
 }
 

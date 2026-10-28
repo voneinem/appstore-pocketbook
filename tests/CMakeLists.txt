@@ -80,6 +80,13 @@ foreach(src ${PBSTORE_TEST_SOURCES})
     if(name STREQUAL "test_install_build_config_testbuild" AND TARGET pbstore_install_config_test)
         target_sources(${name} PRIVATE $<TARGET_OBJECTS:pbstore_install_config_test>)
     endif()
+    # The reader's wrappers of InkView are compiled against the host shim of inkview.h (the only place a test includes it).
+    if(name STREQUAL "test_platform_wrappers")
+        if(TARGET pbstore_platform_shim)
+            target_link_libraries(${name} PRIVATE pbstore_platform_shim)
+        endif()
+        target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/tests/support/inkview_shim ${CMAKE_SOURCE_DIR})
+    endif()
     # Tests of the installer may include the engine's private sources next to the public headers.
     if(TARGET pbstore_install)
         target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/core/install/src ${PBSTORE_TEST_KEY_DIR})
@@ -124,7 +131,7 @@ foreach(shell_test launcher/test_pbstore_launcher packaging/test_package_script 
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${shell_test}.sh)
         get_filename_component(shell_name ${shell_test} NAME)
         get_filename_component(shell_dir ${shell_test} DIRECTORY)
-        add_test(NAME ${shell_name} COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/${shell_test}.sh
+        add_test(NAME ${shell_name} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${shell_test}.sh
                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
         set_tests_properties(${shell_name} PROPERTIES LABELS "${shell_dir}" SKIP_RETURN_CODE 77
                              ENVIRONMENT "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")

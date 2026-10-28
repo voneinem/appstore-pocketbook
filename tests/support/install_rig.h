@@ -74,6 +74,8 @@ public:
         return out;
     }
     std::vector<std::string> raw_requests() const { return server_->requests(); }
+    // Every connection that reached the server: requests that completed and handshakes that failed.
+    int connection_attempts() const { return static_cast<int>(server_->requests().size()) + server_->failed_handshakes(); }
 
     pbstore::Catalog catalog;
     KeyPair key_;
