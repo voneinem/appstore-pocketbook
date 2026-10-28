@@ -3,3 +3,4 @@ build*/
 *.seed
 .cache/
 dist/
+dist-dev/

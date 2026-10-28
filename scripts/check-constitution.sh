@@ -36,6 +36,18 @@
 #   R16 No system( or popen( in core/install/ and tools/pbstore-install*.
 #   R17 release-installer.yml: triggers only on tags v*, "contents: write" only on the release job,
 #        no secrets, container image pinned by @sha256: digest, a step creating SHA256SUMS.
+# The store app on the reader (feature 003) adds these, and extends R1, R2, R14 and R16 to app/, bridge/,
+# platform/, packaging/ and core/store/:
+#   R18 inkview.h and Qt Quick/QML includes (QQuick*, QtQuick*, QtQml*, QQml*) only under platform/pocketbook/,
+#        app/, bridge/, qml/ and tests/ (the host shim and the Qt tests); never in core/ or tools/.
+#   R19 The names of the install protocol (10-intent, 20-prepared, 30-commit, the journal name constants, the
+#        view.json editing functions) do not appear in app/, bridge/, platform/ or core/store/: the store has
+#        no second copy of the install logic (constitution Principle VI).
+#   R20 PBSTORE_TEST_* names appear in app/, bridge/, platform/ and core/store/ only inside
+#        "#ifdef PBSTORE_TEST_BUILD", and PBSTORE_DEV_* names only inside "#ifdef PBSTORE_DEV_BUILD".
+#   R14 (extended) POSIX headers in core/store/, bridge/ and app/ only in app/device_bridge.cpp and
+#        core/store/src/posix_*.cpp; platform/pocketbook/ is where the reader implementations live and is free.
+#   R16 (extended) no system( or popen( in core/store/, app/, bridge/ and platform/.
 set -u
 
 SELF="$(basename "${BASH_SOURCE[0]}")"
@@ -59,6 +71,17 @@ report() {  # report <rule> <file> <pattern> <path>: print matching lines, retur
     return 1
 }
 
+# ifdef_violations <file> <switch> <name-regex>: print the lines that name <name-regex> outside an
+# "#ifdef <switch>" (or "#if defined(<switch>)") block; preprocessor lines themselves are not names.
+ifdef_violations() {
+    awk -v sw="$2" -v name="$3" '
+        $0 ~ "^[[:space:]]*#[[:space:]]*(ifdef[[:space:]]+" sw "|if[[:space:]]+defined\\(" sw "\\))" { depth=1; next }
+        depth>0 && /^[[:space:]]*#[[:space:]]*if/ { depth++ }
+        depth>0 && /^[[:space:]]*#[[:space:]]*endif/ { depth--; next }
+        depth>0 && /^[[:space:]]*#[[:space:]]*else/ && depth==1 { depth=0; next }
+        depth==0 && $0 ~ name && !/^[[:space:]]*#/ { print FILENAME ":" NR ": " $0 }' "$1"
+}
+
 scan() {
     local root="$1" bad=0 f p
     while IFS= read -r -d '' f; do
@@ -70,7 +93,7 @@ scan() {
         p="$root/$f"
 
         case "$f" in
-            core/*|tools/*|scripts/*|tests/*|.github/*|cmake/*|CMakeLists.txt|*/CMakeLists.txt)
+            core/*|tools/*|scripts/*|tests/*|.github/*|cmake/*|app/*|bridge/*|platform/*|packaging/*|CMakeLists.txt|*/CMakeLists.txt)
                 # R1: TLS bypasses
                 report R1 "$f" '(curl|wget)[^#|;&]*[[:space:]](-k|--insecure|--no-check-certificate)([[:space:]]|$)' "$p" && bad=1
                 report R1 "$f" 'CURLOPT_(PROXY_|DOH_)?SSL_VERIFY(PEER|HOST|STATUS)[[:space:]]*,[[:space:]]*(0|false|FALSE)' "$p" && bad=1
@@ -79,7 +102,7 @@ scan() {
                 ;;
         esac
         case "$f" in
-            core/*|tools/*|scripts/*|.github/*|cmake/*|CMakeLists.txt|*/CMakeLists.txt)
+            core/*|tools/*|scripts/*|.github/*|cmake/*|app/*|bridge/*|platform/*|packaging/*|CMakeLists.txt|*/CMakeLists.txt)
                 # R2: hard-coded SDK, toolchain and home locations
                 report R2 "$f" 'pocketbook-sdk|/opt/|/home/[A-Za-z0-9._-]+/|/Users/[A-Za-z0-9._-]+/' "$p" && bad=1
                 ;;
@@ -143,6 +166,41 @@ scan() {
                         report R16 "$f" '(^|[^A-Za-z0-9_.>:])(system|popen)[[:space:]]*\(' "$p" && bad=1
                         ;;
                 esac
+                ;;
+        esac
+        case "$f" in
+            app/*|bridge/*|platform/*|core/store/*)
+                case "$f" in
+                    *.cpp|*.h|*.hpp|*.c)
+                        # R20: test-only and dev-only names only under their switches
+                        ifdef_violations "$p" PBSTORE_TEST_BUILD 'PBSTORE_TEST_[A-Z_]+' > "$p.r20.$$"
+                        ifdef_violations "$p" PBSTORE_DEV_BUILD 'PBSTORE_DEV_[A-Z_]+' >> "$p.r20.$$"
+                        if [ -s "$p.r20.$$" ]; then sed "s#^#R20 $f:#" "$p.r20.$$"; bad=1; fi
+                        rm -f "$p.r20.$$"
+                        # R16 (extended): no shell
+                        report R16 "$f" '(^|[^A-Za-z0-9_.>:])(system|popen)[[:space:]]*\(' "$p" && bad=1
+                        ;;
+                esac
+                # R19: no second copy of the install protocol
+                report R19 "$f" '10-intent|20-prepared|30-commit|\b(parse_desktop_config|replace_entry|remove_entry|entry_value_from_manifest|kIntentName|kPreparedName|kCommitName)\b' "$p" && bad=1
+                ;;
+        esac
+        case "$f" in
+            core/store/*|bridge/*|app/*)
+                # R14 (extended): POSIX headers only in the named files
+                case "$f" in
+                    app/device_bridge.cpp|core/store/src/posix_*.cpp) ;;
+                    *.cpp|*.h|*.hpp)
+                        report R14 "$f" '#[[:space:]]*include[[:space:]]*<(unistd|fcntl|signal|poll|dirent|termios|pthread|netdb)\.h>|#[[:space:]]*include[[:space:]]*<(sys|netinet|arpa)/' "$p" && bad=1
+                        ;;
+                esac
+                ;;
+        esac
+        case "$f" in
+            platform/pocketbook/*|app/*|bridge/*|qml/*|tests/*) ;;
+            *.cpp|*.h|*.hpp|*.c)
+                # R18: InkView and Qt Quick/QML only where the reader's interface lives
+                report R18 "$f" '#[[:space:]]*include[[:space:]]*[<"]([^>"]*/)?(inkview\.h|QQuick[A-Za-z]*|QtQuick[A-Za-z]*/|QtQml[A-Za-z]*/|QQml[A-Za-z]*)' "$p" && bad=1
                 ;;
         esac
         case "$f" in
@@ -391,6 +449,62 @@ YAML
     good_release | grep -v SHA256SUMS > "$tmp/.github/workflows/release-installer.yml"
     expect fail "R17: no SHA256SUMS step"
     rm -f "$tmp/.github/workflows/release-installer.yml"
+
+    # --- the store app on the reader (R18 to R20 and the extensions of R1, R2, R14, R16) ---
+    mkdir -p "$tmp/core/store/src" "$tmp/app" "$tmp/bridge" "$tmp/qml" "$tmp/platform/pocketbook" "$tmp/tests/support/inkview_shim" "$tmp/tests/bridge"
+    # R18: InkView and Qt Quick only in platform/pocketbook, app, bridge, qml and tests
+    violate core/store/src/a.cpp '#include <QQuickItem>' "R18: Qt Quick include in core/store"
+    violate tools/pbstore-install/a.cpp '#include <inkview.h>' "R18: inkview include in tools"
+    violate tools/pbstore-install/b.cpp '#include <QtQuick/QQuickView>' "R18: Qt Quick module include in tools"
+    printf '#include <inkview.h>\n' > "$tmp/platform/pocketbook/radio.cpp"
+    expect pass "R18: inkview.h is allowed under platform/pocketbook"; rm "$tmp/platform/pocketbook/radio.cpp"
+    printf '#include <QQuickView>\n#include <QObject>\n' > "$tmp/app/main.cpp"
+    expect pass "R18: Qt Quick is allowed under app"; rm "$tmp/app/main.cpp"
+    printf '#include <QObject>\n#include <QQmlEngine>\n' > "$tmp/bridge/controller.cpp"
+    expect pass "R18: Qt is allowed under bridge"; rm "$tmp/bridge/controller.cpp"
+    printf 'void FullUpdate();\n#include <inkview.h>\n' > "$tmp/tests/support/inkview_shim/inkview.h"
+    expect pass "R18: the host shim under tests is allowed"; rm "$tmp/tests/support/inkview_shim/inkview.h"
+    printf '#include <QtTest>\n' > "$tmp/tests/bridge/test_x.cpp"
+    expect pass "R18: Qt Test under tests is allowed"; rm "$tmp/tests/bridge/test_x.cpp"
+    # R19: no copy of the install protocol in the store
+    violate app/a.cpp 'const char* m = "30-commit";' "R19: commit marker name in app"
+    violate bridge/a.cpp 'auto c = parse_desktop_config(text);' "R19: view.json parsing in bridge"
+    violate platform/pocketbook/a.cpp 'const char* n = "10-intent.json";' "R19: intent file name in platform"
+    violate core/store/src/a.cpp 'const char* n = "20-prepared";' "R19: prepared marker name in core/store"
+    violate core/store/src/b.cpp 'auto c = replace_entry(id, v, g);' "R19: view.json edit in core/store"
+    printf 'constexpr const char* kCommitName = "30-commit";\n' > "$tmp/core/install/src/journal_names.cpp"
+    expect pass "R19: the engine itself may name its protocol"; rm "$tmp/core/install/src/journal_names.cpp"
+    # R20: test-only and dev-only names under their switches
+    violate app/a.cpp 'const char* t = getenv("PBSTORE_TEST_CATALOG_URL");' "R20: test name outside the ifdef in app"
+    violate bridge/a.cpp 'auto s = std::getenv("PBSTORE_TEST_STATE_DIR");' "R20: test name in bridge"
+    violate platform/pocketbook/a.cpp 'const char* t = "PBSTORE_TEST_KEY";' "R20: test name in platform"
+    violate core/store/src/a.cpp 'const char* t = getenv("PBSTORE_TEST_CA_FILE");' "R20: test name in core/store"
+    printf '#ifdef PBSTORE_TEST_BUILD\nconst char* t = getenv("PBSTORE_TEST_CATALOG_URL");\n#endif\n' > "$tmp/app/store_config.cpp"
+    expect pass "R20: test names inside #ifdef PBSTORE_TEST_BUILD pass in app"; rm "$tmp/app/store_config.cpp"
+    violate app/a.cpp 'const char* m = PBSTORE_DEV_BUILD_MARKER;' "R20: dev marker outside the dev switch"
+    violate app/a.cpp '#ifdef PBSTORE_TEST_BUILD
+const char* m = PBSTORE_DEV_BUILD_MARKER;
+#endif' "R20: dev marker under the test switch only"
+    printf '#ifdef PBSTORE_DEV_BUILD\nconst char* m = PBSTORE_DEV_BUILD_MARKER;\n#endif\n' > "$tmp/app/dev.cpp"
+    expect pass "R20: the dev marker inside #ifdef PBSTORE_DEV_BUILD passes"; rm "$tmp/app/dev.cpp"
+    # R14 extension: POSIX headers only in the reader implementations
+    violate core/store/src/a.cpp '#include <unistd.h>' "R14: unistd.h in core/store"
+    violate bridge/a.cpp '#include <sys/stat.h>' "R14: sys/stat.h in bridge"
+    violate app/main.cpp '#include <signal.h>' "R14: signal.h in app/main.cpp"
+    printf '#include <unistd.h>\n#include <signal.h>\n' > "$tmp/app/device_bridge.cpp"
+    expect pass "R14: POSIX headers are allowed in app/device_bridge.cpp"; rm "$tmp/app/device_bridge.cpp"
+    printf '#include <unistd.h>\n#include <sys/stat.h>\n' > "$tmp/platform/pocketbook/probe.cpp"
+    expect pass "R14: POSIX headers are allowed under platform/pocketbook"; rm "$tmp/platform/pocketbook/probe.cpp"
+    # R16 extension: no shell in the store
+    violate core/store/src/a.cpp 'int r = system("ls");' "R16: system( in core/store"
+    violate platform/pocketbook/a.cpp 'FILE* p = popen("ls", "r");' "R16: popen( in platform"
+    violate app/a.cpp 'int r = system("sync");' "R16: system( in app"
+    # R1 and R2 extension
+    violate platform/pocketbook/a.cpp 'curl_easy_setopt(c, CURLOPT_SSL_VERIFYPEER, 0L);' "R1: VERIFYPEER 0 in platform"
+    violate app/a.cpp 'curl_easy_setopt(c, CURLOPT_SSL_VERIFYHOST, 0L);' "R1: VERIFYHOST 0 in app"
+    violate app/a.cpp 'const char* sdk = "/opt/pocketbook-sdk/x";' "R2: SDK path in app"
+    violate platform/pocketbook/pbstore.app 'sh /home/someone/x' "R2: home path in the launcher"
+    violate packaging/manifest.template.json '{"path": "/Users/someone/x"}' "R2: home path in packaging"
     exit $fail
 fi
 

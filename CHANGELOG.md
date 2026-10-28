@@ -1,5 +1,9 @@
 # Changelog
 
+## store-0.1.0 - unreleased
+
+- PB Store app on the reader, in progress (feature 003).
+
 ## 0.2.0
 
 - **PB Installer for Linux**: `pbstore-install`, a command line and a browser-based assistant (loopback only) that

@@ -4,7 +4,12 @@
 # Sources are globbed so parallel work on separate files does not collide on this file.
 
 find_package(OpenSSL REQUIRED)
-find_package(CURL REQUIRED)
+if(PBSTORE_TARGET STREQUAL "ARM")
+    # the reader's own libcurl is not the tested combination: use the static one (scripts/build-curl-arm.sh)
+    include(${CMAKE_SOURCE_DIR}/cmake/curl_arm.cmake)
+else()
+    find_package(CURL REQUIRED)
+endif()
 find_package(Threads REQUIRED)
 
 # catalog/reserved-data-dirs.txt and catalog/accepted-licenses.txt are the single sources of the
@@ -39,4 +44,9 @@ target_link_libraries(pbstore_core PUBLIC OpenSSL::Crypto CURL::libcurl pbstore_
 # The installer engine (core/install) sits on top of pbstore_core; it is added when it exists.
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/install/CMakeLists.txt)
     add_subdirectory(install)
+endif()
+
+# The store's Qt-free policies and façade (core/store) sit on top of the installer engine.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/store/CMakeLists.txt)
+    add_subdirectory(store)
 endif()

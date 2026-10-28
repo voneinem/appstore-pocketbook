@@ -8,7 +8,8 @@
 file(GLOB PBSTORE_TEST_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/unit/test_*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/contract/test_*.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_*.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/integration/test_*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/store/test_*.cpp)
 file(GLOB PBSTORE_HELPER_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/support/gen_*.cpp)
 
 # The TLS tests run local HTTPS servers with libssl.
@@ -32,7 +33,7 @@ endif()
 
 # Tests that need the installer engine (and, for the assistant, its library) link them when they exist.
 set(PBSTORE_TEST_EXTRA_LIBS "")
-foreach(lib pbstore_install_ui pbstore_install)
+foreach(lib pbstore_install_ui pbstore_store pbstore_install)
     if(TARGET ${lib})
         list(APPEND PBSTORE_TEST_EXTRA_LIBS ${lib})
     endif()
@@ -108,3 +109,40 @@ foreach(src ${PBSTORE_TEST_SOURCES})
         set_tests_properties(${name} PROPERTIES ENVIRONMENT "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp:print_suppressions=0")
     endif()
 endforeach()
+
+# ---- the store app on the reader ------------------------------------------------------------------------
+# Tests of core/store are tests/store/test_*.cpp (label "store", linked with pbstore_store through the list above).
+
+# Gates: the e-ink style checker proves itself and scans the QML.
+add_test(NAME check_ui_style_selftest COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-ui-style.sh --self-test)
+add_test(NAME check_ui_style COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-ui-style.sh ${CMAKE_SOURCE_DIR})
+set_tests_properties(check_ui_style_selftest check_ui_style PROPERTIES LABELS "script")
+
+# Shell tests: the launcher on a fake tree (with its fault matrix), the packaging script, the probe on the host.
+# Each is registered once its file exists, so the tree configures at every stage of the work.
+foreach(shell_test launcher/test_pbstore_launcher packaging/test_package_script store/test_pbstore_probe_host)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${shell_test}.sh)
+        get_filename_component(shell_name ${shell_test} NAME)
+        get_filename_component(shell_dir ${shell_test} DIRECTORY)
+        add_test(NAME ${shell_name} COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/${shell_test}.sh
+                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+        set_tests_properties(${shell_name} PROPERTIES LABELS "${shell_dir}" SKIP_RETURN_CODE 77
+                             ENVIRONMENT "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")
+    endif()
+endforeach()
+
+# Scripted walks of the real pages, offscreen (needs the host test build of the app, which needs Qt).
+if(TARGET pbstore-app-test AND EXISTS ${CMAKE_SOURCE_DIR}/scripts/ui-walk.sh)
+    file(GLOB PBSTORE_WALKS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/walks/*.walk)
+    if(PBSTORE_WALKS)
+        add_test(NAME ui_walks COMMAND ${CMAKE_SOURCE_DIR}/scripts/ui-walk.sh ${PBSTORE_WALKS}
+                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+        set_tests_properties(ui_walks PROPERTIES LABELS "walk" SKIP_RETURN_CODE 77
+                             ENVIRONMENT "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")
+    endif()
+endif()
+
+# Qt Test of the bridge, offscreen (skips with status 77 without Qt).
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bridge/CMakeLists.txt)
+    add_subdirectory(bridge)
+endif()
