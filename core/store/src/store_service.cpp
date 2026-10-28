@@ -192,6 +192,11 @@ StartResult StoreService::start_check() {
     return r;
 }
 
+void StoreService::mark_started(const std::string& version) {
+    parts_.run_state.mark_started();
+    parts_.run_state.remember_run_version(version);
+}
+
 void StoreService::request_leave(LeaveReason) {
     leave_requested_ = true;
     if (install::CancelToken* c = active_cancel_.load()) c->cancel();   // a download stops and writes nothing; Wi-Fi is restored by the session

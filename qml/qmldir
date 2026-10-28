@@ -1,0 +1,6 @@
+singleton Style 1.0 Style.qml
+Icon 1.0 Icon.qml
+IconButton 1.0 IconButton.qml
+PageButtons 1.0 PageButtons.qml
+RowDivider 1.0 RowDivider.qml
+TopBar 1.0 TopBar.qml

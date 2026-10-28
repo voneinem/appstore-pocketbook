@@ -115,6 +115,9 @@ public:
     // The rows of the last list, narrowed by the search text.
     std::vector<AppRow> rows(const std::string& filter) const;
     SettingsFacts settings_facts();
+    // The first screen is shown after the start check: the start counts as successful (spec FR-034). Removes the launcher's marker and
+    // remembers the version that reached its first screen (the next start can then say "PB Store was updated to X").
+    void mark_started(const std::string& version);
     // The user left (home key, sleep, cable, the reader ended the app): stops what runs; a download stops and writes nothing.
     void request_leave(LeaveReason reason);
     bool leave_requested() const { return leave_requested_.load(); }
