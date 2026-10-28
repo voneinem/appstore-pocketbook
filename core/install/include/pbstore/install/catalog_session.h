@@ -19,6 +19,8 @@ struct CatalogSession {
     std::optional<Catalog> catalog;
     std::vector<Finding> findings;   // E-CAT-01..05, E-INS-26, E-INS-36
     std::vector<Finding> notices;    // W-INS-03 on a first run
+    std::string catalog_bytes;       // the accepted catalog exactly as downloaded (set only when accepted)
+    std::string signature_bytes;     // its signature exactly as downloaded
 };
 
 // `url` is the address of catalog.json; the signature is `url` + ".sig".

@@ -64,6 +64,8 @@ CatalogSession refresh_catalog(const Downloader& download, StateStore& state, co
         return s;
     }
     s.catalog = v.catalog;
+    s.catalog_bytes = cat.body;
+    s.signature_bytes = sig.body;
     state.record(v.serial);
     if (!last)
         s.notices.push_back(make_notice("W-INS-03", "catalog", "no earlier catalog serial was on record on this computer (first run, or the record was missing); this catalog is accepted because its signature is genuine"));

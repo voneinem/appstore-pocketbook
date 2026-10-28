@@ -91,7 +91,7 @@ void Log::event(const std::string& action, const std::string& app_id, const std:
     for (const std::string& id : rule_ids) line += " " + neutralize(id);
     if (!text.empty()) line += " " + neutralize(redactor_.redact(text));   // also replaces line breaks: one line per event
     line += "\n";
-    const std::string name = "installer.log";
+    const std::string& name = file_name_;
     const uint64_t size = dirs_.size(name);
     if (size != UINT64_MAX && size + line.size() > kMaxFileBytes) {
         dirs_.remove(name + ".2");

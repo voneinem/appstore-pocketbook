@@ -1,6 +1,9 @@
 // T013: PosixReaderFs on a temporary directory (the Linux implementation of ReaderFs).
+// The cases every ReaderFs must meet live in tests/support/reader_fs_contract.h (T021) and run here for
+// PosixReaderFs; the cases below need the real operating system (links, permissions, a second instance).
 #include "pbstore/install/reader_fs.h"
 #include "pbstore/install/posix_reader_fs.h"
+#include "reader_fs_contract.h"
 #include "test_support.h"
 #include "tmp_dir.h"
 
@@ -20,32 +23,8 @@ bool has_name(const std::vector<DirEntry>& v, const std::string& n) {
 }
 }  // namespace
 
-PB_TEST(create_exclusive_fails_if_the_name_exists_and_keeps_the_old_content) {
-    Env e;
-    PB_CHECK(e.fs.make_dir("applications"));
-    PB_CHECK(e.fs.create_exclusive("applications/a.txt", "first", true));
-    PB_CHECK(!e.fs.create_exclusive("applications/a.txt", "second", true));
-    std::string out;
-    PB_CHECK(e.fs.read_file("applications/a.txt", 100, &out));
-    PB_CHECK_EQ(out, std::string("first"));
-    PB_CHECK(!e.fs.create_exclusive("missing-dir/b.txt", "x", false));   // the parent must exist
-}
-
-PB_TEST(rename_free_moves_into_a_free_name_and_never_replaces) {
-    Env e;
-    PB_CHECK(e.fs.make_dir("d"));
-    PB_CHECK(e.fs.create_exclusive("d/a", "A", true));
-    PB_CHECK(e.fs.create_exclusive("d/b", "B", true));
-    PB_CHECK(!e.fs.rename_free("d/a", "d/b"));          // target exists: refused
-    std::string out;
-    PB_CHECK(e.fs.read_file("d/b", 10, &out));
-    PB_CHECK_EQ(out, std::string("B"));
-    PB_CHECK(e.fs.stat("d/a").kind == Kind::File);       // the source is still there
-    PB_CHECK(e.fs.rename_free("d/a", "d/c"));
-    PB_CHECK(!e.fs.stat("d/a").exists());
-    PB_CHECK(e.fs.read_file("d/c", 10, &out));
-    PB_CHECK_EQ(out, std::string("A"));
-    PB_CHECK(!e.fs.rename_free("d/nothing", "d/other"));
+PB_TEST(posix_reader_fs_meets_the_reader_fs_contract) {
+    pbtest::run_reader_fs_contract([](const std::string& root) -> std::unique_ptr<ReaderFs> { return std::make_unique<PosixReaderFs>(root); }, "PosixReaderFs");
 }
 
 PB_TEST(a_symbolic_link_anywhere_on_the_path_is_link_like_and_refused_for_writes) {
@@ -69,7 +48,7 @@ PB_TEST(a_symbolic_link_anywhere_on_the_path_is_link_like_and_refused_for_writes
     PB_CHECK(!e.fs.read_file("lnk/f", 10, &out));
 }
 
-PB_TEST(list_returns_names_and_kinds_and_stat_the_size) {
+PB_TEST(list_reports_a_link_as_a_link) {
     Env e;
     PB_CHECK(e.fs.make_dir("d"));
     PB_CHECK(e.fs.make_dir("d/sub"));
@@ -90,30 +69,7 @@ PB_TEST(list_returns_names_and_kinds_and_stat_the_size) {
     PB_CHECK(has_name(e.fs.list(""), "d"));
 }
 
-PB_TEST(remove_file_remove_dir_and_make_dir_follow_the_usual_rules) {
-    Env e;
-    PB_CHECK(e.fs.make_dir("d"));
-    PB_CHECK(!e.fs.make_dir("d"));                       // exists
-    PB_CHECK(e.fs.create_exclusive("d/f", "x", true));
-    PB_CHECK(!e.fs.remove_dir("d"));                     // not empty
-    PB_CHECK(!e.fs.remove_file("d"));                    // a directory is not removed as a file
-    PB_CHECK(e.fs.remove_file("d/f"));
-    PB_CHECK(!e.fs.remove_file("d/f"));
-    PB_CHECK(e.fs.remove_dir("d"));
-    PB_CHECK(!e.fs.stat("d").exists());
-}
-
-PB_TEST(flush_dir_and_flush_volume_succeed) {
-    Env e;
-    PB_CHECK(e.fs.make_dir("d"));
-    PB_CHECK(e.fs.create_exclusive("d/f", "x", false));
-    PB_CHECK(e.fs.flush_dir("d"));
-    PB_CHECK(e.fs.flush_dir(""));
-    PB_CHECK(e.fs.flush_volume());
-    PB_CHECK(!e.fs.flush_dir("nothing"));
-}
-
-PB_TEST(space_reports_free_cluster_and_writable) {
+PB_TEST(a_directory_the_user_cannot_write_is_reported_as_not_writable_but_not_read_only) {
     Env e;
     Space s = e.fs.space();
     PB_CHECK(s.free_bytes > 0);
@@ -128,10 +84,11 @@ PB_TEST(space_reports_free_cluster_and_writable) {
     ::chmod(e.dir.path().c_str(), 0755);
 }
 
-PB_TEST(the_lock_is_exclusive_and_released_with_the_handle) {
+PB_TEST(a_second_instance_on_the_same_reader_cannot_take_the_lock) {
     Env e;
     auto a = e.fs.lock();
     PB_CHECK(a != nullptr);
+    PB_CHECK(e.fs.stat("system/pbstore/lock").kind == Kind::File);   // the lock is a file on the volume
     PB_CHECK(e.fs.stat("system/pbstore/lock").kind == Kind::File);
     PosixReaderFs other(e.dir.path());                    // another instance on the same reader
     PB_CHECK(other.lock() == nullptr);
@@ -139,36 +96,6 @@ PB_TEST(the_lock_is_exclusive_and_released_with_the_handle) {
     a.reset();
     auto b = other.lock();
     PB_CHECK(b != nullptr);
-}
-
-PB_TEST(paths_with_dot_dot_or_absolute_or_odd_parts_are_rejected) {
-    Env e;
-    PB_CHECK(e.fs.make_dir("d"));
-    PB_CHECK(e.fs.create_exclusive("d/f", "x", true));
-    std::string out;
-    for (const char* bad : {"../x", "d/../d/f", "/etc/passwd", "d//f", "./d", "d/./f", "d/", "d/f/.."}) {
-        PB_CHECK(!e.fs.stat(bad).exists());
-        PB_CHECK(!e.fs.read_file(bad, 10, &out));
-        PB_CHECK(!e.fs.create_exclusive(bad, "x", false));
-        PB_CHECK(!e.fs.make_dir(bad));
-        PB_CHECK(!e.fs.remove_file(bad));
-        PB_CHECK(!e.fs.rename_free(bad, "d/z"));
-        PB_CHECK(!e.fs.rename_free("d/f", bad));
-    }
-    PB_CHECK(!valid_relative_path("../x"));
-    PB_CHECK(!valid_relative_path("/abs"));
-    PB_CHECK(valid_relative_path("applications/a b.app"));
-    PB_CHECK(valid_relative_path(""));
-}
-
-PB_TEST(read_file_enforces_the_maximum_size) {
-    Env e;
-    PB_CHECK(e.fs.create_exclusive("big", std::string(2000, 'x'), true));
-    std::string out;
-    PB_CHECK(!e.fs.read_file("big", 1999, &out));
-    PB_CHECK(e.fs.read_file("big", 2000, &out));
-    PB_CHECK_EQ(out.size(), size_t(2000));
-    PB_CHECK(!e.fs.read_file("nothing", 10, &out));
 }
 
 PB_TEST_MAIN()

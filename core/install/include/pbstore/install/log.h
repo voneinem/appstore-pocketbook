@@ -3,6 +3,7 @@
 // the redactor first. The log stays on the computer; nothing of it is ever written to the reader.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "pbstore/install/clock.h"
@@ -30,7 +31,9 @@ private:
 class Log {
 public:
     static constexpr uint64_t kMaxFileBytes = 512u * 1024u;
-    Log(StateDirs& dirs, Clock& clock, const Redactor& redactor) : dirs_(dirs), clock_(clock), redactor_(redactor) {}
+    // `file_name` is the name of the log in the state folder; rotated copies get ".1" and ".2" appended.
+    Log(StateDirs& dirs, Clock& clock, const Redactor& redactor, std::string file_name = "installer.log")
+        : dirs_(dirs), clock_(clock), redactor_(redactor), file_name_(std::move(file_name)) {}
 
     // "<UTC time> <action> <app-id> <version> <result> <rule ids...> <text>"; app id and version are "-"
     // when there are none. Failing to write the log never fails an action.
@@ -41,6 +44,7 @@ private:
     StateDirs& dirs_;
     Clock& clock_;
     const Redactor& redactor_;
+    std::string file_name_;
 };
 
 }  // namespace install

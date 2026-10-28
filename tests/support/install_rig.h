@@ -21,6 +21,7 @@
 #include "mem_state_dirs.h"
 #include "pbstore/base64.h"
 #include "pbstore/catalog.h"
+#include "pbstore/install/catalog_cache.h"
 #include "pbstore/install/engine.h"
 #include "pbstore/install/net.h"
 #include "pbstore/install/posix_local_file.h"
@@ -172,11 +173,13 @@ struct EngineRig {
         reader.write_to(root());
         mounts.mount(root(), "vfat", 8ull << 30);
     }
-    pbstore::install::Engine& make_engine(const pbstore::install::Downloader& download = nullptr, std::vector<pbstore::install::IdentitySource*> sources = {}) {
+    pbstore::install::Engine& make_engine(const pbstore::install::Downloader& download = nullptr, std::vector<pbstore::install::IdentitySource*> sources = {},
+                                          pbstore::install::CatalogCache* cache = nullptr, const std::string& program_name = "") {
         pbstore::install::Config config;
         config.catalog_url = host.catalog_url();
         config.trusted_keys = {key.pub};
         config.program_version = "0.2.0";
+        if (!program_name.empty()) config.program_name = program_name;
         pbstore::install::Deps deps;
         deps.open_fs = [](const std::string& root) -> std::unique_ptr<pbstore::install::ReaderFs> { return std::make_unique<pbstore::install::PosixReaderFs>(root); };
         deps.mounts = &mounts;
@@ -187,6 +190,7 @@ struct EngineRig {
         deps.redactor = &redactor;
         deps.identity_sources = sources;
         deps.read_local_file = pbstore::install::read_regular_file;
+        deps.catalog_cache = cache;
         engine = std::make_unique<pbstore::install::Engine>(config, deps);
         return *engine;
     }

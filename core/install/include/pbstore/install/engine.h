@@ -10,6 +10,7 @@
 
 #include "pbstore/catalog.h"
 #include "pbstore/install/app_state.h"
+#include "pbstore/install/catalog_cache.h"
 #include "pbstore/install/clock.h"
 #include "pbstore/install/confirmations.h"
 #include "pbstore/install/delete_data.h"
@@ -35,6 +36,7 @@ struct Config {
     std::string catalog_url;
     std::vector<std::string> trusted_keys;   // raw 32-byte Ed25519 public keys
     std::string program_version;             // "0.2.0"
+    std::string program_name = "pbstore-install";   // written into installed_by of the install record: "<name> <version>"
 };
 
 struct Deps {
@@ -47,6 +49,7 @@ struct Deps {
     Redactor* redactor = nullptr;
     std::vector<IdentitySource*> identity_sources;
     LocalFileReader read_local_file;       // reads a package file chosen by the user
+    CatalogCache* catalog_cache = nullptr; // optional: the last accepted catalog, for list_cached (the store app)
 };
 
 // An opened reader. The lock is not held; the executor and the repair take it when they write.
@@ -106,6 +109,12 @@ public:
     Result<Listing> installed(ReaderHandle& reader);
     // The catalog with the state of each app on this reader.
     Result<Listing> list(ReaderHandle& reader, const ProgressFn& progress, CancelToken& cancel);
+
+    // Like list, but from the catalog that was accepted earlier and kept in Deps::catalog_cache: no network, nothing
+    // written. The cached bytes are verified again (signature before interpretation, schema; no serial comparison,
+    // because a cached catalog was accepted already). A cache that fails is discarded and reported (E-CAT-01 ...).
+    // With no cache, or an empty one, the listing has catalog_loaded = false and shows what is on the reader.
+    Result<Listing> list_cached(ReaderHandle& reader);
 
     // Builds the plan; downloads and verifies the package when one is needed; never writes to the reader.
     Result<PlanHandle> plan(ReaderHandle& reader, const Action& action, const ProgressFn& progress, CancelToken& cancel);

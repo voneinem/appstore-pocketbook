@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "pbstore/catalog_verify.h"
 #include "pbstore/install/catalog_session.h"
 #include "pbstore/install/install_record.h"
 
@@ -149,7 +150,42 @@ bool Engine::ensure_catalog(std::vector<Finding>* findings, std::vector<Finding>
         return false;
     }
     catalog_ = s.catalog;
+    // the serial is remembered by now (refresh_catalog); keeping the bytes is an extra for callers with a cache
+    if (deps_.catalog_cache) deps_.catalog_cache->store(s.catalog_bytes, s.signature_bytes);
     return true;
+}
+
+Result<Listing> Engine::list_cached(ReaderHandle& reader) {
+    Result<Listing> r;
+    std::optional<Catalog> cached;
+    std::string bytes, signature;
+    if (deps_.catalog_cache && deps_.catalog_cache->load(&bytes, &signature)) {
+        VerifyResult v = verify_catalog(bytes, signature, config_.trusted_keys, 0);   // 0: no serial comparison
+        if (!v.ok()) {
+            deps_.catalog_cache->discard();
+            r.findings = v.findings;
+            deps_.log->event("list-cached", "", "", "failed", rule_ids(r.findings), r.findings.empty() ? "" : r.findings[0].message);
+            return r;
+        }
+        cached = v.catalog;
+    } else {
+        r.notices.push_back(make_notice("E-INS-26", "catalog", "no cached catalog is available (the catalog has not been downloaded yet)"));
+    }
+    ScanRequest req;
+    req.all_recorded = true;
+    ReaderSnapshot snap = scan(*reader.fs, reader.identity, req);
+    Listing l;
+    l.catalog_loaded = cached.has_value();
+    if (cached) l.catalog_generated_at = cached->generated_at;
+    l.apps = derive_app_states(cached ? &*cached : nullptr, snap);
+    for (const Finding& f : snap.findings) r.notices.push_back(f);
+    if (snap.journal_present) {
+        RepairCheck rc = plan_repair(*reader.fs);
+        l.interrupted = rc.plan;
+    }
+    deps_.log->event("list-cached", "", "", "ok", {});
+    r.value = std::move(l);
+    return r;
 }
 
 Result<Listing> Engine::list(ReaderHandle& reader, const ProgressFn& progress, CancelToken& cancel) {
@@ -204,7 +240,7 @@ Result<PlanHandle> Engine::plan(ReaderHandle& reader, const Action& action, cons
     req.app_id = action.app_id;
     req.now = deps_.clock->now();
     req.local_now = deps_.clock->local_now();
-    req.installed_by = "pbstore-install " + config_.program_version;
+    req.installed_by = config_.program_name + " " + config_.program_version;
     req.source = "catalog";
     req.source_label = "catalog";
 
