@@ -96,7 +96,7 @@ FetchResult https_get(const std::string& url, const FetchOptions& options) {
     curl_easy_setopt(h, CURLOPT_CONNECTTIMEOUT, 30L);
     curl_easy_setopt(h, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(h, CURLOPT_MAXFILESIZE_LARGE, static_cast<curl_off_t>(options.max_bytes));
-    curl_easy_setopt(h, CURLOPT_USERAGENT, agent.c_str());
+    if (!options.no_user_agent) curl_easy_setopt(h, CURLOPT_USERAGENT, agent.c_str());   // libcurl sends none unless it is set
     curl_easy_setopt(h, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, on_data);
     curl_easy_setopt(h, CURLOPT_WRITEDATA, &body);

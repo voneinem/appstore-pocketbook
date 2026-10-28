@@ -18,6 +18,7 @@ Downloader make_https_downloader(const NetOptions& options) {
         f.timeout_seconds = total_seconds;
         f.stall_seconds = o.stall_seconds;
         f.user_agent = o.user_agent;
+        f.no_user_agent = o.user_agent.empty();   // an empty agent means no header (the store app); the installer passes its own
         f.progress = progress;
         if (!o.ca_file.empty()) f.ca_file = o.ca_file;
         else f.ca_blob = o.ca_blob;

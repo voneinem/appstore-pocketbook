@@ -26,7 +26,7 @@ constexpr long kStallSeconds = 30;
 struct NetOptions {
     std::string ca_file;      // trust anchors file; empty: use ca_blob
     std::string ca_blob;      // trust anchors compiled into the program
-    std::string user_agent;   // "pbstore-install/<version>"; no other header is sent
+    std::string user_agent;   // "pbstore-install/<version>"; empty: no User-Agent header at all (the store app, spec FR-043)
     long stall_seconds = kStallSeconds;
 };
 

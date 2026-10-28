@@ -20,6 +20,8 @@ struct FetchOptions {
     std::string ca_blob;
     // User-Agent header. Empty: "pbstore-catalog/<version>".
     std::string user_agent;
+    // Send no User-Agent header at all (the store app on the reader: constitution Principle V, spec FR-043). Overrides user_agent.
+    bool no_user_agent = false;
     // A transfer that receives no data for this many seconds ends as FetchKind::Timeout ("no data").
     // 0: no limit besides timeout_seconds.
     long stall_seconds = 0;

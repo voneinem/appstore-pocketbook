@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "pbstore/store/state_names.h"
+#include "store_rig.h"
 #include "test_support.h"
 
 using namespace pbstore::store;
@@ -122,6 +123,45 @@ PB_TEST(a_name_that_is_not_in_the_table_is_not_a_store_name) {
     PB_CHECK(!is_store_name("unknown.txt"));
     PB_CHECK(!is_store_name("../escape"));
     PB_CHECK(!is_store_name("catalog.json/x"));
+}
+
+PB_TEST(a_full_cycle_of_the_service_touches_only_the_documented_names_and_leaves_unknown_files_alone) {
+    pbtest::StoreRig rig;
+    if (!rig.ready()) PB_SKIP("openssl CLI not available");
+    rig.host.add_app(pbtest::nested_sample_app("testapp", "1.2.0"));
+    rig.host.publish(100);
+    rig.write_reader();
+    rig.make_engine();
+    auto service = rig.make_service();
+    // files the store did not make: in the app folder and in run/ (the launcher's)
+    rig.storage.state->write_atomic("unknown.txt", "mine\n");
+    rig.storage.state->write_atomic("pbstore.log.3", "not a name of ours\n");
+    rig.run_dirs->write_atomic("last-exit", "0\n");
+    rig.run_dirs->write_atomic("message", "update-failed 9.9.9\n");
+    rig.run_dirs->write_atomic("pbstore.bin", "ELF");
+    rig.radio.set_on(true);
+    service->start_check();
+    pbstore::install::CancelToken cancel;
+    PB_CHECK(service->refresh(cancel, nullptr).ok);
+    service->list_cached();
+    service->settings_facts();
+    service->request_leave(pbstore::store::LeaveReason::Home);
+    const std::string app = rig.root() + "/system/pbstore/app";
+    for (const auto& item : pbtest::snapshot(app)) {
+        if (item.kind == 'd') continue;                                       // run/ is the launcher's folder
+        const std::string name = item.path;
+        if (name.compare(0, 4, "run/") == 0) continue;
+        if (name == "unknown.txt" || name == "pbstore.log.3") continue;
+        if (!is_store_name(name)) PB_FAIL_AT("the store made or left a file that is not in the table: " + name);
+    }
+    std::string text;                                                          // never written or deleted
+    PB_CHECK(rig.storage.state->read("unknown.txt", &text));
+    PB_CHECK_EQ(text, std::string("mine\n"));
+    PB_CHECK(rig.storage.state->read("pbstore.log.3", &text));
+    PB_CHECK_EQ(text, std::string("not a name of ours\n"));
+    PB_CHECK(rig.run_dirs->size("last-exit") != UINT64_MAX);                   // the launcher's files stay
+    PB_CHECK(rig.run_dirs->size("pbstore.bin") != UINT64_MAX);
+    PB_CHECK(rig.run_dirs->size("message") == UINT64_MAX);                     // the one thing the store removes: the message it showed
 }
 
 PB_TEST_MAIN()

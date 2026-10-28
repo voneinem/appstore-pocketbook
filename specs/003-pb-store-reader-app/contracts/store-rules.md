@@ -16,7 +16,7 @@ drive, a cable, a command-line option or a keyboard.
 | `E-STO-01` | The battery is below the minimum for this action (shown: level and minimum) | unchanged | Charge the reader and try again. |
 | `E-STO-02` | No connection could be made (Wi-Fi off, no saved network, out of range, or no answer within 30 seconds) | unchanged | Switch Wi-Fi on in the reader's settings or move closer to the router, then try again. Browsing the list and removing apps work without a connection. |
 | `E-STO-03` | Not enough free memory to download this app (shown: needed and available) | unchanged | Close other apps, restart the reader, and try again. |
-| `E-STO-04` | The reader's clock looks wrong (shown: the date the reader believes) so the certificate cannot be checked | unchanged | Set the date and time in the reader's settings and try again. The check cannot be skipped. |
+| `E-STO-04` | The reader's clock looks wrong (shown: the date the reader believes) so the certificate cannot be checked | unchanged | Set the date and time in the reader's settings and try again. PB Store always checks the certificate. |
 | `E-STO-05` | The battery level cannot be read | unchanged | Continue only if the reader is charged enough (tap to confirm), or stop here. |
 | `E-STO-06` | A new version of PB Store did not start; the previous version was restored | restored to the previous state | PB Store will not try that version again by itself. Update again when a newer version is offered, or install a fixed version with PB Installer on a computer. |
 | `E-STO-07` | The new version of PB Store could not be put in place (no space, the copy failed, or a tool is missing); the previous version keeps running | unchanged | Free space on the reader and open PB Store again. |

@@ -18,8 +18,13 @@
 #include "fixed_clock.h"
 #include "install_rig.h"
 #include "pbstore/install/engine.h"
+#include "pbstore/install/posix_state_dirs.h"
 #include "pbstore/store/catalog_cache.h"
+#include "pbstore/store/last_fetch.h"
+#include "pbstore/store/pending_note.h"
 #include "pbstore/store/reader_storage.h"
+#include "pbstore/store/run_state.h"
+#include "pbstore/store/store_service.h"
 
 namespace pbtest {
 
@@ -37,11 +42,19 @@ struct StoreRig {
     pbstore::install::Redactor redactor;
     std::unique_ptr<pbstore::install::Log> log;
     std::unique_ptr<pbstore::store::StoreCatalogCache> cache;
+    std::unique_ptr<pbstore::install::PosixStateDirs> run_dirs;   // system/pbstore/app/run: the launcher's files
+    std::unique_ptr<pbstore::store::RunState> run_state;
+    std::unique_ptr<pbstore::store::PendingNote> pending_note;
+    std::shared_ptr<pbstore::store::LastFetch> last_fetch = std::make_shared<pbstore::store::LastFetch>();
     std::unique_ptr<pbstore::install::Engine> engine;
+    int64_t virtual_ms = 0;                                       // the service's clock: sleeping moves it, nothing waits
 
     explicit StoreRig(const FakeReader& r = FakeReader()) : host(key), reader(r), storage(pbstore::store::make_reader_storage(dir.path() + "/mnt/ext1")) {
         log = std::make_unique<pbstore::install::Log>(*storage.state, clock, redactor, "pbstore.log");
         cache = std::make_unique<pbstore::store::StoreCatalogCache>(*storage.state, clock);
+        run_dirs = std::make_unique<pbstore::install::PosixStateDirs>(dir.path() + "/mnt/ext1/system/pbstore/app/run");
+        run_state = std::make_unique<pbstore::store::RunState>(*storage.state, *run_dirs);
+        pending_note = std::make_unique<pbstore::store::PendingNote>(*storage.state);
     }
 
     bool ready() const { return host.ready(); }
@@ -65,7 +78,7 @@ struct StoreRig {
         deps.open_fs = storage.open_fs;
         deps.mounts = storage.mounts.get();
         deps.state = storage.state.get();
-        deps.download = download ? download : host.downloader("");
+        deps.download = pbstore::store::observe_fetches(download ? download : host.downloader(""), last_fetch);
         deps.clock = &clock;
         deps.log = log.get();
         deps.redactor = &redactor;
@@ -73,6 +86,18 @@ struct StoreRig {
         deps.catalog_cache = cache.get();
         engine = std::make_unique<pbstore::install::Engine>(config, deps);
         return *engine;
+    }
+
+    // The store's service over this rig. The release date is before the fixed clock, so a certificate failure does not look like a
+    // wrong clock unless a test moves the clock back.
+    std::unique_ptr<pbstore::store::StoreService> make_service(pbstore::store::StoreConfig config = {}) {
+        if (config.release_date.empty()) config.release_date = "2026-10-01";
+        if (config.running_version.empty()) config.running_version = "0.1.0";
+        if (config.catalog_url.empty()) config.catalog_url = host.catalog_url();
+        if (!config.sleep_ms) config.sleep_ms = [this](int ms) { virtual_ms += ms; };
+        if (!config.now_ms) config.now_ms = [this] { return virtual_ms; };
+        pbstore::store::StoreParts parts{*engine, storage, radio, battery, memory, screen, *cache, *run_state, *pending_note, clock, last_fetch};
+        return std::make_unique<pbstore::store::StoreService>(parts, config);
     }
 };
 

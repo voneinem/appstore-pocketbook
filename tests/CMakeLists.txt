@@ -77,6 +77,11 @@ foreach(src ${PBSTORE_TEST_SOURCES})
     if(name STREQUAL "test_install_build_config" AND TARGET pbstore_install_config)
         target_sources(${name} PRIVATE $<TARGET_OBJECTS:pbstore_install_config>)
     endif()
+    # The store's build configuration is compiled into the program, so its test links the objects of the release configuration.
+    if(name STREQUAL "test_store_build_config" AND TARGET pbstore_app_config AND TARGET pbstore_install_config)
+        target_sources(${name} PRIVATE $<TARGET_OBJECTS:pbstore_app_config> $<TARGET_OBJECTS:pbstore_install_config>)
+        target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR})
+    endif()
     if(name STREQUAL "test_install_build_config_testbuild" AND TARGET pbstore_install_config_test)
         target_sources(${name} PRIVATE $<TARGET_OBJECTS:pbstore_install_config_test>)
     endif()
@@ -133,8 +138,11 @@ foreach(shell_test launcher/test_pbstore_launcher packaging/test_package_script 
         get_filename_component(shell_dir ${shell_test} DIRECTORY)
         add_test(NAME ${shell_name} COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/${shell_test}.sh
                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-        set_tests_properties(${shell_name} PROPERTIES LABELS "${shell_dir}" SKIP_RETURN_CODE 77
-                             ENVIRONMENT "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")
+        set(shell_env "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")
+        if(PBSTORE_SANITIZE)   # the programs these tests run are sanitized too; the system's libp11-kit leaks in its own initializer
+            list(APPEND shell_env "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp:print_suppressions=0")
+        endif()
+        set_tests_properties(${shell_name} PROPERTIES LABELS "${shell_dir}" SKIP_RETURN_CODE 77 ENVIRONMENT "${shell_env}")
     endif()
 endforeach()
 

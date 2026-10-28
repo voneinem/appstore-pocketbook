@@ -23,7 +23,7 @@ const std::vector<StoreRule>& store_rule_registry() {
          "Switch Wi-Fi on in the reader's settings or move closer to the router, then try again. Browsing the list and removing apps work without a connection."},
         {"E-STO-03", "Not enough free memory to download this app (shown: needed and available)", U, "Close other apps, restart the reader, and try again."},
         {"E-STO-04", "The reader's clock looks wrong (shown: the date the reader believes) so the certificate cannot be checked", U,
-         "Set the date and time in the reader's settings and try again. The check cannot be skipped."},
+         "Set the date and time in the reader's settings and try again. PB Store always checks the certificate."},
         {"E-STO-05", "The battery level cannot be read", U, "Continue only if the reader is charged enough (tap to confirm), or stop here."},
         {"E-STO-06", "A new version of PB Store did not start; the previous version was restored", R,
          "PB Store will not try that version again by itself. Update again when a newer version is offered, or install a fixed version with PB Installer on a computer."},
