@@ -64,6 +64,12 @@ belongs to the app being installed or removed.
   without an explicit, separate confirmation. The default on removal MUST be to keep them.
 - The store and the installer MUST NOT touch the reader's firmware, system folders or other
   vendors' app entries.
+- The store app runs on the reader while the reader's own desktop is running. It MUST NOT replace
+  or delete a file of its own running program. A self-update MUST be staged and applied at the next
+  start, MUST keep the previous version until the new one has started successfully once, and MUST
+  fall back to the previous version when the new one does not start. The store MUST NOT remove
+  itself. The store's own state (cache, settings, log) lives under `system/pbstore/app/` and is
+  part of the installer area.
 
 ### V. Explicit User Action, Privacy
 
@@ -76,6 +82,9 @@ starts a refresh, install or update.
 - Secrets and personal data MUST NOT be committed to the repository or written to logs.
 - Apps MUST NOT be installed, updated or removed silently; every change MUST be a user action
   with a visible result.
+- The store MAY switch Wi-Fi on only for a user-started refresh, install or update. When it
+  switched Wi-Fi on, it MUST NOT keep it on afterwards and MUST show that it did so. It MUST NOT
+  contact the network at start-up or while idle.
 
 ### VI. Host-Testable Core
 
@@ -86,6 +95,12 @@ or a device.
 
 - This install logic lives in the Qt-free core and is shared by the installer and the store app;
   neither MAY carry its own copy. Both MUST be tested against a fake reader tree.
+- The operating-system interfaces of the install logic (reader file system, state folders, clock,
+  open-URL, and the mount source where it applies) have one implementation for the computer and one
+  for the reader. Code that uses the PocketBook SDK, InkView or Qt Quick MUST be confined to those
+  reader implementations and to the user interface, and MUST contain no install logic. The reader
+  implementations MUST be covered by the same contract tests as the computer ones, run on the host
+  against a fake reader tree.
 - Tests MUST use a fake reader directory tree and anonymized fixtures, never a real reader's data.
 - The installer MUST be tested against a fake reader folder on each operating system it supports at
   the time (the requirement applies to every operating system the installer ships for, not to ones
@@ -100,6 +115,9 @@ a documented migration.
 - Readers MUST ignore unknown fields.
 - A store that meets a newer major schema MUST say it needs updating instead of guessing.
 - Old stores MUST keep working with the current catalog as long as the major schema is unchanged.
+- The install record format and the layout of `system/pbstore/` are contracts shared by the
+  installer and the store app. A change needs a contract test and a documented migration. A store or
+  installer that meets a newer major version of a record MUST say so and leave the reader unchanged.
 
 ### VIII. Open and Honest Ecosystem
 
@@ -133,6 +151,10 @@ license, its source repository, its required firmware and its target device.
   different language if the plan justifies it in Complexity Tracking.
 - The installer MUST ship as one self-contained program per operating system that needs no
   installed runtime.
+- The store app has its own version file `app/VERSION` and its own release tags `store-v<version>`;
+  the installer keeps `VERSION` and `v<version>`. `scripts/check-version-bump.sh` MUST enforce both.
+- Device-only behavior that nobody has verified on a reader MUST be labelled "unverified" in the
+  documents and MUST have a manual device task.
 - The installer MUST build for Linux from CI now. The Windows build is delivered by its own
   feature; until that exists, no release MAY claim Windows support, and no design choice MAY
   prevent it (portable code, operating-system specifics behind small interfaces).
@@ -149,11 +171,12 @@ license, its source repository, its required firmware and its target device.
 - Work follows the Spec Kit flow: specification, plan, tasks, implementation. The plan's
   Constitution Check MUST pass first.
 - `scripts/pre-merge.sh` MUST build, run all tests and check for secrets.
-- Every merged product change MUST raise `VERSION` (MINOR for a feature, PATCH for a fix, MAJOR
-  for a breaking change) and add a `CHANGELOG.md` entry, enforced by
+- Every merged product change MUST raise the version file of the product it changes (`VERSION` for
+  the installer and catalog tooling, `app/VERSION` for the store app; MINOR for a feature, PATCH for
+  a fix, MAJOR for a breaking change) and add a `CHANGELOG.md` entry, enforced by
   `scripts/check-version-bump.sh`. The only opt-out is `PBSTORE_NO_BUMP=1`, which MUST be stated
   in the pull request.
-- Releases MUST be tagged `v<version>`.
+- Releases MUST be tagged `v<version>` (installer) or `store-v<version>` (store app).
 - Reviewers MUST reject TLS-verification bypasses, hard-coded SDK paths, writes to the reader
   outside the rules of Principle IV, and unsigned catalog handling.
 
@@ -167,4 +190,4 @@ section or materially expanded guidance, PATCH for clarifications and wording.
 Compliance MUST be checked in every pull request and in each plan's Constitution Check.
 Unjustified violations block the merge.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-24 | **Last Amended**: 2026-10-25
+**Version**: 2.1.0 | **Ratified**: 2026-10-24 | **Last Amended**: 2026-10-28
