@@ -1,0 +1,75 @@
+# Contract: The Store's Pages and Controls
+
+**Version**: 1.0 · **Status**: draft for implementation · Governed by spec FR-008 to FR-012, FR-017 to FR-019, FR-037 to FR-039,
+FR-042. Reasoning: [../research.md](../research.md) R-13. The look follows PB Notes feature 010 and PB Cloud (top bar with icon
+controls, rounded dialogs, paged lists, no animation); the components are adapted from them, the pages are new.
+
+## Rules for every page
+
+- Sizes are panel pixels (1404 × 1872, 300 ppi). Every tappable item is at least **120 × 120 px** (10.2 mm) with a gap of at
+  least 16 px to the next; `scripts/check-ui-style.sh` fails smaller ones.
+- Text is at least 32 px high (`Style.bodySize`); `scripts/check-ui-style.sh` fails smaller text.
+- No animation: no `NumberAnimation`, `PropertyAnimation`, `Behavior`, `Transition`, `BusyIndicator`, indeterminate bar, kinetic scroll,
+  blinking cursor. The progress bar is a static rectangle whose width is set.
+- Lists move by whole pages (`PageButtons`, `snap` = row height, `showIndicator` = "2 / 3"); a list that fits shows no page buttons and
+  no indicator.
+- State is shown by **words and an icon**, never by colour or grey tone alone. Every icon control in the top bar also shows a short word (`label`): Refresh, Search, Update all, Settings, About.
+- There is no exit control: the reader's home key leaves the store, and sleep and the USB cable are handled as the same leave request.
+- All texts come from the strings table (English). Untrusted texts (names, descriptions, file names) are shown as plain text with
+  control and direction-changing characters removed and are cut at the limits of the catalog contract.
+- Scripted walks (`tests/walks/*.walk`, run by `scripts/ui-walk.sh` on the host, offscreen) and Qt Tests of the models (`tests/bridge/`) drive every page: states, actions, texts, the absence of the forbidden items; `app --self-test` loads every page.
+
+## Pages
+
+| Page | Content | Controls (top bar unless noted) |
+|------|---------|---------------------------------|
+| **Home** (list) | catalog line "Catalog last updated <date>" (or "No catalog yet. Tap Refresh."), search field, the apps of the page, page buttons (bottom) | Refresh, Search, Update all (only when something is outdated), Settings, About |
+| **Detail** | name, version (and offered version), state words, long description, license, author, source repository (text), package size, minimum firmware, changelog link (text), notes | Back; actions by state (below) |
+| **Plan** | the engine's `render_plan` text (scrollable, page buttons), the confirmations the plan names (separate unchecked tap controls), space needed against free, battery line | Confirm, Cancel |
+| **Progress** | title ("Installing PB Notes", or "Updating 2 of 3: …"), phase text, a figure ("3.1 of 7.4 MB", "file 12 of 80"), a static bar; redrawn at most every 2 s | Cancel (until the commit point; afterwards hidden with the line "Finishing; this cannot be cancelled") |
+| **Result** | the three-part message or the success text (group, restart wording, "next start may take longer", Wi-Fi notice) | OK; "Delete data too?" (Remove only, two steps) |
+| **Repair** | what was found (which app, finish or undo, why) | Repair, Not now (browse only) |
+| **Confirm dialogs** | rounded `ConfirmDialog`; Cancel is first; the second confirmation of data deletion names the folder, the number of files and the size | |
+| **Settings** | catalog address (text), "Catalog last updated" (refresh date) and "catalog dated" (`generated_at`), trust source in use, "custom CA file: not supported", where the log is, storage free, battery level | Back, Log |
+| **About** | version (`app/VERSION`), the self-update note (R-12), the licenses of the libraries (list, page for each text), the sentence "PB Store is unofficial and is not made, endorsed or supported by PocketBook." | Back |
+| **Log** | the last 50 lines of `pbstore.log` | Back |
+
+## States and the actions that fit (FR-008)
+
+| State label (words + icon) | Actions on Detail | On Home row |
+|----------------------------|-------------------|-------------|
+| Not installed | Install | tap opens Detail |
+| Installed | Remove (Update if offered) | |
+| Update available (shows both versions) | Update, Remove | |
+| Installed outside the store | Check (downloads the package, compares), Adopt (only after a successful check) | |
+| Not in the catalog (installed) | Remove (only with an install record) | |
+| Notes next to the label | "from a local file", "changed since install", "needs repair", "this version was withdrawn" (an installed copy of a withdrawn version, PB Store's own included; Update is still offered when a newer version is offered), and for PB Store: "update staged: takes effect when you open PB Store again" / "version X failed to start; version Y is running" | |
+| PB Store itself | Update (if offered); **no Remove**: a line says PB Installer on a computer can remove it (E-STO-08) | |
+| While a repair is pending | none; the row says "repair pending"; Home shows the Repair page first | |
+
+Order of the notes: the self-update note, then "needs repair", then "this version was withdrawn", then "changed since install", then "from a local file".
+
+## Result wording by operation (the table `restart_wording`, R-11; all Unverified today)
+
+| Operation | Text now (RestartNeeded = Unverified) |
+|-----------|---------------------------------------|
+| Install, update | "<App> is installed. It will appear in <group>. If it is not there, restart the reader. The next start of the reader may take noticeably longer; wait for it." |
+| Remove | "<App> was removed. If it is still in the menu, restart the reader. Its data was kept in <folder> (or: deleted)." |
+| Adopt | "<App> is now managed by PB Store. Nothing else on the reader was changed." (no restart text: only a record was written) |
+| Repair | "The interrupted <kind> of <App> was <finished|undone>. If the menu looks wrong, restart the reader." |
+| Update of PB Store (result page) | "PB Store <version> is installed. It takes effect when you open PB Store again." (not a reader restart) |
+| First screen after the swap | "PB Store was updated to <version>." (shown once; from `last-run-version`, data-model SelfUpdateView) |
+| After a Wi-Fi switch by the store | adds "Wi-Fi was switched on for this and switched off again." |
+
+When a device task settles a fact, the matching rows change (for example `RestartNeeded = No` removes the restart sentences, `Yes`
+replaces them by "Restart the reader now to see it.") and a test per combination checks the texts.
+
+## Refresh policy (R-13)
+
+`Screen::full_update()` is requested once at start, once when the page kind changes between list, plan, progress and result, after every 10th page
+turn, and on leaving. The constants live in `core/store/refresh_policy.h`.
+
+## Strings
+
+Keys are `page.element[.variant]` (for example `home.refresh`, `result.install.ok`, `rule.E-STO-01.todo`). The table is one file
+(`bridge/strings/strings.tsv`), checked by a test that every key used in QML or C++ exists and every key is used.
