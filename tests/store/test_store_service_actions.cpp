@@ -354,4 +354,45 @@ PB_TEST(update_all_lists_the_apps_with_an_update_and_pb_store_last) {
     PB_CHECK_EQ(queue.back(), std::string("pbstore"));
 }
 
+PB_TEST(updating_pb_store_itself_is_staged_the_record_says_the_new_version_and_the_text_says_when_it_takes_effect) {
+    Rig r(with_installed(FakeReader(), store_app("0.0.1")));
+    if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
+    CatalogEntry& e = r.rig.host.add_app(store_app("0.2.0", 77));
+    e.listed_versions = {"0.0.1", "0.2.0"};
+    r.rig.host.publish(100);
+    r.rig.write_reader();
+    r.rig.make_engine();
+    r.service = r.rig.make_service();              // the running version is 0.1.0 (the rig's default)
+    r.service->start_check();
+    CancelToken c;
+    PB_CHECK(r.service->refresh(c, nullptr).ok);
+    const AppRow* row = find(r.service->rows(""), "pbstore");
+    PB_CHECK(row && row->state == RowState::UpdateAvailable);
+    PB_CHECK(row->is_store);
+    PB_CHECK(std::find(row->actions.begin(), row->actions.end(), RowAction::Remove) == row->actions.end());   // no Remove
+    PlanView plan = r.service->plan_action(RowAction::Update, "pbstore", c, nullptr);
+    PB_CHECK(plan.ok);
+    PB_CHECK(plan.is_store);
+    PB_CHECK(has(plan.extra, "takes effect when you open PB Store again"));
+    ExecView out = r.service->execute_plan(kUnknown, false, c, nullptr);
+    PB_CHECK(out.ok);
+    PB_CHECK(has(out.text, "PB Store 0.2.0 is installed. It takes effect when you open PB Store again."));
+    PB_CHECK(!has(out.text, "restart the reader"));
+    // the record says 0.2.0 while 0.1.0 still runs: the list says that an update is staged
+    const AppRow* after = find(out.view.rows, "pbstore");
+    PB_CHECK(after != nullptr);
+    PB_CHECK(std::find(after->notes.begin(), after->notes.end(), "update staged: takes effect when you open PB Store again") != after->notes.end());
+    // what the launcher leaves when the new version did not start: shown once, and the list says which version runs
+    r.rig.run_dirs->write_atomic("message", "update-failed\n");
+    r.rig.run_dirs->write_atomic("pbstore.bin.failed", "ELF");
+    StartResult start = r.service->start_check();
+    PB_CHECK(has_rule(start.notices, "E-STO-06"));
+    auto cached = r.service->list_cached();
+    const AppRow* rolled = find(cached.rows, "pbstore");
+    PB_CHECK(rolled != nullptr);
+    bool says_failed = false;
+    for (const auto& n : rolled->notes) if (has(n, "failed to start") && has(n, "0.1.0 is running")) says_failed = true;
+    PB_CHECK(says_failed);
+}
+
 PB_TEST_MAIN()
