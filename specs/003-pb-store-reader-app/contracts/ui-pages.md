@@ -17,8 +17,8 @@ controls, rounded dialogs, paged lists, no animation); the components are adapte
 - Lists move by whole pages (`PageButtons`, `snap` = row height 160 px, `showIndicator` = "2 / 3"); a list that fits shows no page buttons
   and no indicator; on the first and last page the unusable button is drawn disabled, not hidden. Hardware page keys are not used.
   After a detail page, plan, message or finished operation the user returns to the same page of the same list (same search).
-- State is shown by **words and an icon**, never by colour or grey tone alone. Every icon control in the top bar also shows a short word (`label`): Refresh, Search, Update all, Settings, About, Exit.
-- Exit is a control of the Home top bar (label "Exit"): it leaves the store as the home key would, and sleep and the USB cable are handled as the same leave request.
+- State is shown by **words and an icon**, never by colour or grey tone alone. Every icon control in the top bar also shows a short word (`label`): Refresh, Search, Update all, Settings, About, Home.
+- Home is a control at the top left of the main screen (a house icon, label "Home"): it leaves the store as the reader's home key would; sub screens have Back (<) at the top left, and sleep and the USB cable are handled as the same leave request.
 - All texts come from the strings table (English). Untrusted texts (names, descriptions, file names) are shown as plain text with
   control and direction-changing characters removed and are cut at the limits of the catalog contract.
 - Scripted walks (`tests/walks/*.walk`, run by `scripts/ui-walk.sh` on the host, offscreen) and Qt Tests of the models (`tests/bridge/`) drive every page: states, actions, texts, the absence of the forbidden items; `app --self-test` loads every page.
@@ -27,7 +27,7 @@ controls, rounded dialogs, paged lists, no animation); the components are adapte
 
 | Page | Content | Controls (top bar unless noted) |
 |------|---------|---------------------------------|
-| **Home** (list) | catalog line "Catalog last updated <date>" (or "No catalog yet. Tap Refresh." or the `E-STO-09` line when the cache was discarded), search field (applied on the keyboard's confirm; then "n of m apps", or "No app matches"; an empty catalog says "The catalog has no apps"), the apps of the page in catalog-name order then "Not in the catalog" apps, the apps of the page, page buttons (bottom) | Refresh, Search, Update all (only when something is outdated), Settings, About, Exit |
+| **Home** (list) | catalog line "Catalog last updated <date>" (or "No catalog yet. Tap Refresh." or the `E-STO-09` line when the cache was discarded), search field (applied on the keyboard's confirm; then "n of m apps", or "No app matches"; an empty catalog says "The catalog has no apps"), the apps of the page in catalog-name order then "Not in the catalog" apps, the apps of the page, page buttons (bottom) | Refresh, Search, Update all (only when something is outdated), Settings, About, Home |
 | **Detail** | name, version (and offered version), state words, long description, license, author, source repository (text), the address the package is downloaded from (text), package size, minimum firmware, changelog link (text), notes | Back; actions by state (below) |
 | **Plan** | the engine's `render_plan` text (scrollable, page buttons), the confirmations the plan names (separate unchecked tap controls), space needed against free, battery line; for an update of PB Store the line "The update takes effect when you open PB Store again." below the plan text | Confirm, Cancel |
 | **Progress** | title ("Installing PB Notes", or "Updating 2 of 3: …"), phase text, a figure ("3.1 of 7.4 MB", "file 12 of 80"; with no known total the count done and "42 s"), a static bar, and "Wi-Fi was switched on by PB Store" while it applies; redrawn at most every 2 s | Cancel (until the commit point; afterwards hidden with the line "Finishing; this cannot be cancelled") |

@@ -12,6 +12,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -102,6 +103,52 @@ struct StartResult {
     std::optional<install::RepairPlan> repair;
 };
 
+// One consent the plan names, shown as its own tap control (never preselected, never "yes to all"; spec FR-015).
+struct ConfirmationItem {
+    std::string name;    // the engine's stable name: "edited-files", "unknown-firmware", ...
+    std::string label;   // the words next to the control
+};
+
+// A plan waiting for the user's confirmation (stories 2 to 5). `text` is the engine's plan text, unchanged (spec FR-014).
+struct PlanView {
+    bool ok = false;
+    std::vector<Finding> findings;
+    std::vector<Finding> notices;
+    std::string kind;                         // install, update, remove, adopt
+    std::string app_id, app_name;
+    std::string text;
+    std::vector<ConfirmationItem> confirmations;   // beside the plan itself, which is the Confirm button
+    bool nothing_to_do = false;               // W-INS-01: already at the offered version
+    bool battery_unreadable = false;          // the level cannot be read: the user must confirm the risk (E-STO-05)
+    bool is_store = false;                    // an update of PB Store itself
+    std::string extra;                        // a line below the plan text (the self-update note)
+    std::string data_folder;                  // remove: the app's data folder, "" if none
+    uint64_t data_files = 0, data_bytes = 0;
+    std::vector<install::Message> messages() const;
+};
+
+// What an executed plan returns: the result text on success, the three-part messages otherwise, and the list as it is afterwards.
+struct ExecView {
+    bool ok = false;
+    bool cancelled = false;
+    install::ReaderEffect effect = install::ReaderEffect::Unchanged;
+    std::vector<Finding> findings;
+    std::vector<Finding> notices;
+    std::string text;
+    bool data_folder_left = false;            // after a removal: the data folder stayed and could be deleted on request
+    ListView view;
+    std::vector<install::Message> messages() const;
+};
+
+// An interrupted operation found at start (story 6).
+struct RepairStatus {
+    bool pending = false;
+    std::string text;                         // the engine's repair plan as shown
+    std::string kind, app_id, from_version, to_version;
+    std::string action;                       // "finish" or "undo"
+    std::string reason;
+};
+
 class StoreService {
 public:
     StoreService(StoreParts parts, StoreConfig config);
@@ -115,6 +162,25 @@ public:
     // The rows of the last list, narrowed by the search text.
     std::vector<AppRow> rows(const std::string& filter) const;
     SettingsFacts settings_facts();
+
+    // ---- the write actions (all through the engine; the store adds the gates, the Wi-Fi session and the note) ----
+    // Builds the plan: battery and memory checks, Wi-Fi on if the package must be downloaded, the engine's plan (download, verification,
+    // contract rules, reader checks), Wi-Fi off again. Writes nothing to the reader's apps or desktop configuration.
+    PlanView plan_action(RowAction action, const std::string& app_id, install::CancelToken& cancel, const install::ProgressFn& progress);
+    void discard_plan();
+    // Carries the plan out after the user confirmed it (and the consents `given` names). The battery is checked again immediately before
+    // the first write. `accept_unknown_battery` is the tap that states the risk (E-STO-05).
+    ExecView execute_plan(const std::vector<std::string>& given, bool accept_unknown_battery, install::CancelToken& cancel, const install::ProgressFn& progress);
+    // After a removal that kept the data folder: the plan to delete it (two confirmations by the user, each naming the folder, the number of files
+    // and the size), and its execution.
+    PlanView plan_delete_data();
+    ExecView execute_delete_data(install::CancelToken& cancel, const install::ProgressFn& progress);
+    // An interrupted operation, found at start: shown first; nothing else can be started until it is repaired.
+    RepairStatus repair_status() const { return repair_status_; }
+    ExecView repair(bool accept_unknown_battery, install::CancelToken& cancel, const install::ProgressFn& progress);
+    // The apps with an update, PB Store itself last (spec FR-021).
+    std::vector<std::string> update_all_queue() const;
+
     // The first screen is shown after the start check: the start counts as successful (spec FR-034). Removes the launcher's marker and
     // remembers the version that reached its first screen (the next start can then say "PB Store was updated to X").
     void mark_started(const std::string& version);
@@ -130,6 +196,15 @@ private:
 
     StoreParts parts_;
     StoreConfig config_;
+    // the state of the one operation that can be in progress (spec FR-024)
+    std::atomic<bool> operation_{false};
+    std::shared_ptr<install::PlanHandle> plan_;
+    std::optional<install::Plan> removal_plan_;      // the last removal, for the optional deletion of the data folder
+    std::shared_ptr<install::PlanHandle> delete_plan_;
+    bool wifi_notice_ = false;
+    bool repair_pending_ = false;
+    RepairStatus repair_status_;
+    std::set<std::string> needs_repair_;
     std::shared_ptr<install::ReaderHandle> reader_;
     ListView last_view_;
     RunMessage launcher_message_;

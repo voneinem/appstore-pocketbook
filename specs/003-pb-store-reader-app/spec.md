@@ -100,7 +100,7 @@ needed, and it asks for a confirmation when the firmware version cannot be read.
   (option A): it shows which app, finish or undo, and why, and writes only after the tap (FR-028).
 - Q: When the installer removes the store, are the store's cache, serial and log in `system/pbstore/app/`
   kept or deleted? → A: Kept (option A); the removal message names the folder (FR-041).
-- Q: How does the user leave the store? → A: With an Exit control in the top bar, and with the reader's home key where it has one (changed 2026-10-29 after the first device test: the owner's InkPad One has no home button that leaves the app; the earlier decision "home key only" is withdrawn).
+- Q: How does the user leave the store? → A: With the Home control (a house icon) at the top left of the main screen, and with the reader's home key where it has one; sub screens have Back (<) at the top left, as the reader's own apps do (changed 2026-10-29 after the first device test: the owner's InkPad One has no home button that leaves the app; the earlier decision "home key only" is withdrawn).
 - Q: What happens on sleep or when the USB cable is connected during an operation? → A: Handled exactly like the home key
   (FR-025); which events the reader sends is a device fact (DS-13).
 - Q: Which readability rules does the spec add? → A: Every icon control in the top bar also shows a text label (FR-009).
@@ -544,7 +544,7 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   no tap and no progress step caused, such as a spinner, a blinking cursor, a fade, kinetic scrolling or a moving
   indeterminate bar; the flash of a full refresh is not animation. A tapped control is drawn in its pressed (inverted) state at
   once; while an operation runs the action controls are drawn disabled. Every icon control in the top bar also
-  shows a short text label (Refresh, Search, Update all, Settings, About, Exit). Text is at least 32 px high (about 7.7 pt
+  shows a short text label (Refresh, Search, Update all, Settings, About, Home). Text is at least 32 px high (about 7.7 pt
   at 300 ppi) on every screen and is black on white; grey is used only for disabled controls, never for text the user must read.
   A full screen refresh is requested at start, when the kind of page changes (list, plan, progress, result), after every
   tenth page turn and on leaving; the constants are tuned after the device check DS-10 (contracts/ui-pages.md).
@@ -837,7 +837,7 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
 
 ## Assumptions
 
-- The store has an Exit control in the top bar (decided 2026-10-29, after the first device test showed no usable home button); where the reader has a home key it leaves the store too. Which events the
+- The store has a Home control (house icon, top left of the main screen; decided 2026-10-29, after the first device test showed no usable home button); where the reader has a home key it leaves the store too. Which events the
   reader sends to an app when it goes to sleep or the cable is connected is a device fact (manual task DS-13); the
   store treats every one of them as a leave request.
 - Threat model (research R-19): in scope are a hostile or tampered network, a hostile or buggy catalog or package, a retired key,

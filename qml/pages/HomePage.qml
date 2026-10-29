@@ -12,6 +12,15 @@ Item {
     TopBar {
         id: bar
         title: qsTr("PB Store")
+        // Home leaves the store: the house icon at the top left of the main screen, as in the reader's own apps
+        leftItems: [
+            IconButton {
+                objectName: "home"
+                label: qsTr("Home")
+                icon: "home"
+                onClicked: device.quit()
+            }
+        ]
         rightItems: [
             IconButton {
                 objectName: "refresh"
@@ -40,12 +49,6 @@ Item {
                 label: qsTr("About")
                 icon: "info"
                 onClicked: page.nav.push(Qt.resolvedUrl("AboutPage.qml"), {"nav": page.nav})
-            },
-            IconButton {
-                objectName: "exit"
-                label: qsTr("Exit")
-                icon: "close"
-                onClicked: device.quit()
             }
         ]
     }
