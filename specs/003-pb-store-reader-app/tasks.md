@@ -382,6 +382,19 @@ One CMake project at the repository root (plan.md, Source Code): `core/store/` (
 
 ---
 
+## Phase 14: Follow-up after the device tests of 2026-10-29 (added at the owner's request)
+
+**Purpose**: What the second device test showed and what is still open after dev builds 0.0.3 to 0.0.6. The owner mounts the reader on 2026-10-30 in the morning. Dev build `dist-dev/pbstore-inkpad-one-0.0.6.zip` is built and committed but **not yet installed**. Every device write needs a fresh backup first (copy `applications/`, `system/config/desktop/` and `system/pbstore/` to `~/Projekte/pb-device-backup-<date>-<time>` with `SHA256SUMS`), a `--dry-run`, and the released `dist/pbstore-install-0.2.0-linux-x86_64` with `--confirm-plan --confirm-unknown-model --confirm-unknown-firmware`.
+
+- [ ] T171 **MANUAL + agent** Install dev 0.0.6 (backup, dry run, install, check file hashes against the plan and an empty `system/pbstore/journal/`); the owner ejects the reader and restarts it. After a restart wait a minute or two before the first start (the GPU node `/dev/mali0` is opened up late; since 0.0.4 a refusal no longer rolls the version back)
+- [ ] T172 **MANUAL** On the reader: Settings, line **Reader**: write down exactly what it shows for model and firmware (the strings InkView gives, DS-04). The agent also reads `system/pbstore/app/run/pbstore.launch.log` (the `diagnostics: /ebrmain/...version...` lines) and `pbstore.log`. No serial number is recorded anywhere
+- [ ] T173 [US7] With the strings of T172: add them as the fixtures of `tests/store/test_inkview_identity_parse.cpp` (test first, see it fail), then make `parse_model` / `parse_firmware` (core/store/src/identity_parse.cpp) accept the real forms (model must map to `1030` for the InkPad One; firmware to `MAJOR.MINOR.BUILD`). Then the plan no longer asks the two "unknown model / unknown firmware" consents and `check_compatibility` really compares with `min_firmware`. Update R-03, feature 002 research §2 F12, and the Settings text if the line changes
+- [ ] T174 **MANUAL** Check on the reader what 0.0.4 to 0.0.6 changed: the top bar like PB Notes (house + menu at the left, centered title, Refresh + Search at the right, Back (<) on sub screens; the menu holds Update all, Settings, About), the plan page with **Show the files (N)** for PB Office or PB Cloud (more than 8 files folded), no Wi-Fi on/off notice anywhere, **Replace** for PB Cloud and PB Office (Check cannot adopt them, E-INS-20, because their files differ from the catalog package; read the plan before confirming). Also: Install / Update / Remove of PB Notes worked on 2026-10-29
+- [ ] T175 [P] Write the missing tests of the newest UI: the bridge test that a plan with more than 8 files exposes `planFileCount` and `toggleFiles()` switches `planText` between the folded and the full text (`tests/bridge/test_store_controller_operations.cpp`); the bridge mapping of the action word `Replace` to `RowAction::Replace`
+- [ ] T176 [P] Installer notice `W-INS-04` (T129/T133) and the self-update service tests that are still open; the cosmetic installer message `appears in the group "" as ""` on an update of PB Store (feature 002, not touched so far)
+- [ ] T177 Remaining implementation not done yet: phase 11 (About license list from the manifest, settings extras), scripted UI walks and demo server (T069, T079), the strings table (T075), the device-check docs (`docs/store-app-*.md`, INSTALL.md), tick or annotate the tasks that my differently named tests cover, then phase 13 (VERSION 0.3.0 so `scripts/check-version-bump.sh` passes, CHANGELOG, NOTICE, release; the owner confirms each release step)
+- [ ] T178 **MANUAL** Remaining device tasks DS-00 to DS-16 of phase "Device checks" (DS-13: which events the reader sends for the home key, sleep and a cable; DS-02 Wi-Fi is partly evidenced)
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -452,4 +465,4 @@ Task: "tests/store/test_clock_check.cpp"  Task: "tests/store/test_state_folder_c
 
 - Spec adjustments A-1 to A-9 of research R-18 were applied to `spec.md` on 2026-10-28 (with FR-043); the code and tests follow that text.
 - The four additions to the engine (T017, T018, T019) and the one notice in the installer's tool (T133) are the only changes to feature 002's code; each has its test first and the old suite must stay green.
-- Total: 170 tasks (T044a, T057a, T103a, T149a and T160a were added by the analysis remediation of 2026-10-28).
+- Total: 178 tasks (T044a, T057a, T103a, T149a and T160a were added by the analysis remediation of 2026-10-28).
