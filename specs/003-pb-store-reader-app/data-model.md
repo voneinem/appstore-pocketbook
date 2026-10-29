@@ -70,7 +70,7 @@ system/pbstore/app/
 | `switched_on_by_store` | bool | true only if the session turned it on |
 | `state` | `Idle → Connecting → Connected → Ending → Done` | `end()` is legal from every state and is idempotent |
 | `connect_timeout` | 30 s | `E-STO-02` on timeout |
-| `notice` | text | "Wi-Fi was switched on for this and switched off again" when `switched_on_by_store` |
+| `notice` | text | only W-STO-02 (Wi-Fi could not be switched off again); the "switched on and off again" notice was dropped 2026-10-29 |
 
 Invariant (SC-012): after `end()` the radio is in the state it had at `begin()`, unless the store cannot switch it off,
 in which case the result says so.

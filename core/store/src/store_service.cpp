@@ -315,7 +315,6 @@ PlanView StoreService::plan_action(RowAction action, const std::string& app_id, 
     if (!slot.held()) return v;   // one operation at a time: further taps are ignored
     plan_.reset();
     parts_.last_fetch->clear();
-    wifi_notice_ = false;
     const AppRow* row = nullptr;
     for (const AppRow& r : last_view_.rows) if (r.id == app_id) row = &r;
     v.app_name = row ? row->name : app_id;
@@ -383,10 +382,7 @@ PlanView StoreService::plan_action(RowAction action, const std::string& app_id, 
                 v.findings = adapt(planned.findings);
             }
         }
-        if (auto notice = radio.end()) {
-            v.notices.push_back(*notice);
-            if (notice->rule_id == "W-STO-03") wifi_notice_ = true;
-        }
+        if (auto notice = radio.end()) v.notices.push_back(*notice);
     }
     return v;
 }
@@ -440,7 +436,6 @@ ExecView StoreService::execute_plan(const std::vector<std::string>& given_names,
         args.group = plan.menu.group;
         if (plan.data && !plan.data->path.empty()) args.folder = plan.data->path;
         args.version = plan.to_version;
-        args.wifi_notice = wifi_notice_;
         WordingOp op = WordingOp::Install;
         if (action == RowAction::Update) op = is_store ? WordingOp::SelfUpdate : WordingOp::Update;
         else if (action == RowAction::Remove) op = WordingOp::Remove;

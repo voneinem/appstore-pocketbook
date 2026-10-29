@@ -49,7 +49,6 @@ std::string result_text(const DeviceFacts& facts, WordingOp op, const WordingArg
             t = "PB Store " + a.version + " is installed. It takes effect when you open PB Store again.";
             break;
     }
-    if (a.wifi_notice) t += " Wi-Fi was switched on for this and switched off again.";
     return t;
 }
 

@@ -55,7 +55,7 @@ PB_TEST(a_radio_that_is_off_is_switched_on_waited_for_and_switched_off_again_wit
     PB_CHECK_EQ(t.sleeps, 3);                                       // polled every 500 ms until connected
     for (int n : t.naps) PB_CHECK_EQ(n, 500);
     auto notice = s.end();
-    PB_CHECK(has_rule(notice, "W-STO-03"));
+    PB_CHECK(!notice.has_value());                                    // switching it off again is not announced (2026-10-29)
     PB_CHECK(!radio.powered());                                     // back in its earlier state (SC-012)
     PB_CHECK_EQ(radio.count("disconnect"), 1);
     PB_CHECK(!s.end().has_value());                                 // end() is idempotent: no second notice, no second call
@@ -71,7 +71,7 @@ PB_TEST(no_connection_within_30_seconds_is_e_sto_02_and_the_radio_is_switched_of
     PB_CHECK(has_rule(f, "E-STO-02"));
     PB_CHECK(t.ms >= 30000 && t.ms <= 30500);
     auto notice = s.end();
-    PB_CHECK(has_rule(notice, "W-STO-03"));
+    PB_CHECK(!notice.has_value());                                    // switching it off again is not announced (2026-10-29)
     PB_CHECK(!radio.powered());
 }
 
@@ -96,7 +96,7 @@ PB_TEST(cancel_while_waiting_stops_the_wait_and_the_radio_is_switched_off_again)
     auto f = s.begin([&polls] { return ++polls > 4; });
     PB_CHECK(has_rule(f, "E-STO-02"));
     PB_CHECK(t.ms < 5000);
-    PB_CHECK(has_rule(s.end(), "W-STO-03"));
+    PB_CHECK(!s.end().has_value());
     PB_CHECK(!radio.powered());
 }
 
@@ -151,7 +151,7 @@ PB_TEST(a_leave_request_ends_the_session_the_same_way) {
     RadioSession s(radio, t.sleep(), t.now());
     PB_CHECK(!s.begin().has_value());
     auto notice = s.end();                                          // what request_leave() calls
-    PB_CHECK(has_rule(notice, "W-STO-03"));
+    PB_CHECK(!notice.has_value());                                    // switching it off again is not announced (2026-10-29)
     PB_CHECK(!radio.powered());
 }
 

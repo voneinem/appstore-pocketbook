@@ -51,7 +51,7 @@ PB_TEST(wifi_off_is_switched_on_for_the_refresh_and_off_again_with_the_notice) {
     PB_CHECK_EQ(r.rig.radio.count("connect"), 1);
     PB_CHECK_EQ(r.rig.radio.count("disconnect"), 1);
     PB_CHECK(r.rig.radio.is_on() == std::optional<bool>(false));   // SC-012: the state it had before
-    PB_CHECK(has_rule(out.notices, "W-STO-03"));
+    PB_CHECK(!has_rule(out.notices, "W-STO-03"));                  // not announced: that is too chatty (2026-10-29)
 }
 
 PB_TEST(wifi_that_was_already_on_stays_on_and_no_notice_is_shown) {

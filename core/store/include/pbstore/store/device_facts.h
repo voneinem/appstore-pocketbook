@@ -35,7 +35,6 @@ struct WordingArgs {
     std::string repair_kind;    // "install", "update", "remove", "adopt" (Repair)
     bool data_deleted = false;  // Remove: the data folder was deleted as well
     bool repair_finished = true;  // Repair: finished (true) or undone (false)
-    bool wifi_notice = false;   // the store switched Wi-Fi on for this and off again
 };
 
 std::string result_text(const DeviceFacts& facts, WordingOp op, const WordingArgs& args);

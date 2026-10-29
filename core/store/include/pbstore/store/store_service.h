@@ -201,7 +201,6 @@ private:
     std::shared_ptr<install::PlanHandle> plan_;
     std::optional<install::Plan> removal_plan_;      // the last removal, for the optional deletion of the data folder
     std::shared_ptr<install::PlanHandle> delete_plan_;
-    bool wifi_notice_ = false;
     bool repair_pending_ = false;
     RepairStatus repair_status_;
     std::set<std::string> needs_repair_;

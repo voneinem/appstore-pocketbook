@@ -84,11 +84,11 @@ PB_TEST(install_downloads_shows_the_engines_plan_writes_only_after_the_confirmat
     PB_CHECK(compare(apps_only(before), apps_only(snapshot(r.rig.root()))).identical);   // nothing written before the confirmation
     PB_CHECK_EQ(r.rig.radio.count("connect"), 1);                          // Wi-Fi was needed for the download ...
     PB_CHECK(r.rig.radio.is_on() == std::optional<bool>(false));           // ... and is off again
-    PB_CHECK(has_rule(plan.notices, "W-STO-03"));
+    PB_CHECK(!has_rule(plan.notices, "W-STO-03"));
     ExecView done = r.service->execute_plan(kUnknown, false, r.cancel, nullptr);
     PB_CHECK(done.ok);
     PB_CHECK(has(done.text, "is installed"));
-    PB_CHECK(has(done.text, "Wi-Fi was switched on for this and switched off again"));
+    PB_CHECK(!has(done.text, "Wi-Fi"));                                  // the switch is not announced (2026-10-29)
     PB_CHECK(r.rig.storage.state->size("pending-note.txt") == UINT64_MAX);   // the note is gone after a finished result
     PB_CHECK(find(done.view.rows, "testapp")->state == RowState::Installed);
     std::ifstream rec(r.rig.root() + "/system/pbstore/installed/testapp.json");

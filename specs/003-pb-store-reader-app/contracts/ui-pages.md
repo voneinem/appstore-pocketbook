@@ -64,7 +64,7 @@ Order of the notes: the self-update note, then "needs repair", then "this versio
 | Repair | "The interrupted <kind> of <App> was <finished|undone>. If the menu looks wrong, restart the reader." |
 | Update of PB Store (result page) | "PB Store <version> is installed. It takes effect when you open PB Store again." (not a reader restart) |
 | First screen after the swap | "PB Store was updated to <version>." (shown once; from `last-run-version`, data-model SelfUpdateView) |
-| After a Wi-Fi switch by the store | adds "Wi-Fi was switched on for this and switched off again." |
+| After a Wi-Fi switch by the store | adds nothing (the notice was dropped 2026-10-29; only W-STO-02, Wi-Fi could not be switched off again, is shown) |
 
 When a device task settles a fact, the matching rows change (for example `RestartNeeded = No` removes the restart sentences, `Yes`
 replaces them by "Restart the reader now to see it.") and a test per combination checks the texts.

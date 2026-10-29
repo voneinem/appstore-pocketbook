@@ -33,7 +33,7 @@ public:
     // Nothing: the connection is ready. E-STO-02 if no connection could be made within 30 seconds, if it was refused at once,
     // or if the user cancelled. After a failure end() must still be called (it also runs from the destructor).
     std::optional<Finding> begin(const Cancelled& cancelled = nullptr);
-    // W-STO-03 when the session switched Wi-Fi on and switched it off again; W-STO-02 when it could not; nothing otherwise.
+    // W-STO-02 when the session switched Wi-Fi on and could not switch it off again; nothing otherwise (switching it off again is not announced).
     std::optional<Finding> end();
 
     bool switched_on_by_store() const { return switched_on_; }

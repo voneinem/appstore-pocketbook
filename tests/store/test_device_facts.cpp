@@ -150,14 +150,10 @@ PB_TEST(the_self_update_text_is_about_opening_pb_store_again_never_about_restart
         }
 }
 
-PB_TEST(the_wifi_notice_is_appended_when_the_store_switched_it_on) {
+PB_TEST(no_result_text_mentions_wifi) {
     DeviceFacts f;
-    WordingArgs a = args();
-    a.wifi_notice = true;
-    const std::string t = result_text(f, WordingOp::Install, a);
-    const std::string notice = "Wi-Fi was switched on for this and switched off again.";
-    PB_CHECK(t.size() > notice.size() && t.substr(t.size() - notice.size()) == notice);
-    PB_CHECK(!has(result_text(f, WordingOp::Install, args()), "Wi-Fi"));
+    for (WordingOp op : {WordingOp::Install, WordingOp::Update, WordingOp::Remove, WordingOp::Adopt, WordingOp::Repair, WordingOp::SelfUpdate})
+        PB_CHECK(!has(result_text(f, op, args()), "Wi-Fi"));
 }
 
 PB_TEST_MAIN()
