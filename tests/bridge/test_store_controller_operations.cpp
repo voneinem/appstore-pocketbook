@@ -38,6 +38,15 @@ bool wait_for(const std::function<bool()>& done, int ms = 20000) {
     return true;
 }
 
+// The nested sample app with `extra` more files, so that its plan lists more files than the plan page shows unfolded.
+SampleApp app_with_files(size_t extra, const std::string& version = "1.2.0") {
+    SampleApp app = nested_sample_app("testapp", version);
+    for (size_t i = 0; i < extra; ++i)
+        app.files.push_back(file("applications/testapp/lib/part" + std::to_string(i) + ".bin", pseudo_bytes(300, static_cast<unsigned>(i) + 100)));
+    app.manifest.set("files", files_value(app.files));
+    return app;
+}
+
 const QStringList kConsents = {QStringLiteral("unknown-model"), QStringLiteral("unknown-firmware")};
 
 struct Rig {
@@ -45,13 +54,15 @@ struct Rig {
     std::unique_ptr<store::StoreService> service;
     std::unique_ptr<StoreController> controller;
     explicit Rig(const FakeReader& r = FakeReader()) : rig(r) {}
-    bool prepare(bool with_v2 = false) {
+    bool prepare(bool with_v2 = false, const SampleApp* catalog_app = nullptr) {
         app();
         if (!rig.ready()) return false;
         if (with_v2) {
             install::CancelToken unused;
             CatalogEntry& e = rig.host.add_app(nested_sample_app_v2("testapp", "U_TestApp", "1.3.0"));
             e.listed_versions = {"1.2.0", "1.3.0"};
+        } else if (catalog_app) {
+            rig.host.add_app(*catalog_app);
         } else {
             rig.host.add_app(nested_sample_app("testapp", "1.2.0"));
         }
@@ -179,6 +190,54 @@ PB_TEST(declining_an_app_in_update_all_skips_it) {
     PB_CHECK(r.controller->resultText().contains(QStringLiteral("Nothing was updated")));
     r.controller->finishResult();
     PB_CHECK(r.controller->canUpdateAll());                              // still outdated: nothing was changed
+}
+
+PB_TEST(a_plan_with_more_than_eight_files_is_folded_and_toggleFiles_shows_and_hides_the_list) {
+    Rig r;
+    const SampleApp big = app_with_files(8);                              // 6 + 8 = 14 files
+    if (!r.prepare(false, &big)) PB_SKIP("openssl CLI not available");
+    r.controller->startAction(QStringLiteral("Install"), QStringLiteral("testapp"));
+    PB_CHECK(r.phase("plan"));
+    const QString folded = r.controller->planText();
+    PB_CHECK(r.controller->planFileCount() > 8);
+    PB_CHECK(!r.controller->planFilesShown());
+    PB_CHECK(folded.contains(QStringLiteral("files (not listed here)")));
+    PB_CHECK(!folded.contains(QStringLiteral("part0.bin")));
+    r.controller->toggleFiles();
+    PB_CHECK(r.controller->planFilesShown());
+    PB_CHECK(r.controller->planText().contains(QStringLiteral("part0.bin")));
+    PB_CHECK(!r.controller->planText().contains(QStringLiteral("not listed here")));
+    PB_CHECK(r.controller->planFileCount() > 8);   // the count stays while the list is shown (the button says Hide)
+    r.controller->toggleFiles();
+    PB_CHECK(r.controller->planText() == folded);
+    r.controller->decline();
+}
+
+PB_TEST(a_plan_with_few_files_is_not_folded) {
+    Rig r;
+    if (!r.prepare()) PB_SKIP("openssl CLI not available");
+    r.controller->startAction(QStringLiteral("Install"), QStringLiteral("testapp"));
+    PB_CHECK(r.phase("plan"));
+    PB_CHECK_EQ(r.controller->planFileCount(), 0);                       // no Show the files control
+    PB_CHECK(!r.controller->planText().contains(QStringLiteral("not listed here")));
+    r.controller->decline();
+}
+
+PB_TEST(the_word_Replace_starts_a_replace_plan_for_an_app_put_there_by_hand) {
+    FakeReader hand;
+    hand.add_hand_installed(nested_sample_app("testapp", "1.1.0"));      // other files than the catalog's package
+    Rig r(hand);
+    if (!r.prepare()) PB_SKIP("openssl CLI not available");
+    const store::AppRow* row = r.controller->model()->find(QStringLiteral("testapp"));
+    PB_CHECK(row && row->state == store::RowState::InstalledOutside);
+    r.controller->startAction(QStringLiteral("Replace"), QStringLiteral("testapp"));
+    PB_CHECK(r.phase("plan"));
+    PB_CHECK(r.controller->planText().contains(QStringLiteral("Plan: Replace")));
+    bool asksToReplace = false;
+    for (const QVariant& c : r.controller->confirmations())
+        if (c.toMap().value(QStringLiteral("name")).toString() == QLatin1String("replace")) asksToReplace = true;
+    PB_CHECK(asksToReplace);
+    r.controller->decline();
 }
 
 PB_TEST_MAIN()
