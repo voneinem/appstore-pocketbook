@@ -289,6 +289,7 @@ void StoreController::startAction(const QString& action, const QString& appId) {
     if (action == QLatin1String("Update")) a = pbstore::store::RowAction::Update;
     else if (action == QLatin1String("Remove")) a = pbstore::store::RowAction::Remove;
     else if (action == QLatin1String("Check") || action == QLatin1String("Adopt")) a = pbstore::store::RowAction::Check;
+    else if (action == QLatin1String("Replace")) a = pbstore::store::RowAction::Replace;
     const AppRow* row = model_.find(appId);
     action_ = action;
     appId_ = appId;

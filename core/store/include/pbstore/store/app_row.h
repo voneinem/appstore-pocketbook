@@ -17,7 +17,7 @@ namespace pbstore {
 namespace store {
 
 enum class RowState { NotInstalled, Installed, UpdateAvailable, InstalledOutside, NotInCatalog };
-enum class RowAction { Install, Update, Remove, Check, Adopt };
+enum class RowAction { Install, Update, Remove, Check, Adopt, Replace };
 
 const char* state_words(RowState state);   // "Not installed", "Installed", "Update available", "Installed outside the store", "Not in the catalog"
 const char* state_icon(RowState state);    // the name of the icon (a separate role: the state is never colour or position only)

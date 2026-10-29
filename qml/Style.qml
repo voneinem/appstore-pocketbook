@@ -18,12 +18,12 @@ QtObject {
 
     readonly property int touchMin: 120              // the hit area of every control
     readonly property int gap: 16                    // the space between two controls
-    readonly property int barHeight: 136
+    readonly property int barHeight: 120
     readonly property int rowHeight: 160
     readonly property int footerHeight: 140
     readonly property int pad: 30
 
-    readonly property int iconTop: 56
+    readonly property int iconTop: 56      // the icons of the top bar, drawn alone (no word under them), as in PB Notes
     readonly property int iconRow: 64
 
     readonly property int titleSize: 44

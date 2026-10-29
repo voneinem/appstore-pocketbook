@@ -14,7 +14,7 @@
 #      implicitWidth or implicitHeight below 120.
 #   S3 A Flickable, ListView, GridView or ScrollView sets boundsBehavior: Flickable.StopAtBounds (no kinetic overshoot).
 #   S4 Text is at least 32 px: font.pixelSize below 32 and Style.bodySize below 32 fail; font.pointSize is not used.
-#   S5 An IconButton inside a TopBar has a non-empty label (every icon control also shows a word).
+#   S5 An IconButton inside a TopBar has a non-empty label (its name for the tests and assistive software; since 2026-10-29 it is not drawn).
 #   S6 Text is black on white: a Text, Label or SelectableText with a literal color other than black or white fails
 #      (grey comes only from the named Style colors of a disabled control).
 #   S7 A list row is 160 px: rowHeight and the height of an InkRow, when literal, are 160.

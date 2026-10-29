@@ -1,6 +1,7 @@
 import QtQuick
 
-// The bar at the top of every page: the title at the left (capitals), the icon controls at the right, a hairline underneath.
+// The bar at the top of every page, laid out as in PB Notes: the icon controls at the left (Home or Back, a menu), the title in capitals
+// in the middle, the icon controls at the right, a hairline underneath. The controls carry no words.
 Item {
     id: root
     property string title
@@ -12,23 +13,23 @@ Item {
 
     Row {
         id: leftRow
-        x: 14
+        x: 8
         y: (Style.barHeight - Style.touchMin) / 2
-        spacing: Style.gap
     }
     Row {
         id: rightRow
-        x: root.width - width - 14
+        x: root.width - width - 8
         y: (Style.barHeight - Style.touchMin) / 2
-        spacing: Style.gap
     }
     Text {
         objectName: "topBarTitle"
-        x: leftRow.width > 0 ? leftRow.width + 28 : Style.pad
+        readonly property real side: Math.max(leftRow.width, rightRow.width) + 24
+        x: side
         height: Style.barHeight
-        width: Math.max(0, rightRow.x - x - 10)
+        width: Math.max(0, root.width - 2 * side)
         text: root.title
         elide: Text.ElideRight
+        horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: Style.titleSize
         font.capitalization: Font.AllUppercase

@@ -261,6 +261,7 @@ install::Action::Type action_type(RowAction a) {
         case RowAction::Remove: return install::Action::Type::Remove;
         case RowAction::Check:
         case RowAction::Adopt: return install::Action::Type::Adopt;
+        case RowAction::Replace: return install::Action::Type::Replace;
     }
     return install::Action::Type::Install;
 }
@@ -272,6 +273,7 @@ const char* kind_name(RowAction a) {
         case RowAction::Remove: return "remove";
         case RowAction::Check:
         case RowAction::Adopt: return "adopt";
+        case RowAction::Replace: return "replace";
     }
     return "";
 }
@@ -283,6 +285,7 @@ PowerOperation power_op(RowAction a, bool is_store) {
         case RowAction::Remove: return PowerOperation::Remove;
         case RowAction::Check:
         case RowAction::Adopt: return PowerOperation::Adopt;
+        case RowAction::Replace: return PowerOperation::Update;      // it writes the app's files like an update
     }
     return PowerOperation::Install;
 }
@@ -408,6 +411,7 @@ ExecView StoreService::execute_plan(const std::vector<std::string>& given_names,
     if (plan.kind == install::PlanKind::Update) action = RowAction::Update;
     else if (plan.kind == install::PlanKind::Remove) action = RowAction::Remove;
     else if (plan.kind == install::PlanKind::Adopt) action = RowAction::Adopt;
+    else if (plan.kind == install::PlanKind::Replace) action = RowAction::Replace;
     // the battery again, immediately before the first write (spec FR-016)
     const PowerDecision power = decide_power(power_op(action, is_store), parts_.battery.percent(), parts_.battery.charging());
     if (power.result == PowerResult::Refused || (power.result == PowerResult::NeedsRiskConfirmation && !accept_unknown_battery)) {

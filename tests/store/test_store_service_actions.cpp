@@ -395,4 +395,38 @@ PB_TEST(updating_pb_store_itself_is_staged_the_record_says_the_new_version_and_t
     PB_CHECK(says_failed);
 }
 
+PB_TEST(an_app_put_there_by_hand_that_differs_from_the_catalog_package_is_replaced_after_the_check_says_it_differs) {
+    FakeReader hand;
+    hand.add_hand_installed(nested_sample_app("testapp", "1.1.0"));       // another build than the catalog's 1.2.0
+    Rig r(hand);
+    if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
+    r.prepare();
+    std::vector<AppRow> rows = r.service->rows("");
+    const AppRow* row = find(rows, "testapp");
+    PB_CHECK(row && row->state == RowState::InstalledOutside);
+    PB_CHECK(std::find(row->actions.begin(), row->actions.end(), RowAction::Check) != row->actions.end());
+    PB_CHECK(std::find(row->actions.begin(), row->actions.end(), RowAction::Replace) != row->actions.end());
+    PlanView check = r.service->plan_action(RowAction::Check, "testapp", r.cancel, nullptr);   // the files differ: no adoption
+    PB_CHECK(!check.ok);
+    PB_CHECK(has_rule(check.findings, "E-INS-20"));
+    PlanView plan = r.service->plan_action(RowAction::Replace, "testapp", r.cancel, nullptr);
+    PB_CHECK(plan.ok);
+    PB_CHECK(has(plan.text, "Plan: Replace"));
+    bool asks = false;
+    for (const auto& c : plan.confirmations) if (c.name == "replace") asks = true;
+    PB_CHECK(asks);
+    ExecView missing = r.service->execute_plan(kUnknown, false, r.cancel, nullptr);                 // without the consent to replace
+    PB_CHECK(!missing.ok);
+    PlanView again = r.service->plan_action(RowAction::Replace, "testapp", r.cancel, nullptr);
+    PB_CHECK(again.ok);
+    std::vector<std::string> given = kUnknown;
+    given.push_back("replace");
+    ExecView out = r.service->execute_plan(given, false, r.cancel, nullptr);
+    PB_CHECK(out.ok);
+    PB_CHECK(has(out.text, "is installed"));
+    const AppRow* after = find(out.view.rows, "testapp");
+    PB_CHECK(after && after->state == RowState::Installed);
+    PB_CHECK(after->installed_version == "1.2.0");
+}
+
 PB_TEST_MAIN()

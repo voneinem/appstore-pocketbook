@@ -11,16 +11,25 @@ Item {
     // an interrupted operation is shown before anything else (story 6)
     Component.onCompleted: if (store.repairPending) page.nav.push(Qt.resolvedUrl("RepairPage.qml"), {"nav": page.nav})
 
+    property bool menuOpen: false
+
     TopBar {
         id: bar
         title: qsTr("PB Store")
-        // Home leaves the store: the house icon at the top left of the main screen, as in the reader's own apps
+        // Home leaves the store: the house icon at the top left of the main screen, as in the reader's own apps. The menu beside it holds
+        // the rarer controls; Refresh and Search stay in reach at the right (the look of PB Notes).
         leftItems: [
             IconButton {
                 objectName: "home"
                 label: qsTr("Home")
                 icon: "home"
                 onClicked: device.quit()
+            },
+            IconButton {
+                objectName: "menu"
+                label: qsTr("Menu")
+                icon: "menu"
+                onClicked: page.menuOpen = !page.menuOpen
             }
         ]
         rightItems: [
@@ -29,39 +38,13 @@ Item {
                 label: qsTr("Refresh")
                 icon: "refresh"
                 enabled: !store.busy
-                onClicked: store.refresh()
-            },
-            IconButton {
-                objectName: "updateAll"
-                visible: store.canUpdateAll
-                label: qsTr("Update all")
-                icon: "update-all"
-                enabled: !store.busy
-                onClicked: {
-                    store.startUpdateAll()
-                    page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})
-                }
+                onClicked: { page.menuOpen = false; store.refresh() }
             },
             IconButton {
                 objectName: "search"
                 label: qsTr("Search")
                 icon: "search"
-                onClicked: page.searching = !page.searching
-            },
-            IconButton {
-                objectName: "settings"
-                label: qsTr("Settings")
-                icon: "gear"
-                onClicked: {
-                    store.loadSettings()
-                    page.nav.push(Qt.resolvedUrl("SettingsPage.qml"), {"nav": page.nav})
-                }
-            },
-            IconButton {
-                objectName: "about"
-                label: qsTr("About")
-                icon: "info"
-                onClicked: page.nav.push(Qt.resolvedUrl("AboutPage.qml"), {"nav": page.nav})
+                onClicked: { page.menuOpen = false; page.searching = !page.searching }
             }
         ]
     }
@@ -189,5 +172,61 @@ Item {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: Style.footerHeight
         PageButtons { id: pages; objectName: "pageButtons"; anchors.centerIn: parent; target: list; snap: Style.rowHeight; onTurned: store.pageTurned() }
+    }
+
+    // the menu: a closed panel under the bar; a tap anywhere else closes it
+    MouseArea { anchors.fill: parent; visible: page.menuOpen; z: 9; onClicked: page.menuOpen = false }
+    Rectangle {
+        id: menuPanel
+        objectName: "menuPanel"
+        visible: page.menuOpen
+        z: 10
+        x: Style.pad
+        y: bar.height
+        width: 560
+        height: menuColumn.height + 2 * Style.ruleWidth
+        color: Style.paper
+        radius: Style.radiusDialog
+        border.width: Style.ruleWidth
+        border.color: Style.ink
+        Column {
+            id: menuColumn
+            x: Style.ruleWidth
+            y: Style.ruleWidth
+            width: parent.width - 2 * Style.ruleWidth
+            component MenuRow: Item {
+                property alias text: rowText.text
+                signal chosen()
+                width: parent.width
+                height: Style.touchMin
+                Rectangle { anchors.fill: parent; color: Style.pressed; visible: rowTapArea.pressed; radius: Style.radiusField }
+                Text { id: rowText; x: Style.pad; width: parent.width - 2 * Style.pad; height: parent.height; verticalAlignment: Text.AlignVCenter; font.pixelSize: Style.rowTitleSize; color: Style.ink }
+                MouseArea { id: rowTapArea; anchors.fill: parent; onClicked: { page.menuOpen = false; parent.chosen() } }
+            }
+            MenuRow {
+                objectName: "menuUpdateAll"
+                visible: store.canUpdateAll
+                height: visible ? Style.touchMin : 0
+                text: qsTr("Update all")
+                enabled: !store.busy
+                onChosen: {
+                    store.startUpdateAll()
+                    page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})
+                }
+            }
+            MenuRow {
+                objectName: "menuSettings"
+                text: qsTr("Settings")
+                onChosen: {
+                    store.loadSettings()
+                    page.nav.push(Qt.resolvedUrl("SettingsPage.qml"), {"nav": page.nav})
+                }
+            }
+            MenuRow {
+                objectName: "menuAbout"
+                text: qsTr("About")
+                onChosen: page.nav.push(Qt.resolvedUrl("AboutPage.qml"), {"nav": page.nav})
+            }
+        }
     }
 }

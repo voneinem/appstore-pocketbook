@@ -103,7 +103,7 @@ needed, and it asks for a confirmation when the firmware version cannot be read.
 - Q: How does the user leave the store? → A: With the Home control (a house icon) at the top left of the main screen, and with the reader's home key where it has one; sub screens have Back (<) at the top left, as the reader's own apps do (changed 2026-10-29 after the first device test: the owner's InkPad One has no home button that leaves the app; the earlier decision "home key only" is withdrawn).
 - Q: What happens on sleep or when the USB cable is connected during an operation? → A: Handled exactly like the home key
   (FR-025); which events the reader sends is a device fact (DS-13).
-- Q: Which readability rules does the spec add? → A: Every icon control in the top bar also shows a text label (FR-009).
+- Q: Which readability rules does the spec add? → A: Icon controls in the top bar are drawn alone, as in PB Notes (changed 2026-10-29 after the second device test: the owner showed PB Notes as the model; the earlier rule "every icon control also shows a word" is withdrawn). Each control keeps a name for tests and assistive software (FR-009). The title is centered; Home (house) and a menu (hamburger: Update all, Settings, About) are at the left, Refresh and Search at the right.
   A minimum text size of 32 px is added (FR-009), with black text on white and grey only for disabled controls; the device check DS-10 may tighten this.
 - Q: What does the store say about a withdrawn version that is installed? → A: A note "this version was withdrawn" on the
   list and detail page, PB Store's own included; nothing is changed (FR-013).
@@ -543,8 +543,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   on the same page of the same list (the same search). Nothing may animate: "animation" is any change of the screen that
   no tap and no progress step caused, such as a spinner, a blinking cursor, a fade, kinetic scrolling or a moving
   indeterminate bar; the flash of a full refresh is not animation. A tapped control is drawn in its pressed (inverted) state at
-  once; while an operation runs the action controls are drawn disabled. Every icon control in the top bar also
-  shows a short text label (Refresh, Search, Update all, Settings, About, Home). Text is at least 32 px high (about 7.7 pt
+  once; while an operation runs the action controls are drawn disabled. The icon controls in the top bar are drawn
+  alone, without a word, as in PB Notes (changed 2026-10-29); each has a name (Refresh, Search, Menu, Home, Back) for tests and assistive software. Text is at least 32 px high (about 7.7 pt
   at 300 ppi) on every screen and is black on white; grey is used only for disabled controls, never for text the user must read.
   A full screen refresh is requested at start, when the kind of page changes (list, plan, progress, result), after every
   tenth page turn and on leaving; the constants are tuned after the device check DS-10 (contracts/ui-pages.md).

@@ -37,6 +37,7 @@ const char* action_words(RowAction a) {
         case RowAction::Remove: return "Remove";
         case RowAction::Check: return "Check";
         case RowAction::Adopt: return "Adopt";
+        case RowAction::Replace: return "Replace";
     }
     return "";
 }
@@ -98,6 +99,7 @@ std::vector<AppRow> build_rows(const std::vector<install::AppEntry>& entries, co
                 break;
             case RowState::InstalledOutside:
                 r.actions.push_back(RowAction::Check);
+                if (e.offered) r.actions.push_back(RowAction::Replace);      // the files differ from the catalog's: the catalog's package can take their place
                 break;
             case RowState::NotInCatalog:
                 if (r.has_record) r.actions.push_back(RowAction::Remove);
