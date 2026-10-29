@@ -40,6 +40,12 @@ Item {
                 label: qsTr("About")
                 icon: "info"
                 onClicked: page.nav.push(Qt.resolvedUrl("AboutPage.qml"), {"nav": page.nav})
+            },
+            IconButton {
+                objectName: "exit"
+                label: qsTr("Exit")
+                icon: "close"
+                onClicked: device.quit()
             }
         ]
     }
