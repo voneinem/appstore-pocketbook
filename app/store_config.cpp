@@ -16,6 +16,11 @@ namespace app {
 extern const char kVersionTag[] = "PBSTORE_APP_VERSION=" PBSTORE_APP_VERSION;
 extern const char kReleaseDateTag[] = "PBSTORE_RELEASE_DATE=" PBSTORE_RELEASE_DATE;
 
+#ifdef PBSTORE_DEV_BUILD
+// A dev or test build for the device says so, so that scripts/check-store-binary.sh can refuse it in a release package.
+extern const char kDevBuildMarker[] = "PBSTORE_DEV_BUILD_MARKER";
+#endif
+
 install::Config make_engine_config() {
     install::Config config;
     config.catalog_url = install::catalog_url();

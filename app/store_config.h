@@ -14,6 +14,10 @@ namespace app {
 extern const char kVersionTag[];
 extern const char kReleaseDateTag[];
 
+#ifdef PBSTORE_DEV_BUILD
+extern const char kDevBuildMarker[];
+#endif
+
 install::Config make_engine_config();
 store::StoreConfig make_store_config();
 

@@ -14,7 +14,7 @@
 #   2. the tag PBSTORE_RELEASE_DATE=<app/RELEASE_DATE> is in the program (the floor of the clock check),
 #   3. no name of a test build or an override: PBSTORE_TEST_*, PBSTORE_CATALOG_URL, PBSTORE_CA_FILE, PBSTORE_STATE_DIR,
 #      PBSTORE_INSECURE, PBSTORE_NO_VERIFY, PBSTORE_KEY*, and no TLS switch name (--insecure, verify=0),
-#   4. every public key of keys/trusted/*.pub is in the program (as the 32 raw bytes the build compiles in),
+#   4. every public key of keys/trusted/*.pub is in the program (as the base64 text the build compiles in),
 #   5. the dev marker: present exactly when --dev is given.
 set -euo pipefail
 
@@ -51,17 +51,14 @@ if grep -aqE -- '--insecure|verify=0|VERIFYPEER=0' "$BIN"; then
     problem "a name that switches certificate checking off is in the program"
 fi
 
-# every trusted key, as hex of its raw bytes, in the hex of the program
-hexfile="$(mktemp)"
-trap 'rm -f "$hexfile"' EXIT
-od -An -v -tx1 "$BIN" | tr -d ' \n' > "$hexfile"
+# every trusted key: the program holds each public key of keys/trusted/ as its base64 text (core/install/src/build_config.cpp)
 nkeys=0
 for k in "$ROOT"/keys/trusted/*.pub; do
     [ -f "$k" ] || continue
     nkeys=$((nkeys + 1))
-    keyhex="$(tr -d '[:space:]' < "$k" | base64 -d | od -An -v -tx1 | tr -d ' \n')"
-    [ "${#keyhex}" -eq 64 ] || { problem "$(basename "$k") is not a 32-byte key"; continue; }
-    grep -qF "$keyhex" "$hexfile" || problem "the trusted key $(basename "$k") is not in the program"
+    keytext="$(tr -d '[:space:]' < "$k")"
+    [ "$(printf '%s' "$keytext" | base64 -d 2>/dev/null | wc -c)" -eq 32 ] || { problem "$(basename "$k") is not a 32-byte key"; continue; }
+    grep -aqF -- "$keytext" "$BIN" || problem "the trusted key $(basename "$k") is not in the program"
 done
 [ "$nkeys" -gt 0 ] || problem "keys/trusted/ holds no key"
 

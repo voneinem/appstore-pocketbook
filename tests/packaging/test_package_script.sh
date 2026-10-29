@@ -32,8 +32,8 @@ DATE="$(head -n 1 "$ROOT/app/RELEASE_DATE" | tr -d '[:space:]')"
 lower="0.0.1"                                   # a version below the release, for dev packages
 above="99.0.0"
 
-# the raw bytes of every trusted key, as the program has them compiled in
-keys_bytes() { for k in "$ROOT"/keys/trusted/*.pub; do tr -d '[:space:]' < "$k" | base64 -d; done; }
+# every trusted key as the program has it compiled in: its base64 text
+keys_bytes() { for k in "$ROOT"/keys/trusted/*.pub; do tr -d '[:space:]' < "$k"; printf '\0'; done; }
 
 # a fake program; $1 = version; the rest are extra strings put into it
 fake() {
