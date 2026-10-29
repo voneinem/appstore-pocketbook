@@ -312,6 +312,24 @@ launch >/dev/null
 check [ "$(ran)" = "new new" ]                                                              # tried again, without a second swap
 check [ ! -e "$R/message" ]
 
+# 18b. the system refusing the GPU (exit 134 with mali0 in the log, also at the retry) is not a failure of the new version: no rollback, nothing
+#      recorded as failed, no message; the marker stays, so the next start runs the same new version again and may succeed
+p_gpu() { printf '#!/bin/sh\necho "%s" >> "%s/runs"\necho "failed to open device file /dev/mali0 with errno 13" >&2\nkill -ABRT $$\n' "$1" "$tmp"; }
+with_update p_gpu
+launch >/dev/null
+check [ "$(ran)" = "new new" ]                                                              # the start and the one retry; the old version did not run
+check [ ! -e "$R/pbstore.bin.failed" ]
+check [ ! -e "$R/message" ]
+check [ -e "$R/trying" ]
+check same "$APPDIR/pbstore.bin" "$R/pbstore.bin"                                       # the run copy is the new program
+p_good new > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"                            # the GPU is available at the next start (the package did not change in kind)
+cp "$APPDIR/pbstore.bin" "$R/pbstore.bin"; chmod +x "$R/pbstore.bin"
+rm -f "$tmp/runs"
+launch >/dev/null
+check [ "$(ran)" = "new" ]
+check [ ! -e "$R/trying" ]
+check [ ! -e "$R/message" ]
+
 # 19. the very first start after an install: a crash has no previous program to go back to; nothing is recorded as failed
 fresh "$GOOD"
 p_crash first > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"

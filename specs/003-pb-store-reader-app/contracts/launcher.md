@@ -41,7 +41,7 @@ cut the power after any of them. The shipped script holds no test hook; the test
 | S4 | **swap decision**, only if `$TRYING` is absent: skip if `$JOURNAL` exists (the engine may be replacing `PKG`); skip if `PKG` is missing; skip if `equal PKG BIN`; skip if `equal PKG FAILED` (it already failed: never tried again by itself, FR-035); otherwise **SWAP** | |
 | S5 | if `$BIN` is missing: write `no-program` to the log, exit 1 | |
 | S6 | write `running` to `$LASTEXIT`; run `$BIN` with the Qt environment of PB Cloud's launcher through the log filter; write its exit status to `$LASTEXIT` | yes |
-| S7 | if the status is not 0 and `$TRYING` exists → **ROLLBACK**, and if R3 restored a previous program, run S6 once more with it (so the user needs no second tap; with no previous program, as after a first install, there is nothing to run instead). If the status is 134 and the log shows `mali0`: one retry after 2 s, as PB Cloud does | |
+| S7 | if the status is not 0 and `$TRYING` exists → **ROLLBACK**, and if R3 restored a previous program, run S6 once more with it (so the user needs no second tap; with no previous program, as after a first install, there is nothing to run instead). If the status is 134 and the log shows `mali0`: one retry after 2 s, as PB Cloud does. If the retry is refused as well, the program never ran: this is **not** a failure of the version (seen 2026-10-29 on the first start after a restart, when `/dev/mali0` was still `crw-rw----`): no ROLLBACK, no `failed` file, no message, `last-exit` holds `gpu` and S3 at the next start treats it like status 0 (the marker stays, no swap, no rollback) | |
 | S8 | exit with the program's last status | |
 
 ### SWAP (a new program is in `PKG`)

@@ -112,13 +112,13 @@ rollback() {
 
 # S3: the marker is present: the previous start did not reach its first screen. Left early with status 0: not a failure, keep the
 # marker and do not swap again. Anything else (a failure status, or no status because the launcher itself was cut) is a failed start.
-# last-exit says what became of the previous run: missing, the program was never started (the power went before S6); "running", it was
+# last-exit says what became of the previous run: "gpu", the system refused the GPU (the program never ran: not a failure); missing, the program was never started (the power went before S6); "running", it was
 # started and the launcher was killed or hung (a power-off, a hang); a number, its exit status.
 if [ -e "$TRYING" ]; then
     last=""
     [ -f "$LASTEXIT" ] && last=$(cat "$LASTEXIT" 2>/dev/null)
-    if [ "$last" = 0 ]; then
-        echo "--- the previous start left before its first screen; no swap this time"
+    if [ "$last" = 0 ] || [ "$last" = gpu ]; then
+        echo "--- the previous start left before its first screen ($last); no swap this time"
     elif [ -z "$last" ] && [ -e "$BIN" ]; then
         echo "--- a program was put in place but never started: starting it"
     else
@@ -236,19 +236,27 @@ run_app
 code=$?
 echo "=== pbstore.bin exit code: $code ==="
 
-# S7: seen once on PB Cloud: the system refused the GPU node (/dev/mali0, errno 13) and Qt aborted at once (exit 134). A reboot
-# cleared it; try exactly one more time and record both results.
+# S7: seen on PB Cloud and again on the first start after a restart: the system refused the GPU node (/dev/mali0, errno 13) and Qt
+# aborted at once (exit 134). The node is opened up some time after the reader has started; try exactly one more time and record both
+# results. A program that was refused the GPU never ran, so this is no failure of the version: gpu_refused keeps the rollback away.
+gpu_refused=0
 if [ "$code" -eq 134 ] && tail -c +"$((mark + 1))" "$LOG" 2>/dev/null | grep -q 'mali0'; then
     echo "=== pbstore: GPU device refused (mali0), retrying once in 2 s ==="
     sleep 2
+    mark=$(wc -c < "$LOG" 2>/dev/null || echo 0)
     run_app
     code=$?
     echo "=== pbstore.bin exit code (retry): $code ==="
+    if [ "$code" -eq 134 ] && tail -c +"$((mark + 1))" "$LOG" 2>/dev/null | grep -q 'mali0'; then
+        gpu_refused=1
+        mut_write "gpu" "$LASTEXIT"      # the next start does not read the status 134 as a failed version
+        echo "=== pbstore: the system still refuses the GPU; this is not a failure of the version (start it again in a minute) ==="
+    fi
 fi
 
 # S7 (continued): the program ended abnormally before its first screen (the marker is still there): the previous version is restored and
 # run in this same start, so that the user needs no second tap. With no previous program (a first install) there is nothing to run instead.
-if [ "$code" -ne 0 ] && [ -e "$TRYING" ]; then
+if [ "$code" -ne 0 ] && [ "$gpu_refused" -eq 0 ] && [ -e "$TRYING" ]; then
     echo "=== pbstore: the new version did not start (status $code); restoring the previous version ==="
     if rollback; then
         run_app
