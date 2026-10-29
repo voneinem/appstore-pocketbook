@@ -37,10 +37,10 @@ cut the power after any of them. The shipped script holds no test hook; the test
 | S0 | `mkdir -p $R`; keep the previous launcher log as `.prev` | yes |
 | S1 | `rm -f $TMP` | yes |
 | S2 | if `$TRYING` is **absent** and `$OLD` exists: the program that is running now started once, so `rm -f $OLD` (the previous version is no longer needed) | yes |
-| S3 | if `$TRYING` is **present**: if `$LASTEXIT` exists and holds `0` the user left before the first screen — keep `$TRYING`, go to S5 (no swap). Otherwise (abnormal or missing) → **ROLLBACK** | yes |
+| S3 | if `$TRYING` is **present**: read `$LASTEXIT`. `0`: the user left before the first screen — keep `$TRYING`, go to S5 (no swap). **Missing** (the power went before S6) and `$BIN` present: a program was put in place but never started — go to S5 and start it. Otherwise (`running`: the program was started and the launcher was killed or hung; or a failure status; or missing with no `$BIN`) → **ROLLBACK** | yes |
 | S4 | **swap decision**, only if `$TRYING` is absent: skip if `$JOURNAL` exists (the engine may be replacing `PKG`); skip if `PKG` is missing; skip if `equal PKG BIN`; skip if `equal PKG FAILED` (it already failed: never tried again by itself, FR-035); otherwise **SWAP** | |
 | S5 | if `$BIN` is missing: write `no-program` to the log, exit 1 | |
-| S6 | `rm -f $LASTEXIT`; run `$BIN` with the Qt environment of PB Cloud's launcher through the log filter; write its exit status to `$LASTEXIT` | yes |
+| S6 | write `running` to `$LASTEXIT`; run `$BIN` with the Qt environment of PB Cloud's launcher through the log filter; write its exit status to `$LASTEXIT` | yes |
 | S7 | if the status is not 0 and `$TRYING` exists → **ROLLBACK**, and if R3 restored a previous program, run S6 once more with it (so the user needs no second tap; with no previous program, as after a first install, there is nothing to run instead). If the status is 134 and the log shows `mali0`: one retry after 2 s, as PB Cloud does | |
 | S8 | exit with the program's last status | |
 
@@ -80,7 +80,7 @@ no further automatic attempt. Selected rows:
 | W0 | `trying`, `BIN` old, no `OLD` | S3: no `last-exit` → R0 clears `trying`; S4 swaps again |
 | W2 (partial TMP) | as above plus a partial `TMP` | S1 removes `TMP`; as above |
 | W5 | no `BIN`, `OLD` complete, `TMP` complete, `trying` | S1 removes `TMP`; S3 → ROLLBACK: R3 puts `OLD` back as `BIN`; then swaps again |
-| W6 | `BIN` new, `OLD` old, `trying` | normal unverified start |
+| W6 (and S6 not yet reached) | `BIN` new, `OLD` old, `trying`, no `last-exit` | S3: never started: the new program is started as an unverified start |
 | R2 | no `BIN`, `FAILED`, `OLD`, `trying` | ROLLBACK again; R3 restores |
 | R3 | `BIN` old, `FAILED`, no `OLD`, `trying` | R0 clears `trying`; `FAILED` stops a retry |
 

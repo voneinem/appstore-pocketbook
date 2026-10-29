@@ -77,7 +77,7 @@ fresh 'exit 3'
 launch; code=$?
 check [ "$code" = 3 ]
 check [ "$(cat "$R/last-exit")" = 3 ]
-check [ -e "$R/trying" ]                                                # it never reached its first screen
+check [ ! -e "$R/trying" ]                                              # a first install has nothing to go back to: the marker is removed (R0)
 
 # 3. a second start with an unchanged package does not copy again
 fresh "$GOOD"
@@ -248,6 +248,117 @@ launch
 check [ ! -e "$R/run-probe" ]
 check [ "$(runs)" = 1 ]
 check grep -q 'probe program is missing' "$LOG"
+
+# ---- the swap, the rollback and the power-cut matrix (contracts/launcher.md, tasks T126 and T131) --------------------------------------
+
+# fake programs; each logs its version into $tmp/runs; $1 is the version
+p_good()   { printf '#!/bin/sh\necho "%s" >> "%s/runs"\nrm -f "%s/trying"\nexit 0\n' "$1" "$tmp" "$R"; }
+p_crash()  { printf '#!/bin/sh\necho "%s" >> "%s/runs"\nexit 3\n' "$1" "$tmp"; }
+p_killed() { printf '#!/bin/sh\necho "%s" >> "%s/runs"\nkill -9 $$\n' "$1" "$tmp"; }
+p_noexec() { printf '\177ELF-not-a-program-for-this-computer'; }
+p_early()  { printf '#!/bin/sh\necho "%s" >> "%s/runs"\nexit 0\n' "$1" "$tmp"; }
+ran() { if [ -f "$tmp/runs" ]; then tr '\n' ' ' < "$tmp/runs" | sed 's/ $//'; fi; }
+
+# a device where the old program has started once (it is the run copy), and the package is then replaced by $1 (a function)
+with_update() {
+    fresh "$GOOD"; rm -f "$tmp/runs"
+    p_good old > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"
+    launch >/dev/null
+    rm -f "$tmp/runs"
+    "$1" new > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"
+}
+
+# 16. an update that works: copied, the previous version kept until the new one has started once, then deleted
+with_update p_good
+launch >/dev/null
+check [ "$(ran)" = "new" ]
+check same "$APPDIR/pbstore.bin" "$R/pbstore.bin"
+check [ -e "$R/pbstore.bin.old" ]                                        # kept: the next start deletes it
+check [ ! -e "$R/trying" ]
+check [ ! -e "$R/message" ]
+launch >/dev/null
+check [ ! -e "$R/pbstore.bin.old" ]
+check [ ! -e "$R/pbstore.bin.failed" ]
+
+# 17. a new version that crashes, is killed or cannot be executed: in the same start the old one is back and runs, with a message; the
+#     failed package is not tried again by itself, a different package is
+for kind in crash killed noexec; do
+    with_update p_$kind
+    cp "$APPDIR/pbstore.bin" "$tmp/failed-package"
+    launch >/dev/null
+    check [ "$(ran)" = "$( [ "$kind" = noexec ] && echo old || echo 'new old')" ]       # a program that cannot be executed leaves no line
+    check [ "$(cat "$R/message")" = "update-failed" ]
+    check [ ! -e "$R/trying" ]
+    check cmp -s "$R/pbstore.bin.failed" "$tmp/failed-package"
+    check_not same "$APPDIR/pbstore.bin" "$R/pbstore.bin"                                # the run copy is the old program again
+    rm -f "$tmp/runs" "$R/message"
+    launch >/dev/null; launch >/dev/null; launch >/dev/null
+    check [ "$(ran)" = "old old old" ]                                                     # never tried again by itself
+    check [ ! -e "$R/message" ]
+    p_good newer > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"                 # a different package is tried
+    rm -f "$tmp/runs"
+    launch >/dev/null
+    check [ "$(ran)" = "newer" ]
+    check [ ! -e "$R/pbstore.bin.failed" ]
+done
+
+# 18. a program that is left early with status 0 (the user went away before the first screen) is not a failure: no rollback, no second swap
+with_update p_early
+launch >/dev/null
+check [ "$(ran)" = "new" ]
+check [ -e "$R/trying" ]
+check [ ! -e "$R/message" ]
+launch >/dev/null
+check [ "$(ran)" = "new new" ]                                                              # tried again, without a second swap
+check [ ! -e "$R/message" ]
+
+# 19. the very first start after an install: a crash has no previous program to go back to; nothing is recorded as failed
+fresh "$GOOD"
+p_crash first > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"
+launch >/dev/null
+check [ ! -e "$R/pbstore.bin.failed" ]
+check [ ! -e "$R/message" ]
+
+# 20. the power-cut matrix: power is lost before each mutating command of an update in turn (a copy is cut half-way); then the launcher
+#     runs again, up to four times. The run copy is never a partial file, it ends as the old or the new program, no copy in progress is
+#     left, and a good new program ends as the run copy, a failing one as the failed program next to the old run copy.
+matrix_points=0
+for kind in good crash; do
+    n=1
+    while [ "$n" -le 40 ]; do
+        with_update p_$kind
+        cp "$APPDIR/pbstore.bin" "$tmp/new-package"; cp "$R/pbstore.bin" "$tmp/old-program"
+        rm -f "$tmp/cut-count"
+        sed -e "s#^mut_cp() { cp \"\$@\"; }#mut_cp() { cutcheck cp \"\$@\"; cp \"\$@\"; }#" \
+            -e "s#^mut_mv() { mv \"\$@\"; }#mut_mv() { cutcheck mv \"\$@\"; mv \"\$@\"; }#" \
+            -e "s#^mut_rm() { rm -f \"\$@\"; }#mut_rm() { cutcheck rm \"\$@\"; rm -f \"\$@\"; }#" \
+            -e "s#^mut_write() { printf '%s\\\\n' \"\$1\" > \"\$2\"; }#mut_write() { cutcheck write \"\$@\"; printf '%s\\\\n' \"\$1\" > \"\$2\"; }#" \
+            -e "s#^mut_mkdir() { mkdir -p \"\$@\"; }#mut_mkdir() { cutcheck mkdir \"\$@\"; mkdir -p \"\$@\"; }#" \
+            "$tmp/launch.sh" > "$tmp/launch-cut.sh"
+        { printf 'cutcheck() { c=$(cat "%s/cut-count" 2>/dev/null || echo 0); c=$((c + 1)); echo $c > "%s/cut-count"\n' "$tmp" "$tmp"
+          printf '  if [ "$c" -ge %s ]; then if [ "$1" = cp ]; then head -c 100 "$2" > "$3"; fi; kill -9 $$; fi; }\n' "$n"; } > "$tmp/cutcheck.sh"
+        # the function is defined right after the variables, before the first mutating command
+        awk -v f="$tmp/cutcheck.sh" '{print} /^PROBEDIR=/ && !done { while ((getline line < f) > 0) print line; done=1 }' "$tmp/launch-cut.sh" > "$tmp/launch-cut2.sh"
+        ( sh "$tmp/launch-cut2.sh" >/dev/null 2>&1 ) 2>/dev/null; cut_status=$?
+        if [ "$cut_status" != 137 ]; then break; fi                      # the update ran through: every point has been cut once
+        matrix_points=$((matrix_points + 1)); eval "points_$kind=$n"
+        for _ in 1 2 3 4; do launch >/dev/null 2>&1; done
+        check [ ! -e "$R/pbstore.bin.tmp" ]
+        check [ -f "$R/pbstore.bin" ]
+        if cmp -s "$R/pbstore.bin" "$tmp/new-package" || cmp -s "$R/pbstore.bin" "$tmp/old-program"; then :; else echo "FAIL: after a power cut at command $n ($kind) the run copy is neither the old nor the new program" >&2; fail=1; fi
+        if [ "$kind" = good ]; then
+            if ! cmp -s "$R/pbstore.bin" "$tmp/new-package"; then echo "FAIL: after a power cut at command $n a good update did not end as the run copy (state: $(ls "$R" | tr '\n' ' '); runs: $(ran))" >&2; fail=1; fi
+            check [ ! -e "$R/trying" ]
+        else
+            check cmp -s "$R/pbstore.bin" "$tmp/old-program"
+            [ -e "$R/pbstore.bin.failed" ] && check cmp -s "$R/pbstore.bin.failed" "$tmp/new-package"
+        fi
+        n=$((n + 1))
+    done
+done
+echo "launcher power-cut matrix: $matrix_points fault points covered (a good update: $points_good, a failing one: $points_crash)"
+check [ "$points_crash" -gt "$points_good" ]   # the rollback commands are cut too
+check [ "$matrix_points" -ge 12 ]
 
 # 14. the shipped script has no test hook: the only mutating commands are the four one-line functions
 mut=$(grep -nE '^[[:space:]]*(cp|mv|rm|mkdir)[[:space:]]' "$LAUNCHER" | grep -vE 'mkdir -p "\$R"$|^[0-9]+:[[:space:]]*#' | grep -vE '^[0-9]+:mut_' || true)

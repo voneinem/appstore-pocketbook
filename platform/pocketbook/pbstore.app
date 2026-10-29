@@ -92,13 +92,38 @@ mut_rm "$TMP"
 # S2: the program that is running now started once (no marker), so the previous version is no longer needed
 [ ! -e "$TRYING" ] && [ -e "$OLD" ] && mut_rm "$OLD"
 
+# ROLLBACK (contracts/launcher.md R0 to R4): the new program did not start. Every step is guarded by "the file exists", so it is
+# idempotent after any power cut. Returns 0 when the previous program is the run copy again, 1 when there was none to go back to.
+rollback() {
+    # R0: nothing to restore (the first install, or the cut came before the new program was in place): no failure is recorded
+    if [ ! -e "$OLD" ]; then
+        mut_rm "$TRYING"
+        return 1
+    fi
+    mut_write "update-failed" "$MESSAGE"                      # R1: the store shows E-STO-06 once at its next start
+    if [ -e "$BIN" ]; then                                    # R2: the failed program is kept, so that it is never tried again by itself
+        mut_rm "$FAILED"
+        mut_mv "$BIN" "$FAILED"
+    fi
+    mut_mv "$OLD" "$BIN"                                      # R3
+    mut_rm "$TRYING"                                          # R4
+    return 0
+}
+
 # S3: the marker is present: the previous start did not reach its first screen. Left early with status 0: not a failure, keep the
-# marker and do not swap again. Anything else is a failed start; the rollback is added in phase 10 (task T131).
+# marker and do not swap again. Anything else (a failure status, or no status because the launcher itself was cut) is a failed start.
+# last-exit says what became of the previous run: missing, the program was never started (the power went before S6); "running", it was
+# started and the launcher was killed or hung (a power-off, a hang); a number, its exit status.
 if [ -e "$TRYING" ]; then
-    if [ -f "$LASTEXIT" ] && [ "$(cat "$LASTEXIT" 2>/dev/null)" = 0 ]; then
+    last=""
+    [ -f "$LASTEXIT" ] && last=$(cat "$LASTEXIT" 2>/dev/null)
+    if [ "$last" = 0 ]; then
         echo "--- the previous start left before its first screen; no swap this time"
+    elif [ -z "$last" ] && [ -e "$BIN" ]; then
+        echo "--- a program was put in place but never started: starting it"
     else
-        echo "--- the previous start did not reach its first screen"
+        echo "--- the previous start did not reach its first screen: rolling back"
+        rollback
     fi
 fi
 
@@ -193,9 +218,10 @@ filter_log() {
 }
 
 # S6: run the run copy. Its exit status is kept in a file because a pipe through the filter would hide it (no pipefail in this
-# shell); the file is removed first and written when the program ends, so an absent file means the launcher itself was killed.
+# shell); the file says "running" before the program starts and holds its status when it ends, so "running" still there at the next start
+# means the launcher itself was killed (a power-off, a hang) while the program ran.
 run_app() {
-    mut_rm "$LASTEXIT"
+    mut_write "running" "$LASTEXIT"
     {
         if command -v stdbuf >/dev/null 2>&1; then stdbuf -oL -eL "$BIN"; else "$BIN"; fi
         st=$?
@@ -218,6 +244,17 @@ if [ "$code" -eq 134 ] && tail -c +"$((mark + 1))" "$LOG" 2>/dev/null | grep -q 
     run_app
     code=$?
     echo "=== pbstore.bin exit code (retry): $code ==="
+fi
+
+# S7 (continued): the program ended abnormally before its first screen (the marker is still there): the previous version is restored and
+# run in this same start, so that the user needs no second tap. With no previous program (a first install) there is nothing to run instead.
+if [ "$code" -ne 0 ] && [ -e "$TRYING" ]; then
+    echo "=== pbstore: the new version did not start (status $code); restoring the previous version ==="
+    if rollback; then
+        run_app
+        code=$?
+        echo "=== pbstore.bin (previous version) exit code: $code ==="
+    fi
 fi
 
 # S8

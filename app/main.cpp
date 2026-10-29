@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
         // every page is opened once on top of the list: a QML error in any of them fails the self-test
         static const char* const kPages[] = {"DetailPage", "SettingsPage", "AboutPage", "LogPage", "OperationPage", "RepairPage"};
         const int delay = screenshots.isEmpty() ? 60 : 500;
-        QTimer::singleShot(screenshots.isEmpty() ? 300 : 900, &app, [&, window] {
+        QTimer::singleShot(screenshots.isEmpty() ? 300 : 900, &app, [&app, &controller, &qml, &qml_warnings, window, delay, screenshots] {   // by value: this block has ended when the timer fires
             const bool shown = window && window->property("pageLoaded").toBool();
             if (!shown) std::cerr << "[pbstore] no page is shown" << std::endl;
             QObject* root_object = qml.rootObjects().first();
