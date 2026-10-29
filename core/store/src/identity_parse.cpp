@@ -43,5 +43,27 @@ std::optional<std::string> parse_firmware(const std::string& text) {
     return t;
 }
 
+namespace {
+
+std::string shown(const std::string& raw) {
+    std::string out;
+    for (unsigned char c : raw)
+        if (c >= 0x20 && c < 0x7f && out.size() < 40) out += static_cast<char>(c);
+    return out;
+}
+
+std::string describe_one(const std::function<std::string()>& get, std::optional<std::string> (*parse)(const std::string&)) {
+    const std::string raw = get ? get() : std::string();
+    if (trim(raw).empty()) return "unknown";
+    if (const auto v = parse(raw)) return *v;
+    return "\"" + shown(trim(raw)) + "\" (not recognised)";
+}
+
+}  // namespace
+
+std::string StoreIdentitySource::describe() const {
+    return "model " + describe_one(model_, parse_model) + ", firmware " + describe_one(firmware_, parse_firmware);
+}
+
 }  // namespace store
 }  // namespace pbstore

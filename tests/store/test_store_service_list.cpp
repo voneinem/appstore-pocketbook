@@ -186,6 +186,10 @@ PB_TEST(last_updated_is_the_refresh_date_and_the_generation_date_of_the_catalog_
     PB_CHECK_EQ(facts.generated_at, out.view.catalog.generated_at);
     PB_CHECK_EQ(facts.catalog_url, rig.host.catalog_url());
     PB_CHECK_EQ(facts.custom_ca, std::string("not supported"));
+    PB_CHECK_EQ(facts.reader_identity, std::string("unknown"));                           // no source of the reader's identity here
+    StoreConfig with_identity;
+    with_identity.reader_identity = [] { return std::string("model 1030, firmware 6.11.1437"); };
+    PB_CHECK_EQ(rig.make_service(with_identity)->settings_facts().reader_identity, std::string("model 1030, firmware 6.11.1437"));
     PB_CHECK(facts.log_location.find("system/pbstore/app/pbstore.log") != std::string::npos);
 }
 

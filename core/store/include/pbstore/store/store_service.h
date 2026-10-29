@@ -44,6 +44,7 @@ struct StoreConfig {
     std::string catalog_url;                  // shown in Settings; the engine's Config holds the address it uses
     std::string trust_source = "unknown";     // "the device's own certificate store" or "the bundled certificate file"
     DeviceFacts facts;                        // restart wording
+    std::function<std::string()> reader_identity;   // what the reader says about itself, shown in Settings (empty: "unknown")
     RadioSession::Sleep sleep_ms;             // defaults to really sleeping
     RadioSession::Now now_ms;                 // defaults to a monotonic clock
 };
@@ -93,6 +94,7 @@ struct SettingsFacts {
     std::string trust_source;
     std::string custom_ca = "not supported";  // there is no custom CA file (FR-004)
     std::string log_location;
+    std::string reader_identity = "unknown";  // "model 1030, firmware 6.11.1437", or the text that could not be read
     std::optional<int> battery_percent;
     std::optional<uint64_t> free_bytes;
 };

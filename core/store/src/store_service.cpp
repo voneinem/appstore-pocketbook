@@ -172,6 +172,7 @@ SettingsFacts StoreService::settings_facts() {
     f.catalog_url = config_.catalog_url;
     f.trust_source = config_.trust_source;
     f.log_location = "system/pbstore/app/pbstore.log";
+    if (config_.reader_identity) f.reader_identity = config_.reader_identity();
     if (const auto refreshed = parts_.cache.refreshed_at()) f.refreshed_at = *refreshed;
     f.generated_at = last_view_.catalog.generated_at;
     f.battery_percent = parts_.battery.percent();

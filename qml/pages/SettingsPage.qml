@@ -32,6 +32,7 @@ Item {
         Fact { objectName: "setGenerated"; caption: qsTr("Catalog dated"); value: page.s.generatedAt || "" }
         Fact { objectName: "setTrust"; caption: qsTr("Certificates"); value: page.s.trustSource || "" }
         Fact { objectName: "setCustomCa"; caption: qsTr("Custom CA file"); value: page.s.customCa || "" }
+        Fact { objectName: "setReader"; caption: qsTr("Reader"); value: page.s.readerIdentity || "" }
         Fact { objectName: "setLog"; caption: qsTr("Log"); value: page.s.logLocation || "" }
         Fact { objectName: "setStorage"; caption: qsTr("Free storage"); value: page.s.freeSpace || "" }
         Fact { objectName: "setBattery"; caption: qsTr("Battery"); value: page.s.battery || "" }

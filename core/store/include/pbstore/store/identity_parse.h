@@ -22,6 +22,9 @@ public:
     StoreIdentitySource(Getter model, Getter firmware) : model_(std::move(model)), firmware_(std::move(firmware)) {}
     std::optional<std::string> model(install::ReaderFs&) override { return model_ ? parse_model(model_()) : std::nullopt; }
     std::optional<std::string> firmware(install::ReaderFs&) override { return firmware_ ? parse_firmware(firmware_()) : std::nullopt; }
+    // What the reader gave, for Settings: "model 1030, firmware 6.11.1437"; a text that does not parse is shown in quotes and marked, so that
+    // the real form can be read off the screen (device task DS-04). Printable ASCII only, at most 40 characters of each.
+    std::string describe() const;
 
 private:
     Getter model_, firmware_;

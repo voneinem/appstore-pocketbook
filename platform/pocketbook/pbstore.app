@@ -49,6 +49,13 @@ echo "=== pbstore launch: $(date 2>/dev/null) ==="
 echo "--- diagnostics: uid/groups: $(id 2>/dev/null || echo unknown)"
 echo "--- diagnostics: gpu node: $(ls -l /dev/mali0 2>/dev/null || echo 'not found')"
 echo "--- diagnostics: memory: $(grep -E '^(MemFree|MemAvailable)' /proc/meminfo 2>/dev/null | tr -s ' ' | tr '\n' ' ')"
+# Where the firmware version can be read (device task DS-04): the system's small files that have "version" in their name. The serial
+# number is not in any of them that this lists; each file is cut at 120 characters.
+if [ -d /ebrmain ] && command -v find >/dev/null 2>&1; then
+    for f in $(find /ebrmain -maxdepth 2 -type f -iname '*version*' 2>/dev/null | head -n 6); do
+        echo "--- diagnostics: $f: $(head -c 120 "$f" 2>/dev/null | tr '\n' ' ')"
+    done
+fi
 
 export LD_LIBRARY_PATH="/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH"
 export QT_QPA_PLATFORM_PLUGIN_PATH="/usr/plugins/platforms"

@@ -130,6 +130,9 @@ int main(int argc, char** argv) {
 
     pbstore::store::StoreConfig config = pbstore::app::make_store_config();
     config.trust_source = trust_source;
+#ifdef PBSTORE_ON_READER
+    config.reader_identity = [&identity] { return identity->describe(); };
+#endif
     pbstore::store::StoreParts parts{engine, storage, radio, battery, memory, screen, cache, run_state, pending_note, clock, last_fetch};
     pbstore::store::StoreService service(parts, config);
     StoreController controller(service, screen, QString::fromLatin1(PBSTORE_APP_VERSION), QString::fromStdString(root + "/system/pbstore/app/pbstore.log"));

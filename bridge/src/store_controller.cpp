@@ -196,6 +196,7 @@ void StoreController::loadSettings() {
     s[QStringLiteral("trustSource")] = q(f.trust_source);
     s[QStringLiteral("customCa")] = q(f.custom_ca);
     s[QStringLiteral("logLocation")] = q(f.log_location);
+    s[QStringLiteral("readerIdentity")] = q(f.reader_identity);
     s[QStringLiteral("battery")] = f.battery_percent ? QStringLiteral("%1 %").arg(*f.battery_percent) : tr("unknown");
     s[QStringLiteral("freeSpace")] = f.free_bytes ? QStringLiteral("%1 MiB").arg(*f.free_bytes / (1024 * 1024)) : tr("unknown");
     settings_ = s;
