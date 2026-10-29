@@ -18,7 +18,7 @@ Item {
 
     Flickable {
         id: flick
-        anchors { top: bar.bottom; left: parent.left; right: parent.right; bottom: footer.top; leftMargin: Style.pad; rightMargin: Style.pad }
+        anchors { top: bar.bottom; left: parent.left; right: parent.right; bottom: actions.top; leftMargin: Style.pad; rightMargin: Style.pad }
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         interactive: false
@@ -55,8 +55,27 @@ Item {
             Text { visible: !(page.d.inCatalog); width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap
                    text: qsTr("This app is not in the catalog. Nothing is changed because of that.") }
             Text { objectName: "storeNote"; visible: (page.d.storeNote || "").length > 0; width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap; text: page.d.storeNote || "" }
-            Text { objectName: "actionsNote"; width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap
-                   text: qsTr("Install, update, remove and adopt are not part of this version of PB Store: it only browses the catalog.") }
+        }
+    }
+
+    // the actions that fit the state (a repair pending, or an app that cannot be changed, has none)
+    Row {
+        id: actions
+        objectName: "actions"
+        anchors { left: parent.left; right: parent.right; bottom: footer.top; leftMargin: Style.pad; bottomMargin: 6 }
+        spacing: Style.gap
+        height: (page.d.actions || []).length > 0 ? Style.touchMin : 0
+        Repeater {
+            model: page.d.actions || []
+            ActionButton {
+                objectName: "action" + modelData
+                text: modelData
+                primary: index === 0
+                onClicked: {
+                    store.startAction(modelData, page.d.appId)
+                    page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})
+                }
+            }
         }
     }
 

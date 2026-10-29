@@ -5,8 +5,10 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariantList>
 #include <QVariantMap>
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <thread>
 
@@ -33,6 +35,24 @@ class StoreController : public QObject {
     Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
     Q_PROPERTY(QString logText READ logText NOTIFY logChanged)
     Q_PROPERTY(QString version READ version CONSTANT)
+    // the operation: idle, planning, plan, executing, result (one at a time)
+    Q_PROPERTY(QString phase READ phase NOTIFY operationChanged)
+    Q_PROPERTY(QString operationTitle READ operationTitle NOTIFY operationChanged)
+    Q_PROPERTY(QString planText READ planText NOTIFY operationChanged)
+    Q_PROPERTY(QVariantList confirmations READ confirmations NOTIFY operationChanged)
+    Q_PROPERTY(bool batteryUnreadable READ batteryUnreadable NOTIFY operationChanged)
+    Q_PROPERTY(bool nothingToDo READ nothingToDo NOTIFY operationChanged)
+    Q_PROPERTY(QString extraLine READ extraLine NOTIFY operationChanged)
+    Q_PROPERTY(bool cancellable READ cancellable NOTIFY operationChanged)
+    Q_PROPERTY(bool resultOk READ resultOk NOTIFY operationChanged)
+    Q_PROPERTY(QString resultText READ resultText NOTIFY operationChanged)
+    Q_PROPERTY(QString resultReader READ resultReader NOTIFY operationChanged)
+    Q_PROPERTY(QString resultTodo READ resultTodo NOTIFY operationChanged)
+    Q_PROPERTY(bool canDeleteData READ canDeleteData NOTIFY operationChanged)
+    Q_PROPERTY(int deleteStep READ deleteStep NOTIFY operationChanged)
+    Q_PROPERTY(QString dataFolderText READ dataFolderText NOTIFY operationChanged)
+    Q_PROPERTY(bool canUpdateAll READ canUpdateAll NOTIFY viewChanged)
+    Q_PROPERTY(QString repairText READ repairText NOTIFY viewChanged)
 
 public:
     StoreController(pbstore::store::StoreService& service, pbstore::store::Screen& screen, const QString& version, const QString& logPath, QObject* parent = nullptr);
@@ -54,6 +74,23 @@ public:
     QVariantMap settings() const { return settings_; }
     QString logText() const { return log_; }
     QString version() const { return version_; }
+    QString phase() const { return phase_; }
+    QString operationTitle() const { return title_; }
+    QString planText() const { return planText_; }
+    QVariantList confirmations() const { return confirmations_; }
+    bool batteryUnreadable() const { return batteryUnreadable_; }
+    bool nothingToDo() const { return nothingToDo_; }
+    QString extraLine() const { return extra_; }
+    bool cancellable() const { return cancellable_; }
+    bool resultOk() const { return resultOk_; }
+    QString resultText() const { return resultText_; }
+    QString resultReader() const { return resultReader_; }
+    QString resultTodo() const { return resultTodo_; }
+    bool canDeleteData() const { return dataFolderLeft_; }
+    int deleteStep() const { return deleteStep_; }
+    QString dataFolderText() const { return dataFolderText_; }
+    bool canUpdateAll() const { return !service_.update_all_queue().empty() && !repairPending_; }
+    QString repairText() const;
 
     // At start, before the list: the cancel note, the launcher's message, an interrupted operation; then the list from the cache.
     Q_INVOKABLE void startUp();
@@ -69,12 +106,22 @@ public:
     // The first screen is shown: the start counts as successful (spec FR-034).
     Q_INVOKABLE void markStarted();
     Q_INVOKABLE void leave(int reason);
+    // The operations (stories 2 to 6). `action` is the word of the button: Install, Update, Remove, Check.
+    Q_INVOKABLE void startAction(const QString& action, const QString& appId);
+    Q_INVOKABLE void confirm(const QStringList& given, bool acceptUnknownBattery);   // the Confirm button of the plan
+    Q_INVOKABLE void decline();                                                       // the plan was not confirmed: nothing is written
+    Q_INVOKABLE void finishResult();                                                  // OK on the result
+    Q_INVOKABLE void askDeleteData();                                                 // "Delete data too?" after a removal
+    Q_INVOKABLE void confirmDeleteData();                                             // each of the two confirmations
+    Q_INVOKABLE void startUpdateAll();
+    Q_INVOKABLE void startRepair(bool acceptUnknownBattery);
     Q_INVOKABLE void resumed();                // the app came back after a sleep: a new action may start
     Q_INVOKABLE void cancel();                 // the Cancel control: stops a refresh at once
 
 signals:
     void busyChanged();
     void viewChanged();
+    void operationChanged();
     void noticeChanged();
     void progressChanged();
     void messageChanged();
@@ -88,6 +135,14 @@ private:
     void addNotices(const std::vector<pbstore::Finding>& notices);
     void fullRefresh(bool wanted);
     void setBusy(bool b);
+    void async(std::function<void()> work, std::function<void()> done);
+    pbstore::install::ProgressFn operationProgress();
+    void setPhase(const QString& phase);
+    void showPlan(const pbstore::store::PlanView& p);
+    void showResult(const pbstore::store::ExecView& e);
+    void showFailure(const std::vector<pbstore::install::Message>& messages);
+    void continueUpdateAll();
+    void updateAllSummary();
 
     pbstore::store::StoreService& service_;
     pbstore::store::Screen& screen_;
@@ -106,4 +161,15 @@ private:
     std::unique_ptr<pbstore::install::CancelToken> cancel_ = std::make_unique<pbstore::install::CancelToken>();
     pbstore::store::ListView lastView_;
     pbstore::store::StartResult startResult_;
+    // the operation
+    QString phase_ = QStringLiteral("idle"), title_, planText_, extra_, resultText_, resultReader_, resultTodo_, dataFolderText_;
+    QVariantList confirmations_;
+    bool batteryUnreadable_ = false, nothingToDo_ = false, cancellable_ = false, resultOk_ = false, dataFolderLeft_ = false;
+    int deleteStep_ = 0;
+    QString action_, appId_, appName_;
+    // "Update all": the queue and what happened to each app
+    std::vector<std::string> queue_;
+    size_t queuePos_ = 0;
+    QStringList updated_, failed_;
+    bool updateAll_ = false;
 };

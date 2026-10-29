@@ -8,6 +8,8 @@ Item {
     property var nav
     readonly property string pageKind: "list"
     property bool searching: false
+    // an interrupted operation is shown before anything else (story 6)
+    Component.onCompleted: if (store.repairPending) page.nav.push(Qt.resolvedUrl("RepairPage.qml"), {"nav": page.nav})
 
     TopBar {
         id: bar
@@ -28,6 +30,17 @@ Item {
                 icon: "refresh"
                 enabled: !store.busy
                 onClicked: store.refresh()
+            },
+            IconButton {
+                objectName: "updateAll"
+                visible: store.canUpdateAll
+                label: qsTr("Update all")
+                icon: "update-all"
+                enabled: !store.busy
+                onClicked: {
+                    store.startUpdateAll()
+                    page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})
+                }
             },
             IconButton {
                 objectName: "search"

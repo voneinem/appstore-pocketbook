@@ -171,25 +171,31 @@ int main(int argc, char** argv) {
             window->setVisibility(QWindow::Windowed);
             window->resize(1404, 1872);
         }
+        // every page is opened once on top of the list: a QML error in any of them fails the self-test
+        static const char* const kPages[] = {"DetailPage", "SettingsPage", "AboutPage", "LogPage", "OperationPage", "RepairPage"};
+        const int delay = screenshots.isEmpty() ? 60 : 500;
         QTimer::singleShot(screenshots.isEmpty() ? 300 : 900, &app, [&, window] {
             const bool shown = window && window->property("pageLoaded").toBool();
             if (!shown) std::cerr << "[pbstore] no page is shown" << std::endl;
-            if (!screenshots.isEmpty() && window) {
-                QObject* root_object = qml.rootObjects().first();
-                auto shot = [window, screenshots](const QString& name) { window->grabWindow().save(screenshots + QLatin1Char('/') + name + QStringLiteral(".png")); };
-                shot(QStringLiteral("01-home"));
-                if (controller.model()->rowCount() > 0)
-                    controller.select(controller.model()->data(controller.model()->index(0, 0), AppListModel::AppIdRole).toString());
-                int step = 0;
-                for (const char* page : {"DetailPage", "SettingsPage", "AboutPage", "LogPage"}) {
-                    ++step;
-                    QTimer::singleShot(step * 500, &app, [=] {
-                        QMetaObject::invokeMethod(root_object, "openPage", Q_ARG(QVariant, QString::fromLatin1(page)));
-                        QTimer::singleShot(250, qApp, [=] { shot(QStringLiteral("0%1-%2").arg(step + 1).arg(QString::fromLatin1(page))); QMetaObject::invokeMethod(root_object, "closePage"); });
+            QObject* root_object = qml.rootObjects().first();
+            auto shot = [window, screenshots](const QString& name) {
+                if (!screenshots.isEmpty() && window) window->grabWindow().save(screenshots + QLatin1Char('/') + name + QStringLiteral(".png"));
+            };
+            shot(QStringLiteral("01-home"));
+            if (controller.model()->rowCount() > 0)
+                controller.select(controller.model()->data(controller.model()->index(0, 0), AppListModel::AppIdRole).toString());
+            int step = 0;
+            for (const char* page : kPages) {
+                ++step;
+                QTimer::singleShot(step * delay, &app, [=] {
+                    QMetaObject::invokeMethod(root_object, "openPage", Q_ARG(QVariant, QString::fromLatin1(page)));
+                    QTimer::singleShot(delay / 2, qApp, [=] {
+                        shot(QStringLiteral("0%1-%2").arg(step + 1).arg(QString::fromLatin1(page)));
+                        QMetaObject::invokeMethod(root_object, "closePage");
                     });
-                }
+                });
             }
-            QTimer::singleShot(screenshots.isEmpty() ? 0 : 3500, &app, [&app, shown, &qml_warnings] { app.exit((shown && qml_warnings == 0) ? 0 : 2); });
+            QTimer::singleShot((step + 2) * delay, &app, [&app, shown, &qml_warnings] { app.exit((shown && qml_warnings == 0) ? 0 : 2); });
         });
     }
     return app.exec();

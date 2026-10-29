@@ -221,4 +221,264 @@ void StoreController::leave(int reason) {
 
 void StoreController::resumed() { leaving_ = false; }
 
-void StoreController::cancel() { cancel_->cancel(); }
+void StoreController::cancel() { if (cancel_) cancel_->cancel(); }
+
+// ---- the operations ---------------------------------------------------------------------------------------------------
+
+void StoreController::async(std::function<void()> work, std::function<void()> done) {
+    if (worker_.joinable()) worker_.join();
+    worker_ = std::thread([this, work = std::move(work), done = std::move(done)]() mutable {
+        work();
+        if (leaving_) return;
+        QMetaObject::invokeMethod(this, std::move(done), Qt::QueuedConnection);
+    });
+}
+
+pbstore::install::ProgressFn StoreController::operationProgress() {
+    return [this](const pbstore::install::Progress& p) {
+        // after the commit point nothing can be cancelled: the engine's last phase is "finishing"
+        if (p.phase == "finishing") QMetaObject::invokeMethod(this, [this] { cancellable_ = false; emit operationChanged(); }, Qt::QueuedConnection);
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (now - lastProgressMs_ < 2000) return;   // at most once every 2 seconds (spec FR-017)
+        lastProgressMs_ = now;
+        QString text = q(p.text);
+        if (p.total > 0) text += QStringLiteral(" (%1 of %2 %3)").arg(p.done).arg(p.total).arg(q(p.unit));
+        else if (p.done > 0) text += QStringLiteral(" (%1 %2)").arg(p.done).arg(q(p.unit));
+        QMetaObject::invokeMethod(this, [this, text] { progress_ = text; emit progressChanged(); }, Qt::QueuedConnection);
+    };
+}
+
+void StoreController::setPhase(const QString& phase) {
+    phase_ = phase;
+    pageKind(phase == QLatin1String("planning") || phase == QLatin1String("executing") ? QStringLiteral("progress")
+             : phase == QLatin1String("plan") ? QStringLiteral("plan") : phase == QLatin1String("result") ? QStringLiteral("result") : QStringLiteral("list"));
+    emit operationChanged();
+}
+
+void StoreController::showFailure(const std::vector<pbstore::install::Message>& messages) {
+    resultOk_ = false;
+    resultText_ = messages.empty() ? tr("The action did not work.") : q(messages.front().what);
+    resultReader_ = messages.empty() ? QString() : q(messages.front().reader_effect);
+    resultTodo_ = messages.empty() ? QString() : q(messages.front().next);
+    dataFolderLeft_ = false;
+    deleteStep_ = 0;
+}
+
+void StoreController::showPlan(const pbstore::store::PlanView& p) {
+    planText_ = q(p.text);
+    extra_ = q(p.extra);
+    nothingToDo_ = p.nothing_to_do;
+    batteryUnreadable_ = p.battery_unreadable;
+    confirmations_.clear();
+    for (const auto& c : p.confirmations) {
+        QVariantMap m;
+        m.insert(QStringLiteral("name"), q(c.name));
+        m.insert(QStringLiteral("label"), q(c.label));
+        confirmations_.append(m);
+    }
+    QStringList notices;
+    for (const pbstore::Finding& n : p.notices)
+        if (n.rule_id != "W-INS-03") notices << q(pbstore::store::store_message(n).what);
+    notice_ = notices.join(QLatin1Char('\n'));
+    emit noticeChanged();
+}
+
+void StoreController::startAction(const QString& action, const QString& appId) {
+    if (busy_ || phase_ != QLatin1String("idle")) return;   // one operation at a time (spec FR-024)
+    pbstore::store::RowAction a = pbstore::store::RowAction::Install;
+    if (action == QLatin1String("Update")) a = pbstore::store::RowAction::Update;
+    else if (action == QLatin1String("Remove")) a = pbstore::store::RowAction::Remove;
+    else if (action == QLatin1String("Check") || action == QLatin1String("Adopt")) a = pbstore::store::RowAction::Check;
+    const AppRow* row = model_.find(appId);
+    action_ = action;
+    appId_ = appId;
+    appName_ = row ? q(row->name) : appId;
+    if (!updateAll_) title_ = (a == pbstore::store::RowAction::Check ? tr("Adopt") : action) + QLatin1Char(' ') + appName_;
+    else title_ = tr("Updating %1 of %2: %3").arg(queuePos_ + 1).arg(queue_.size()).arg(appName_);
+    clearMessage();
+    cancel_ = std::make_unique<pbstore::install::CancelToken>();
+    progress_ = tr("Preparing");
+    emit progressChanged();
+    cancellable_ = true;
+    setBusy(true);
+    setPhase(QStringLiteral("planning"));
+    auto view = std::make_shared<pbstore::store::PlanView>();
+    async([this, a, appId, view] { *view = service_.plan_action(a, appId.toStdString(), *cancel_, operationProgress()); },
+          [this, view] {
+              setBusy(false);
+              if (!view->ok && view->findings.empty()) { setPhase(QStringLiteral("idle")); return; }   // ignored: another operation was running
+              if (!view->ok) {
+                  showFailure(view->messages());
+                  if (updateAll_) { failed_ << appName_; updateAllSummary(); return; }
+                  setPhase(QStringLiteral("result"));
+                  return;
+              }
+              if (view->nothing_to_do) {   // W-INS-01: already at the offered version
+                  resultOk_ = true;
+                  resultText_ = tr("%1 is already at the offered version. Nothing was changed.").arg(appName_);
+                  resultReader_.clear();
+                  resultTodo_.clear();
+                  if (updateAll_) { continueUpdateAll(); return; }
+                  setPhase(QStringLiteral("result"));
+                  return;
+              }
+              showPlan(*view);
+              setPhase(QStringLiteral("plan"));
+          });
+}
+
+void StoreController::decline() {
+    service_.discard_plan();
+    if (updateAll_) {   // declining one app skips it and goes on to the next
+        ++queuePos_;
+        continueUpdateAll();
+        return;
+    }
+    setPhase(QStringLiteral("idle"));
+    applyView(service_.list_cached());
+}
+
+void StoreController::confirm(const QStringList& given, bool acceptUnknownBattery) {
+    if (busy_ || phase_ != QLatin1String("plan")) return;
+    std::vector<std::string> names;
+    for (const QString& g : given) names.push_back(g.toStdString());
+    cancel_ = std::make_unique<pbstore::install::CancelToken>();
+    progress_ = tr("Working");
+    emit progressChanged();
+    cancellable_ = true;
+    setBusy(true);
+    setPhase(QStringLiteral("executing"));
+    auto view = std::make_shared<pbstore::store::ExecView>();
+    async([this, names, acceptUnknownBattery, view] { *view = service_.execute_plan(names, acceptUnknownBattery, *cancel_, operationProgress()); },
+          [this, view] {
+              setBusy(false);
+              applyView(view->view);
+              if (view->ok) {
+                  if (updateAll_) { updated_ << appName_; ++queuePos_; continueUpdateAll(); return; }
+                  resultOk_ = true;
+                  resultText_ = q(view->text);
+                  resultReader_.clear();
+                  resultTodo_.clear();
+                  dataFolderLeft_ = view->data_folder_left;
+                  deleteStep_ = 0;
+                  setPhase(QStringLiteral("result"));
+                  return;
+              }
+              showFailure(view->messages());
+              if (updateAll_) { failed_ << appName_; updateAllSummary(); return; }
+              setPhase(QStringLiteral("result"));
+          });
+}
+
+void StoreController::finishResult() {
+    updateAll_ = false;
+    dataFolderLeft_ = false;
+    deleteStep_ = 0;
+    setPhase(QStringLiteral("idle"));
+    applyView(service_.list_cached());
+}
+
+void StoreController::askDeleteData() {
+    if (!dataFolderLeft_ || phase_ != QLatin1String("result")) return;
+    const auto plan = service_.plan_delete_data();
+    if (!plan.ok) { showFailure(plan.messages()); emit operationChanged(); return; }
+    dataFolderText_ = tr("%1: %2 files, %3 KiB").arg(q(plan.data_folder)).arg(plan.data_files).arg(plan.data_bytes / 1024);
+    deleteStep_ = 1;   // the first of two confirmations, each naming the folder, the number of files and the size
+    emit operationChanged();
+}
+
+void StoreController::confirmDeleteData() {
+    if (deleteStep_ == 1) {
+        deleteStep_ = 2;
+        emit operationChanged();
+        return;
+    }
+    if (deleteStep_ != 2) return;
+    cancel_ = std::make_unique<pbstore::install::CancelToken>();
+    setBusy(true);
+    deleteStep_ = 0;
+    setPhase(QStringLiteral("executing"));
+    auto view = std::make_shared<pbstore::store::ExecView>();
+    async([this, view] { *view = service_.execute_delete_data(*cancel_, operationProgress()); },
+          [this, view] {
+              setBusy(false);
+              applyView(view->view);
+              dataFolderLeft_ = false;
+              if (view->ok) { resultOk_ = true; resultText_ = q(view->text); resultReader_.clear(); resultTodo_.clear(); }
+              else showFailure(view->messages());
+              setPhase(QStringLiteral("result"));
+          });
+}
+
+// ---- update all (story 3) --------------------------------------------------------------------------------------------------
+
+void StoreController::startUpdateAll() {
+    if (busy_ || phase_ != QLatin1String("idle")) return;
+    queue_ = service_.update_all_queue();
+    if (queue_.empty()) return;
+    queuePos_ = 0;
+    updated_.clear();
+    failed_.clear();
+    updateAll_ = true;
+    startAction(QStringLiteral("Update"), q(queue_[queuePos_]));
+}
+
+void StoreController::continueUpdateAll() {
+    phase_ = QStringLiteral("idle");   // the plan of the next app follows at once
+    if (queuePos_ >= queue_.size()) { updateAllSummary(); return; }
+    startAction(QStringLiteral("Update"), q(queue_[queuePos_]));
+}
+
+void StoreController::updateAllSummary() {
+    // the first failure stops the run: updated, failed, not tried
+    QStringList notTried;
+    const size_t next = failed_.isEmpty() ? queue_.size() : queuePos_ + 1;
+    for (size_t i = next; i < queue_.size(); ++i) {
+        const AppRow* row = model_.find(q(queue_[i]));
+        notTried << (row ? q(row->name) : q(queue_[i]));
+    }
+    QStringList lines;
+    lines << tr("Updated: %1").arg(updated_.isEmpty() ? tr("none") : updated_.join(QStringLiteral(", ")));
+    if (!failed_.isEmpty()) lines << tr("Failed: %1").arg(failed_.join(QStringLiteral(", ")));
+    if (!notTried.isEmpty()) lines << tr("Not tried: %1").arg(notTried.join(QStringLiteral(", ")));
+    if (failed_.isEmpty() && updated_.isEmpty()) lines << tr("Nothing was updated.");
+    const bool failed = !failed_.isEmpty();
+    const QString reader = resultReader_, todo = resultTodo_, first = resultText_;
+    resultOk_ = !failed;
+    resultText_ = (failed ? first + QLatin1Char('\n') : QString()) + lines.join(QLatin1Char('\n'));
+    resultReader_ = failed ? reader : QString();
+    resultTodo_ = failed ? todo : QString();
+    updateAll_ = false;
+    title_ = tr("Update all");
+    applyView(service_.list_cached());
+    setPhase(QStringLiteral("result"));
+}
+
+// ---- repair (story 6) --------------------------------------------------------------------------------------------------------
+
+QString StoreController::repairText() const {
+    const auto s = service_.repair_status();
+    if (!s.pending) return QString();
+    return tr("An operation of %1 was interrupted (%2 of %3 to %4). PB Store can %5 it now. Until it is done, nothing can be installed, updated or removed. The app named may be incomplete or unusable until it is repaired.")
+        .arg(q(s.app_id.empty() ? std::string("an app") : s.app_id), q(s.kind), q(s.from_version.empty() ? std::string("nothing") : s.from_version),
+             q(s.to_version.empty() ? std::string("nothing") : s.to_version), q(s.action == "finish" ? std::string("finish") : std::string("undo")));
+}
+
+void StoreController::startRepair(bool acceptUnknownBattery) {
+    if (busy_) return;
+    cancel_ = std::make_unique<pbstore::install::CancelToken>();
+    title_ = tr("Repair");
+    cancellable_ = false;
+    setBusy(true);
+    setPhase(QStringLiteral("executing"));
+    auto view = std::make_shared<pbstore::store::ExecView>();
+    async([this, acceptUnknownBattery, view] { *view = service_.repair(acceptUnknownBattery, *cancel_, operationProgress()); },
+          [this, view] {
+              setBusy(false);
+              repairPending_ = service_.repair_status().pending;
+              applyView(view->view);
+              if (view->ok) { resultOk_ = true; resultText_ = q(view->text); resultReader_.clear(); resultTodo_.clear(); notice_.clear(); emit noticeChanged(); }
+              else showFailure(view->messages());
+              setPhase(QStringLiteral("result"));
+          });
+}
