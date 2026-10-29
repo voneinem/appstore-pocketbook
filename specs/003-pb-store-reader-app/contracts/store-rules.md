@@ -25,7 +25,9 @@ drive, a cable, a command-line option or a keyboard.
 | `E-STO-10` | The reader's storage is read-only or full of errors (a write was refused) | restored to the previous state | Restart the reader. If this stays, the reader's storage may be damaged: back up your books and check it before using PB Store again. |
 | `W-STO-01` | The last action was cancelled by leaving the store; nothing changed | unchanged | – |
 | `W-STO-02` | Wi-Fi was switched on for this action and could not be switched off again | unchanged | Switch Wi-Fi off in the reader's settings if you want it off. |
-| `W-STO-03` | Wi-Fi was switched on for this action and switched off again. **No longer raised** (2026-10-29: the owner found the notice too chatty); the id stays reserved | unchanged | – |
+| `W-STO-03` | Wi-Fi was switched on for this action and switched off again | unchanged | – |
+
+Note (2026-10-29): `W-STO-03` is **no longer raised**; the owner found the notice too chatty. The id stays reserved.
 
 ## Ids of the installer and the catalog tool as the store shows them
 

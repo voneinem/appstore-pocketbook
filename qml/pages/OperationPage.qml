@@ -59,6 +59,12 @@ Item {
             spacing: 14
             topPadding: 14
             Text { objectName: "planText"; width: parent.width; text: store.planText; wrapMode: Text.WrapAnywhere; font.pixelSize: Style.bodySize; color: Style.ink }
+            ActionButton {
+                objectName: "toggleFiles"
+                visible: store.planFileCount > 0
+                text: store.planFilesShown ? qsTr("Hide the files") : qsTr("Show the files (%1)").arg(store.planFileCount)
+                onClicked: store.toggleFiles()
+            }
             Text { visible: store.extraLine.length > 0; width: parent.width; text: store.extraLine; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; font.bold: true; color: Style.ink }
             Repeater {
                 model: store.confirmations

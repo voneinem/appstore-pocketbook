@@ -39,6 +39,8 @@ class StoreController : public QObject {
     Q_PROPERTY(QString phase READ phase NOTIFY operationChanged)
     Q_PROPERTY(QString operationTitle READ operationTitle NOTIFY operationChanged)
     Q_PROPERTY(QString planText READ planText NOTIFY operationChanged)
+    Q_PROPERTY(int planFileCount READ planFileCount NOTIFY operationChanged)         // the files of the plan when they are folded, else 0
+    Q_PROPERTY(bool planFilesShown READ planFilesShown NOTIFY operationChanged)
     Q_PROPERTY(QVariantList confirmations READ confirmations NOTIFY operationChanged)
     Q_PROPERTY(bool batteryUnreadable READ batteryUnreadable NOTIFY operationChanged)
     Q_PROPERTY(bool nothingToDo READ nothingToDo NOTIFY operationChanged)
@@ -76,7 +78,9 @@ public:
     QString version() const { return version_; }
     QString phase() const { return phase_; }
     QString operationTitle() const { return title_; }
-    QString planText() const { return planText_; }
+    QString planText() const { return planFilesShown_ ? planFull_ : planBrief_; }
+    int planFileCount() const { return planBrief_ != planFull_ ? planFileLines_ : 0; }
+    bool planFilesShown() const { return planFilesShown_; }
     QVariantList confirmations() const { return confirmations_; }
     bool batteryUnreadable() const { return batteryUnreadable_; }
     bool nothingToDo() const { return nothingToDo_; }
@@ -94,6 +98,7 @@ public:
 
     // At start, before the list: the cancel note, the launcher's message, an interrupted operation; then the list from the cache.
     Q_INVOKABLE void startUp();
+    Q_INVOKABLE void toggleFiles() { planFilesShown_ = !planFilesShown_; emit operationChanged(); }
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void search(const QString& text);
     Q_INVOKABLE void select(const QString& appId);
@@ -162,7 +167,10 @@ private:
     pbstore::store::ListView lastView_;
     pbstore::store::StartResult startResult_;
     // the operation
-    QString phase_ = QStringLiteral("idle"), title_, planText_, extra_, resultText_, resultReader_, resultTodo_, dataFolderText_;
+    QString planFull_, planBrief_;
+    int planFileLines_ = 0;
+    bool planFilesShown_ = false;
+    QString phase_ = QStringLiteral("idle"), title_, extra_, resultText_, resultReader_, resultTodo_, dataFolderText_;
     QVariantList confirmations_;
     bool batteryUnreadable_ = false, nothingToDo_ = false, cancellable_ = false, resultOk_ = false, dataFolderLeft_ = false;
     int deleteStep_ = 0;

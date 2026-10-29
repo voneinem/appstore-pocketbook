@@ -5,6 +5,7 @@
 #include <QMetaObject>
 #include <QStringList>
 
+#include "pbstore/store/plan_text.h"
 #include "pbstore/store/app_filter.h"
 #include "pbstore/store/store_rules.h"
 
@@ -265,7 +266,11 @@ void StoreController::showFailure(const std::vector<pbstore::install::Message>& 
 }
 
 void StoreController::showPlan(const pbstore::store::PlanView& p) {
-    planText_ = q(p.text);
+    const pbstore::store::PlanTextParts parts = pbstore::store::split_plan_files(p.text);
+    planFull_ = q(parts.full);
+    planBrief_ = q(parts.brief);
+    planFileLines_ = static_cast<int>(parts.file_lines);
+    planFilesShown_ = false;
     extra_ = q(p.extra);
     nothingToDo_ = p.nothing_to_do;
     batteryUnreadable_ = p.battery_unreadable;
