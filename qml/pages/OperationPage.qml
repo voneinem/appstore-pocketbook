@@ -29,6 +29,20 @@ Item {
         }
     }
 
+    // seconds spent in this step; restarts whenever the progress text changes or the phase does
+    property int waited: 0
+    Timer {
+        interval: 10000
+        repeat: true
+        running: page.phase === "planning" || page.phase === "executing"
+        onTriggered: page.waited += 10
+    }
+    Connections {
+        target: store
+        function onProgressChanged() { page.waited = 0 }
+    }
+    onPhaseChanged: waited = 0
+
     TopBar { id: bar; title: store.operationTitle }
 
     // planning and executing: what is going on, as plain text, and Cancel until the commit point
@@ -39,7 +53,12 @@ Item {
         spacing: 30
         Text { objectName: "operationProgress"; width: parent.width; text: store.progressText; wrapMode: Text.Wrap; font.pixelSize: Style.rowTitleSize; color: Style.ink }
         Text { visible: store.notice.length > 0; width: parent.width; text: store.notice; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
+        // a step that takes long must not look like a frozen screen: one repaint every 10 seconds, no faster (e-ink)
+        Text { objectName: "stillWorking"; visible: page.waited >= 10; width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink
+               text: qsTr("Still working, %1 seconds so far. Please wait.").arg(page.waited) }
         ActionButton { objectName: "cancel"; visible: store.cancellable; text: qsTr("Cancel"); onClicked: store.cancel() }
+        Text { objectName: "cancelNote"; visible: store.cancellable && page.phase === "executing"; width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink
+               text: qsTr("Cancelling puts the reader back as it was.") }
         Text { visible: !store.cancellable; width: parent.width; text: qsTr("Finishing; this cannot be cancelled"); wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
     }
 

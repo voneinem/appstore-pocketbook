@@ -147,6 +147,7 @@ std::string shorten_paths(const std::string& text, size_t max_chars) {
 install::Message store_message(const Finding& finding, ReaderEffect effect) {
     install::Message m = install::describe(finding, effect);
     m.what = to_the_reader(m.what);
+    if (finding.rule_id == "E-INS-33") m.what = "You cancelled the action. (E-INS-33)";   // a cancel is the user's own act, not an error
     std::string next;
     bool final_next = false;   // a store rule's own text is the third part as it stands
     if (const StoreRule* s = find_store_rule(finding.rule_id)) {

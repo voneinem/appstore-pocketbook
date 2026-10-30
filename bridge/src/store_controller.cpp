@@ -302,6 +302,7 @@ void StoreController::startAction(const QString& action, const QString& appId) {
     clearMessage();
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
     progress_ = tr("Preparing");
+    lastProgressMs_ = 0;   // each phase starts with a report that is not held back by the one before it
     emit progressChanged();
     cancellable_ = true;
     setBusy(true);
@@ -348,6 +349,7 @@ void StoreController::confirm(const QStringList& given, bool acceptUnknownBatter
     for (const QString& g : given) names.push_back(g.toStdString());
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
     progress_ = tr("Working");
+    lastProgressMs_ = 0;
     emit progressChanged();
     cancellable_ = true;
     setBusy(true);

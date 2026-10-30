@@ -201,6 +201,14 @@ PB_TEST(the_third_part_follows_the_state_of_the_reader) {
     PB_CHECK(has(unchanged, "Free some space"));                              // unchanged: the step to try again
 }
 
+PB_TEST(a_cancel_by_the_user_is_told_as_a_cancel_and_not_as_an_error) {
+    const Message m = store_message(make_error("E-INS-33", "operation", "cancelled by the user"), ReaderEffect::Restored);
+    PB_CHECK(has(m.what, "You cancelled"));
+    PB_CHECK(!has(m.what, "error["));
+    PB_CHECK(has(m.what, "E-INS-33"));                                         // the id stays, behind the sentence, for the log and for support
+    PB_CHECK(has(m.reader_effect, "restored"));
+}
+
 PB_TEST(a_message_is_at_most_600_characters_and_a_path_in_it_at_most_60) {
     const std::string long_path = "applications/" + std::string(150, 'a') + "/" + std::string(120, 'b') + ".bin";
     Finding f = make_error("E-INS-20", long_path, "the file " + long_path + " is in the way");

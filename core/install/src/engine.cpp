@@ -1,6 +1,7 @@
 #include "pbstore/install/engine.h"
 
 #include <algorithm>
+#include <chrono>
 
 #include "pbstore/catalog_verify.h"
 #include "pbstore/install/catalog_session.h"
@@ -344,7 +345,27 @@ ExecResult Engine::execute(ReaderHandle& reader, PlanHandle& handle, const Confi
         res.findings.push_back(make_error("E-INS-25", handle.plan.app_id, "this plan cannot be carried out; make a new plan"));
         return res;
     }
-    res = pbstore::install::execute(*reader.fs, handle.plan, *handle.content, given, progress, cancel);
+    // The stages of the write with the time since its start, in the log and without file names: an install stood still for 2.5 minutes on a
+    // reader (2026-10-30) and the log showed only that it was cancelled. The throttled progress of the page is not the log.
+    const auto started = std::chrono::steady_clock::now();
+    std::string last_phase, last_text;
+    const std::string stage_app = handle.plan.app_id;
+    auto staged = [&](const Progress& p) {
+        const bool counting = p.text.compare(0, 8, "Copying ") == 0 || p.phase == "applying";
+        const bool changed = p.phase != last_phase || (!counting && p.text != last_text);
+        const bool every_hundred = counting && p.done % 100 == 0;
+        if (changed || every_hundred) {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+            std::string text = "after " + std::to_string(ms / 1000) + "." + std::to_string(ms % 1000 / 100) + " s";
+            if (p.total > 0) text += ", " + std::to_string(p.done) + " of " + std::to_string(p.total) + " " + p.unit;
+            if (!counting && p.text.find('/') == std::string::npos) text += ", " + p.text;
+            deps_.log->event("stage", stage_app, version, p.phase, {}, text);
+        }
+        last_phase = p.phase;
+        last_text = p.text;
+        if (progress) progress(p);
+    };
+    res = pbstore::install::execute(*reader.fs, handle.plan, *handle.content, given, staged, cancel);
     std::string result = res.ok() ? "ok" : res.cancelled ? "cancelled" : res.outcome == ExecResult::Outcome::RepairNeeded ? "repair-needed" : "failed";
     if (!res.missing_confirmations.empty()) result = "not-confirmed";
     deps_.log->event(kind, handle.plan.app_id, version, result, rule_ids(res.findings), res.findings.empty() ? "" : res.findings[0].message);

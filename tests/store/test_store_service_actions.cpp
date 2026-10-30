@@ -96,6 +96,26 @@ PB_TEST(install_downloads_shows_the_engines_plan_writes_only_after_the_confirmat
     PB_CHECK(has(text, "pbstore-app 0.1.0"));                              // the record says which program wrote it
 }
 
+PB_TEST(an_install_writes_the_stages_of_the_write_with_their_time_to_the_log_and_no_file_names) {
+    // T181: an install stood still for 2.5 minutes on the reader (2026-10-30); the next such case must show in the log which step it was
+    Rig r;
+    if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
+    r.prepare();
+    PlanView plan = r.service->plan_action(RowAction::Install, "testapp", r.cancel, nullptr);
+    PB_CHECK(plan.ok);
+    ExecView done = r.service->execute_plan(kUnknown, false, r.cancel, nullptr);
+    PB_CHECK(done.ok);
+    std::ifstream f(r.rig.root() + "/system/pbstore/app/pbstore.log");
+    std::string log((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    PB_CHECK(has(log, " stage testapp "));
+    PB_CHECK(has(log, "preparing"));
+    PB_CHECK(has(log, "applying"));
+    PB_CHECK(has(log, "finishing"));
+    PB_CHECK(has(log, "after "));                                         // the time since the start of the write
+    PB_CHECK(!has(log, "applications/testapp"));                           // no file name in a stage line
+    PB_CHECK(!has(log, "testapp.bin"));
+}
+
 PB_TEST(the_same_package_gives_the_same_plan_text_and_the_same_reader_as_the_engine_alone_apart_from_installed_by) {
     Rig a, b;
     if (!a.rig.ready()) PB_SKIP("openssl CLI not available");
