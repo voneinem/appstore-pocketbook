@@ -8,6 +8,7 @@
 #include "pbstore/semver.h"
 #include "pbstore/store/clock_check.h"
 #include "pbstore/store/memory_gate.h"
+#include "pbstore/store/plan_summary.h"
 #include "pbstore/store/power_gate.h"
 #include "pbstore/store/app_filter.h"
 #include "pbstore/store/self_update_view.h"
@@ -294,7 +295,7 @@ PowerOperation power_op(RowAction a, bool is_store) {
 std::string confirmation_label(install::Confirmation c) {
     switch (c) {
         case install::Confirmation::Plan: return "Carry out this plan";
-        case install::Confirmation::EditedFiles: return "Files of the app were changed since the install (named above); continue anyway";
+        case install::Confirmation::EditedFiles: return "Files of the app were changed since the install (see the details); continue anyway";
         case install::Confirmation::UnknownFirmware: return "The firmware version of the reader is unknown; continue at my own risk";
         case install::Confirmation::UnknownModel: return "The model of the reader is unknown; continue at my own risk";
         case install::Confirmation::ExistingDataFolder: return "The data folder exists; its contents stay untouched; continue";
@@ -369,6 +370,7 @@ PlanView StoreService::plan_action(RowAction action, const std::string& app_id, 
                 plan_ = std::make_shared<install::PlanHandle>(*planned.value);
                 v.ok = true;
                 v.text = plan_->text;
+                v.summary = plain_plan_summary(plan_->plan);
                 v.nothing_to_do = plan_->nothing_to_do;
                 if (v.app_name.empty() || v.app_name == app_id) v.app_name = plan_->plan.app_name;
                 for (install::Confirmation c : plan_->plan.confirmations)
@@ -474,6 +476,7 @@ PlanView StoreService::plan_delete_data() {
     delete_plan_ = std::make_shared<install::PlanHandle>(*planned.value);
     v.ok = true;
     v.text = delete_plan_->text;
+    v.summary = plain_plan_summary(delete_plan_->plan);
     if (delete_plan_->plan.data) {
         v.data_folder = delete_plan_->plan.data->path;
         v.data_files = delete_plan_->plan.data->files;

@@ -111,7 +111,7 @@ struct ConfirmationItem {
     std::string label;   // the words next to the control
 };
 
-// A plan waiting for the user's confirmation (stories 2 to 5). `text` is the engine's plan text, unchanged (spec FR-014).
+// A plan waiting for the user's confirmation (stories 2 to 5). `text` is the engine's plan text, unchanged (spec FR-014); `summary` is what an end user reads first.
 struct PlanView {
     bool ok = false;
     std::vector<Finding> findings;
@@ -119,6 +119,7 @@ struct PlanView {
     std::string kind;                         // install, update, remove, adopt
     std::string app_id, app_name;
     std::string text;
+    std::string summary;                      // the plain sentences the page shows first; `text` is behind "Show details"
     std::vector<ConfirmationItem> confirmations;   // beside the plan itself, which is the Confirm button
     bool nothing_to_do = false;               // W-INS-01: already at the offered version
     bool battery_unreadable = false;          // the level cannot be read: the user must confirm the risk (E-STO-05)

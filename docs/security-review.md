@@ -99,7 +99,9 @@ about 3000 fault points, clean and pessimistic modes, nested faults during repai
   by a holder that owns the vector.
 - The free-space part of the fingerprint was compared in whole MiB, so a small write across a MiB boundary between plan and
   execution caused a false `E-INS-25` (seen once under the sanitizer build). It is now compared as a difference of at least
-  1 MiB (`free_space_changed`, `basis_unchanged`), which has no boundary; covered by a new unit test.
+  1 MiB (`free_space_changed`, `basis_unchanged`), which has no boundary; covered by a new unit test. (Superseded on 2026-10-30: a screenshot taken
+  on the reader between plan and Confirm still made the plan stale, so the free space is no longer part of the comparison; the executor's own
+  space check, E-INS-07, remains.)
 
 - **First run on a real reader's data (2026-10-25).** The real `view.json` has its groups under `view` and carries `_comment`
   keys; the first guess of the shape (groups at the top level) was wrong. The shape check refused the file and nothing was

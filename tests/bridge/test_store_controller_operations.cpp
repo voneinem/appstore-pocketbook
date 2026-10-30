@@ -192,34 +192,37 @@ PB_TEST(declining_an_app_in_update_all_skips_it) {
     PB_CHECK(r.controller->canUpdateAll());                              // still outdated: nothing was changed
 }
 
-PB_TEST(a_plan_with_more_than_eight_files_is_folded_and_toggleFiles_shows_and_hides_the_list) {
+PB_TEST(the_plan_page_shows_plain_sentences_first_and_the_installers_text_with_every_file_only_behind_show_details) {
     Rig r;
-    const SampleApp big = app_with_files(8);                              // 6 + 8 = 14 files
+    const SampleApp big = app_with_files(30);
     if (!r.prepare(false, &big)) PB_SKIP("openssl CLI not available");
     r.controller->startAction(QStringLiteral("Install"), QStringLiteral("testapp"));
     PB_CHECK(r.phase("plan"));
-    const QString folded = r.controller->planText();
-    PB_CHECK(r.controller->planFileCount() > 8);
-    PB_CHECK(!r.controller->planFilesShown());
-    PB_CHECK(folded.contains(QStringLiteral("files (not listed here)")));
-    PB_CHECK(!folded.contains(QStringLiteral("part0.bin")));
-    r.controller->toggleFiles();
-    PB_CHECK(r.controller->planFilesShown());
-    PB_CHECK(r.controller->planText().contains(QStringLiteral("part0.bin")));
-    PB_CHECK(!r.controller->planText().contains(QStringLiteral("not listed here")));
-    PB_CHECK(r.controller->planFileCount() > 8);   // the count stays while the list is shown (the button says Hide)
-    r.controller->toggleFiles();
-    PB_CHECK(r.controller->planText() == folded);
+    const QString summary = r.controller->planSummary();
+    PB_CHECK(summary.contains(QStringLiteral("Install App testapp 1.2.0")));
+    PB_CHECK(summary.contains(QStringLiteral("From the PB Store catalog")));
+    for (const char* technical : {"applications/", "sha256", "part0.bin", "E-INS", "Folders to create"})
+        PB_CHECK(!summary.contains(QLatin1String(technical)));
+    PB_CHECK(!r.controller->planDetailsShown());              // the page shows planText only when this is true
+    PB_CHECK(r.controller->planText().contains(QStringLiteral("part0.bin")));   // the engine's full text, unchanged
+    PB_CHECK(r.controller->planText().contains(QStringLiteral("Plan: Install")));
+    r.controller->toggleDetails();
+    PB_CHECK(r.controller->planDetailsShown());
+    r.controller->toggleDetails();
+    PB_CHECK(!r.controller->planDetailsShown());
     r.controller->decline();
 }
 
-PB_TEST(a_plan_with_few_files_is_not_folded) {
+PB_TEST(a_new_plan_starts_with_the_details_hidden) {
     Rig r;
     if (!r.prepare()) PB_SKIP("openssl CLI not available");
     r.controller->startAction(QStringLiteral("Install"), QStringLiteral("testapp"));
     PB_CHECK(r.phase("plan"));
-    PB_CHECK_EQ(r.controller->planFileCount(), 0);                       // no Show the files control
-    PB_CHECK(!r.controller->planText().contains(QStringLiteral("not listed here")));
+    r.controller->toggleDetails();
+    r.controller->decline();
+    r.controller->startAction(QStringLiteral("Install"), QStringLiteral("testapp"));
+    PB_CHECK(r.phase("plan"));
+    PB_CHECK(!r.controller->planDetailsShown());
     r.controller->decline();
 }
 
@@ -233,6 +236,7 @@ PB_TEST(the_word_Replace_starts_a_replace_plan_for_an_app_put_there_by_hand) {
     r.controller->startAction(QStringLiteral("Replace"), QStringLiteral("testapp"));
     PB_CHECK(r.phase("plan"));
     PB_CHECK(r.controller->planText().contains(QStringLiteral("Plan: Replace")));
+    PB_CHECK(r.controller->planSummary().contains(QStringLiteral("Replace App testapp")));
     bool asksToReplace = false;
     for (const QVariant& c : r.controller->confirmations())
         if (c.toMap().value(QStringLiteral("name")).toString() == QLatin1String("replace")) asksToReplace = true;

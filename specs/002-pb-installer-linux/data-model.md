@@ -127,7 +127,7 @@ front ends.
 | `space` | `{needed, free, cluster, margin = 10 MiB}` with the parts of the sum |
 | `warnings[]` | Plain-language notes (firmware/model unknown, group moved, entry changed since install) |
 | `confirmations[]` | Required: `Plan` (always) plus any of `EditedFiles`, `UnknownFirmware`, `UnknownModel`, `ExistingDataFolder`, `ReplaceOutside`, `Repair`, `DeleteData1`, `DeleteData2` |
-| `fingerprint` | Hash of the desktop configuration and the state of every target path and the free space; recomputed immediately before writing |
+| `fingerprint` | Hash of the desktop configuration and the state of every target path (not the free space: that is checked on its own, E-INS-07, and a write by the user meanwhile must not make the plan stale); recomputed immediately before writing |
 
 Validation (planner): every path under `applications/`, `system/pbstore/` or the single menu entry; no path
 differs only by case from an existing file the plan does not own; no link-like object on any target path;
