@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include "pbstore/store/battery.h"
 #include "pbstore/store/identity_parse.h"
@@ -34,6 +35,11 @@ class InkViewScreen : public pbstore::store::Screen {
 public:
     void full_update() override;
 };
+
+// The launcher's notice mode (pbstore.bin --notice <kind>, contracts/launcher.md S7): a title and a text on a cleared panel, drawn with
+// InkView alone (OpenScreen, ClearScreen, OpenFont, SetFont, DrawTextRect, FullUpdate): no Qt, no GPU. The e-ink panel keeps the picture
+// after the program ends.
+void show_notice(const std::string& title, const std::string& text);
 
 // GetDeviceModel and GetSoftwareVersion through the parsers of core/store. The serial number is never read.
 std::unique_ptr<pbstore::store::StoreIdentitySource> make_inkview_identity();

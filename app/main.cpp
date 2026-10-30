@@ -25,6 +25,7 @@
 #include "pbstore/install/posix_state_dirs.h"
 #include "pbstore/store/catalog_cache.h"
 #include "pbstore/store/last_fetch.h"
+#include "pbstore/store/launch_notice.h"
 #include "pbstore/store/pending_note.h"
 #include "pbstore/store/proc_meminfo.h"
 #include "pbstore/store/reader_storage.h"
@@ -53,9 +54,23 @@ bool read_whole(const std::string& path, std::string* out) {
     return true;
 }
 
+// The launcher's notice mode (contracts/launcher.md S7): when the system refuses the GPU after a restart no Qt window can open, so the
+// launcher asks this program to put a notice on the panel with InkView alone, before anything of Qt exists, and to end.
+int show_launch_notice(const char* kind) {
+    const auto notice = pbstore::store::launch_notice(kind);
+    if (!notice) return 2;
+#ifdef PBSTORE_ON_READER
+    show_notice(notice->title, notice->text);
+#else
+    std::cout << notice->title << "\n" << notice->text << std::endl;
+#endif
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
+    if (argc == 3 && std::string(argv[1]) == "--notice") return show_launch_notice(argv[2]);
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("pbstore"));
     const bool self_test = app.arguments().contains(QStringLiteral("--self-test"));

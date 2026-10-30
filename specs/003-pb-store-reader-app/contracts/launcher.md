@@ -41,8 +41,30 @@ cut the power after any of them. The shipped script holds no test hook; the test
 | S4 | **swap decision**, only if `$TRYING` is absent: skip if `$JOURNAL` exists (the engine may be replacing `PKG`); skip if `PKG` is missing; skip if `equal PKG BIN`; skip if `equal PKG FAILED` (it already failed: never tried again by itself, FR-035); otherwise **SWAP** | |
 | S5 | if `$BIN` is missing: write `no-program` to the log, exit 1 | |
 | S6 | write `running` to `$LASTEXIT`; run `$BIN` with the Qt environment of PB Cloud's launcher through the log filter; write its exit status to `$LASTEXIT` | yes |
-| S7 | if the status is not 0 and `$TRYING` exists → **ROLLBACK**, and if R3 restored a previous program, run S6 once more with it (so the user needs no second tap; with no previous program, as after a first install, there is nothing to run instead). If the status is 134 and the log shows `mali0`: one retry after 2 s, as PB Cloud does. If the retry is refused as well, the program never ran: this is **not** a failure of the version (seen 2026-10-29 on the first start after a restart, when `/dev/mali0` was still `crw-rw----`): no ROLLBACK, no `failed` file, no message, `last-exit` holds `gpu` and S3 at the next start treats it like status 0 (the marker stays, no swap, no rollback) | |
+| S7 | if the status is not 0 and `$TRYING` exists → **ROLLBACK**, and if R3 restored a previous program, run S6 once more with it (so the user needs no second tap; with no previous program, as after a first install, there is nothing to run instead). If the status is 134 and the log shows `mali0`: the **GPU wait** below (seen 2026-10-29 on the first start after a restart, when `/dev/mali0` was still `crw-rw----`). A program that was refused the GPU never ran: this is **not** a failure of the version, also not after the final timeout: no ROLLBACK, no `failed` file, no message, `last-exit` holds `gpu` and S3 at the next start treats it like status 0 (the marker stays, no swap, no rollback) | |
 | S8 | exit with the program's last status | |
+
+### The GPU wait (S7)
+
+Decided by the owner on 2026-10-30. While the status is 134 and the log of that run shows `mali0`, the launcher waits `GPU_WAIT_STEP` (3 s)
+and starts the program again, until `GPU_WAIT_MAX` (120 s) of waiting are used up (the launcher counts the seconds it waits; it reads no
+clock). A start that succeeds ends the loop (the program removes `trying` as always); a retry that fails in another way ends the loop and is
+treated like any failure (ROLLBACK if the marker is there). Each run goes through the same log filter; the log gets one line per try
+(`retry N of M`).
+
+The store's own screen cannot start while the GPU is refused, so the user is told by the program in its **notice mode**:
+`pbstore.bin --notice <kind>`. `main()` handles the argument before any Qt object exists, draws the text with InkView alone
+(`OpenScreen`, `ClearScreen`, `DrawTextRect`, `FullUpdate` in `platform/pocketbook/notice.cpp`: no Qt, no GPU) and ends with status 0; the
+e-ink panel keeps the picture. Texts: `core/store/src/launch_notice.cpp`.
+
+| Kind | When | Text (summary) |
+|------|------|----------------|
+| `waiting` | once, at the first refusal | the reader is still setting itself up after the restart; wait, PB Store starts by itself; up to two minutes |
+| `gave-up` | once, after the final timeout | nothing is wrong with PB Store; wait a minute, tap PB Store again; if it still does not start, restart the reader |
+
+The notice is best effort: if the program has no notice mode (an older package), fails, or draws nothing, the tries go on and the final status
+is the same. The notice never counts as a run, never touches `trying`, `last-exit` or the message file. At the end the launcher still exits with
+the program's last status (134). Whether InkView draws and keeps the picture without `InkViewMain` is device task T182 (to be checked on the reader).
 
 ### SWAP (a new program is in `PKG`)
 
@@ -98,5 +120,5 @@ no further automatic attempt. Selected rows:
 crashes with 3, killed with 137, good-but-leaves-early with 0): `sh -n` and `dash -n`; first start; update; the same package twice
 (no copy); the journal present (no swap); a failed program is not retried and a newer package is; no PB Cloud-style leak of file
 names into the log; a **fault matrix**: for each mutating command N the derived script stops there (a copy stops half-way), then
-the launcher runs up to three more times with each fake program, and the invariants above are checked. It prints the number of
+the launcher runs up to three more times with each fake program, and the invariants above are checked. The GPU wait is tested with the wait shortened by the test (9 s in steps of 3 s, sleeps removed): the node opens at the 3rd try (the app starts, one notice); the node never opens (four runs, the notices `waiting` then `gave-up`, `last-exit` `gpu`, no rollback); a refusal that turns into another failure; a program without a usable notice mode; any other failure is not retried. It prints the number of
 fault points covered (the sibling pattern of `test_fault_matrix`).

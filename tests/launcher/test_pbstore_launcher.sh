@@ -32,19 +32,22 @@ R="$STORE/system/pbstore/app/run"
 JOURNAL="$STORE/system/pbstore/journal/current"
 LOG="$R/pbstore.launch.log"
 
-# the launcher with the device paths replaced by the throw-away layout, and the waits removed
+# the launcher with the device paths replaced by the throw-away layout, the waits removed, and the GPU wait shortened from 120 s to 9 s in
+# steps of 3 s (the launcher counts the seconds it waits, so three tries follow the first start)
 adapt() {
-    sed -e "s#^STORAGE=/mnt/ext1#STORAGE=$STORE#" -e 's#^    sleep 2$#    true#' "$LAUNCHER"
+    sed -e "s#^STORAGE=/mnt/ext1#STORAGE=$STORE#" -e 's#^GPU_WAIT_MAX=120 #GPU_WAIT_MAX=9 #' -e 's#^ *sleep "\$GPU_WAIT_STEP"$#    true#' "$LAUNCHER"
 }
 
 # a fresh device layout; $1 = body of the fake package program
 fresh() {
-    rm -rf "$STORE" "$tmp/count" "$tmp/bin" "$tmp/changed" "$tmp/second" "$tmp/ran-as"; mkdir -p "$APPDIR" "$STORE/system/pbstore"
+    rm -rf "$STORE" "$tmp/count" "$tmp/notices" "$tmp/bin" "$tmp/changed" "$tmp/second" "$tmp/ran-as"; mkdir -p "$APPDIR" "$STORE/system/pbstore"
     program "$1" > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"
     adapt > "$tmp/launch.sh"
 }
 # a fake program: counts its runs, then does what the body says; $RUNNING_AS is the path it was started from
-program() { printf '#!/bin/sh\necho x >> "%s/count"\necho "$0" > "%s/ran-as"\n%s\n' "$tmp" "$tmp" "$1"; }
+# (with --notice <kind> the real program shows a notice and ends: the fake one only records the kind, and is no run)
+program() { printf '#!/bin/sh\n[ "$1" = --notice ] && { echo "$2" >> "%s/notices"; exit 0; }\necho x >> "%s/count"\necho "$0" > "%s/ran-as"\n%s\n' "$tmp" "$tmp" "$tmp" "$1"; }
+notices() { if [ -f "$tmp/notices" ]; then tr '\n' ' ' < "$tmp/notices" | sed 's/ $//'; fi; }
 runs() { if [ -f "$tmp/count" ]; then wc -l < "$tmp/count" | tr -d ' '; else echo 0; fi; }
 launch() { sh "$tmp/launch.sh"; }
 same() { cmp -s "$1" "$2"; }
@@ -126,14 +129,43 @@ rmdir "$JOURNAL"
 launch                                                                  # without the journal the swap happens
 check [ -e "$tmp/changed" ]
 
-# 8. the GPU refusal (exit 134 and mali0 in the log) is retried exactly once; any other failure is not
-fresh 'echo "failed to open device file /dev/mali0 with errno 13" >&2; kill -ABRT $$'
-launch
-check [ "$(runs)" = 2 ]
-check grep -q 'retrying once' "$LOG"
+# 8. the GPU refusal (exit 134 and mali0 in the log) is retried at a short interval until a final timeout; the user is told on the way
+#    (once, with the app's own UI not up yet) and at the end; any other failure is not retried and shows no notice
+GPU_BODY='echo "failed to open device file /dev/mali0 with errno 13" >&2; kill -ABRT $$'
+fresh "$GPU_BODY"
+launch; code=$?
+check [ "$(runs)" = 4 ]                                                  # the start and three tries (9 s in steps of 3 s)
+check [ "$(notices)" = "waiting gave-up" ]                               # the first refusal, then the end; not at every try
+check [ "$(cat "$R/last-exit")" = gpu ]
+check grep -q 'still refuses the GPU' "$LOG"
+check grep -q 'retry 3 of 3' "$LOG"
+check [ "$code" = 134 ]
 fresh 'echo "something else" >&2; kill -ABRT $$'
 launch
 check [ "$(runs)" = 1 ]
+check [ "$(notices)" = "" ]
+
+# 8b. the node opens after the 3rd start: the app starts, with one notice and no final message
+fresh 'if [ "$(wc -l < "'"$tmp"'/count" | tr -d " ")" -lt 3 ]; then echo "failed to open device file /dev/mali0" >&2; kill -ABRT $$; fi; rm -f "'"$R"'/trying"; exit 0'
+launch; code=$?
+check [ "$code" = 0 ]
+check [ "$(runs)" = 3 ]
+check [ "$(notices)" = "waiting" ]
+check [ "$(cat "$R/last-exit")" = 0 ]
+check_not grep -q 'still refuses the GPU' "$LOG"
+
+# 8c. a refusal that turns into another failure on a try ends the loop and is a failure like any other (no more tries)
+fresh 'if [ "$(wc -l < "'"$tmp"'/count" | tr -d " ")" -lt 2 ]; then echo "failed to open device file /dev/mali0" >&2; kill -ABRT $$; fi; exit 3'
+launch; code=$?
+check [ "$code" = 3 ]
+check [ "$(runs)" = 2 ]
+check [ "$(notices)" = "waiting" ]
+
+# 8d. a program that cannot show a notice (no --notice mode, or it fails) does not stop the tries
+fresh 'echo "failed to open device file /dev/mali0" >&2; kill -ABRT $$'
+sed -i 's#^\[ "\$1" = --notice \].*$#[ "$1" = --notice ] \&\& exit 9#' "$APPDIR/pbstore.bin"
+launch
+check [ "$(runs)" = 4 ]
 
 # 9. without cmp the copy is compared with cksum: an unchanged package is not copied again, a changed one is
 fresh "$GOOD"
@@ -312,12 +344,12 @@ launch >/dev/null
 check [ "$(ran)" = "new new" ]                                                              # tried again, without a second swap
 check [ ! -e "$R/message" ]
 
-# 18b. the system refusing the GPU (exit 134 with mali0 in the log, also at the retry) is not a failure of the new version: no rollback, nothing
+# 18b. the system refusing the GPU (exit 134 with mali0 in the log, also at every try until the timeout) is not a failure of the new version: no rollback, nothing
 #      recorded as failed, no message; the marker stays, so the next start runs the same new version again and may succeed
-p_gpu() { printf '#!/bin/sh\necho "%s" >> "%s/runs"\necho "failed to open device file /dev/mali0 with errno 13" >&2\nkill -ABRT $$\n' "$1" "$tmp"; }
+p_gpu() { printf '#!/bin/sh\n[ "$1" = --notice ] && exit 0\necho "%s" >> "%s/runs"\necho "failed to open device file /dev/mali0 with errno 13" >&2\nkill -ABRT $$\n' "$1" "$tmp"; }
 with_update p_gpu
 launch >/dev/null
-check [ "$(ran)" = "new new" ]                                                              # the start and the one retry; the old version did not run
+check [ "$(ran)" = "new new new new" ]                                                      # the start and the tries until the timeout; the old version did not run
 check [ ! -e "$R/pbstore.bin.failed" ]
 check [ ! -e "$R/message" ]
 check [ -e "$R/trying" ]

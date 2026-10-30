@@ -1,11 +1,11 @@
-# The reader's interface: the only code that includes inkview.h (radio, battery, screen, identity), the launcher pbstore.app and
+# The reader's interface: the only code that includes inkview.h (radio, battery, screen, identity, notice), the launcher pbstore.app and
 # the probe pbstore-probe. Each function is one InkView call plus the conversions of contracts/device-interfaces.md (scripts/
 # check-constitution.sh R18 and R19 keep install logic out of here).
 #
 #   ARM  pbstore_platform       the wrappers against the SDK's inkview.h, linked into the store program
 #   HOST pbstore_platform_shim  the same sources against tests/support/inkview_shim/inkview.h, for tests/store/test_platform_wrappers
 
-set(PBSTORE_PLATFORM_SOURCES radio.cpp battery.cpp screen.cpp identity.cpp)
+set(PBSTORE_PLATFORM_SOURCES radio.cpp battery.cpp screen.cpp identity.cpp notice.cpp)
 
 if(PBSTORE_TARGET STREQUAL "ARM")
     add_library(pbstore_platform STATIC ${PBSTORE_PLATFORM_SOURCES})

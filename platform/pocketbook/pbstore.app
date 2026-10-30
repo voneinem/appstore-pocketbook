@@ -30,6 +30,8 @@ LOG=$R/pbstore.launch.log
 PROBEFLAG=$R/run-probe           # a device task (DS-01 ...): the flag file holds the probe's modes
 PROBEDIR=$STORAGE/system/pbstore/app/probe
 PROBE=$APPDIR/pbstore-probe.bin  # only in a dev package
+GPU_WAIT_MAX=120                 # S7: seconds to keep trying when the system refuses the GPU, then give up
+GPU_WAIT_STEP=3                  # S7: seconds between two tries
 
 # Every command that changes a file goes through one of these one-line functions, so that the host test can cut the power after
 # any of them. The shipped script holds no test hook.
@@ -244,26 +246,40 @@ code=$?
 echo "=== pbstore.bin exit code: $code ==="
 
 # S7: seen on PB Cloud and again on the first start after a restart: the system refused the GPU node (/dev/mali0, errno 13) and Qt
-# aborted at once (exit 134). The node is opened up some time after the reader has started; try exactly one more time and record both
-# results. A program that was refused the GPU never ran, so this is no failure of the version: gpu_refused keeps the rollback away.
-gpu_refused=0
-if [ "$code" -eq 134 ] && tail -c +"$((mark + 1))" "$LOG" 2>/dev/null | grep -q 'mali0'; then
-    echo "=== pbstore: GPU device refused (mali0), retrying once in 2 s ==="
-    sleep 2
-    mark=$(wc -c < "$LOG" 2>/dev/null || echo 0)
-    run_app
-    code=$?
-    echo "=== pbstore.bin exit code (retry): $code ==="
-    if [ "$code" -eq 134 ] && tail -c +"$((mark + 1))" "$LOG" 2>/dev/null | grep -q 'mali0'; then
-        gpu_refused=1
+# aborted at once (exit 134). The node is opened up some time after the reader has started, so the launcher tries again every
+# GPU_WAIT_STEP seconds until GPU_WAIT_MAX seconds are used up (counted, not read from a clock). The store's own screen cannot be shown
+# yet, so the user is told by the program itself in its notice mode (pbstore.bin --notice <kind>: InkView only, no Qt, no GPU): once at the
+# first refusal ("waiting") and once at the end ("gave-up"). A notice that cannot be shown is no reason to stop. A program that was
+# refused the GPU never ran, so this is no failure of the version: gpu_refused_final keeps the rollback away.
+gpu_refused() { [ "$code" -eq 134 ] && tail -c +"$((mark + 1))" "$LOG" 2>/dev/null | grep -q 'mali0'; }
+notice() {
+    echo "=== pbstore: notice for the user: $1 ==="
+    "$BIN" --notice "$1" 2>&1 | filter_log
+}
+gpu_refused_final=0
+if gpu_refused; then
+    waited=0
+    notice waiting
+    while gpu_refused && [ "$waited" -lt "$GPU_WAIT_MAX" ]; do
+        echo "=== pbstore: GPU device refused (mali0), retry $(( waited / GPU_WAIT_STEP + 1 )) of $(( GPU_WAIT_MAX / GPU_WAIT_STEP )) in $GPU_WAIT_STEP s ==="
+        sleep "$GPU_WAIT_STEP"
+        waited=$(( waited + GPU_WAIT_STEP ))
+        mark=$(wc -c < "$LOG" 2>/dev/null || echo 0)
+        run_app
+        code=$?
+        echo "=== pbstore.bin exit code (retry): $code ==="
+    done
+    if gpu_refused; then
+        gpu_refused_final=1
         mut_write "gpu" "$LASTEXIT"      # the next start does not read the status 134 as a failed version
-        echo "=== pbstore: the system still refuses the GPU; this is not a failure of the version (start it again in a minute) ==="
+        echo "=== pbstore: the system still refuses the GPU after $waited s; this is not a failure of the version ==="
+        notice gave-up
     fi
 fi
 
 # S7 (continued): the program ended abnormally before its first screen (the marker is still there): the previous version is restored and
 # run in this same start, so that the user needs no second tap. With no previous program (a first install) there is nothing to run instead.
-if [ "$code" -ne 0 ] && [ "$gpu_refused" -eq 0 ] && [ -e "$TRYING" ]; then
+if [ "$code" -ne 0 ] && [ "$gpu_refused_final" -eq 0 ] && [ -e "$TRYING" ]; then
     echo "=== pbstore: the new version did not start (status $code); restoring the previous version ==="
     if rollback; then
         run_app

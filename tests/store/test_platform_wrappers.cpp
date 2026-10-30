@@ -115,4 +115,34 @@ PB_TEST(the_identity_passes_the_two_strings_to_the_parser_and_an_empty_or_null_s
     PB_CHECK(src->firmware(fs) == std::optional<std::string>("6.11.1437"));
 }
 
+PB_TEST(a_notice_is_drawn_with_inkview_alone_and_shown_with_one_full_refresh) {
+    Fresh f;
+    show_notice("PB Store is getting ready", "Please wait.");
+    const auto& calls = state().calls;
+    PB_CHECK_EQ(state().count("OpenScreen"), 1);
+    PB_CHECK_EQ(state().count("ClearScreen"), 1);
+    PB_CHECK_EQ(state().count("DrawTextRect:PB Store is getting ready"), 1);   // the title
+    PB_CHECK_EQ(state().count("DrawTextRect:Please wait."), 1);                // the text
+    PB_CHECK_EQ(state().count("FullUpdate"), 1);
+    PB_CHECK_EQ(state().count("CloseFont"), state().count("OpenFont:LiberationSans") + state().count("OpenFont:LiberationSans-Bold"));
+    // the screen is opened first and refreshed after the last line is drawn
+    size_t open = 0, last_draw = 0, update = 0;
+    for (size_t i = 0; i < calls.size(); ++i) {
+        if (calls[i] == "OpenScreen") open = i;
+        if (calls[i].rfind("DrawTextRect:", 0) == 0) last_draw = i;
+        if (calls[i] == "FullUpdate") update = i;
+    }
+    PB_CHECK(open < last_draw && last_draw < update);
+}
+
+PB_TEST(a_notice_is_still_drawn_when_the_font_is_missing) {
+    Fresh f;
+    state().font_missing = true;
+    show_notice("Title", "Text");
+    PB_CHECK_EQ(state().count("DrawTextRect:Title"), 1);
+    PB_CHECK_EQ(state().count("DrawTextRect:Text"), 1);
+    PB_CHECK_EQ(state().count("FullUpdate"), 1);
+    PB_CHECK_EQ(state().count("CloseFont"), 0);
+}
+
 PB_TEST_MAIN()

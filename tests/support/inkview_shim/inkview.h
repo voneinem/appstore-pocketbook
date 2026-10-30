@@ -25,6 +25,7 @@ struct State {
     std::string model = "1030";            // GetDeviceModel()
     std::string firmware = "6.11.1437";    // GetSoftwareVersion()
     bool model_null = false, firmware_null = false;
+    bool font_missing = false;             // OpenFont() finds no such font
     int (*connect_callback)(int status) = nullptr;   // what NetConnectAsync was given
     std::vector<std::string> calls;        // every call, in order
     int count(const std::string& name) const { int n = 0; for (const auto& c : calls) if (c == name) ++n; return n; }
@@ -53,6 +54,27 @@ inline int NetDisconnect() { pbtest_inkview::state().calls.push_back("NetDisconn
 inline int GetLastNetConnectionError(void) { pbtest_inkview::state().calls.push_back("GetLastNetConnectionError"); return pbtest_inkview::state().last_net_error; }
 inline int GetBatteryPower() { pbtest_inkview::state().calls.push_back("GetBatteryPower"); return pbtest_inkview::state().battery; }
 inline int IsCharging() { pbtest_inkview::state().calls.push_back("IsCharging"); return pbtest_inkview::state().charging; }
+struct ifont { int size; };
+#define BLACK 0x000000
+#define WHITE 0xffffff
+#define ALIGN_CENTER 2
+#define ALIGN_FIT 8
+#define VALIGN_TOP 16
+#define VALIGN_MIDDLE 32
+inline void OpenScreen() { pbtest_inkview::state().calls.push_back("OpenScreen"); }
+inline void ClearScreen() { pbtest_inkview::state().calls.push_back("ClearScreen"); }
+inline int ScreenWidth() { return 1404; }
+inline int ScreenHeight() { return 1872; }
+inline ifont* OpenFont(const char* name, int size, int) {
+    pbtest_inkview::state().calls.push_back(std::string("OpenFont:") + name);
+    return pbtest_inkview::state().font_missing ? nullptr : new ifont{size};
+}
+inline void SetFont(const ifont*, int) { pbtest_inkview::state().calls.push_back("SetFont"); }
+inline void CloseFont(ifont* f) { pbtest_inkview::state().calls.push_back("CloseFont"); delete f; }
+inline char* DrawTextRect(int, int, int, int, const char* text, int) {
+    pbtest_inkview::state().calls.push_back(std::string("DrawTextRect:") + text);
+    return nullptr;
+}
 inline void FullUpdate() { pbtest_inkview::state().calls.push_back("FullUpdate"); }
 inline char* GetDeviceModel() {
     pbtest_inkview::state().calls.push_back("GetDeviceModel");
