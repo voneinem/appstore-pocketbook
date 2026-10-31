@@ -68,8 +68,9 @@ the program's last status (134). Whether InkView draws and keeps the picture wit
 
 ### The Wi-Fi marker
 
-The reader ends the program at the home key without running any of its code (device trace of 2026-10-31: no signal, no exit handler, no Qt
-`aboutToQuit`), so a Wi-Fi that the store switched on would stay on. The store therefore keeps the marker `run/wifi-on` for as long as it holds
+InkView's `CloseApp()` (the house icon of the store calls it) ends the process at once without running any of its code (device trace of
+2026-10-31: no signal, no exit handler, no Qt `aboutToQuit`), so a Wi-Fi that the store switched on would stay on. The house icon therefore first
+stops what runs and waits for its worker (`StoreController::leaveAndWait`); the marker below covers every other way the program can be cut off. The store therefore keeps the marker `run/wifi-on` for as long as it holds
 Wi-Fi on: written before it asks for the connection, removed once the radio is seen off again; never written when Wi-Fi was already on
 (a marker of an earlier run is then removed too: that Wi-Fi is not the store's to switch off). After **every run** of the program (also a retry
 or the previous version after a rollback) the launcher looks for the marker: if it is there it runs `pbstore.bin --radio-off` (InkView only,

@@ -293,6 +293,12 @@ void StoreController::leave(int reason) {
     service_.request_leave(static_cast<pbstore::store::LeaveReason>(reason));
 }
 
+void StoreController::leaveAndWait() {
+    // CloseApp() ends the process at once, without a destructor: the worker must have ended (and its Wi-Fi session with it) before it is called
+    leave(0);
+    if (worker_.joinable()) worker_.join();
+}
+
 void StoreController::resumed() {
     // a worker that was cancelled by the leave ended without reporting (nothing may be shown while leaving): wait for it, so that whether it
     // dropped its report is settled, and then bring the page back to the list; otherwise busy would stay true and every button stay off

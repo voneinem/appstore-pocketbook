@@ -2,6 +2,7 @@
 // with the phases the pages follow (planning, plan, executing, result). One operation at a time (spec FR-024); nothing is written before
 // Confirm; a failure ends with the three parts; the data folder is deleted only after two confirmations; update all stops at the first failure.
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QElapsedTimer>
 #include <QThread>
 #include <fstream>
@@ -209,6 +210,27 @@ PB_TEST(an_operation_cut_short_by_a_leave_does_not_leave_the_store_busy_after_it
     r.controller->refresh();                                             // and the next operation runs through
     PB_CHECK(wait_for([&] { return !r.controller->busy(); }));
     PB_CHECK(r.controller->catalogLine().contains(QStringLiteral("Catalog last updated")));
+}
+
+PB_TEST(leaving_through_the_house_icon_ends_the_wifi_session_before_the_program_is_closed) {
+    // 2026-10-31, reader: the house icon calls InkView's CloseApp(), which ends the process at once; nothing of the session ran, Wi-Fi stayed on
+    Rig r;
+    if (!r.prepare()) PB_SKIP("openssl CLI not available");
+    store::StoreConfig real_time;                                        // this test waits for real: the refresh is held in the wait for the connection
+    real_time.sleep_ms = [](int ms) { QThread::msleep(static_cast<unsigned long>(ms)); };
+    real_time.now_ms = [] { return QDateTime::currentMSecsSinceEpoch(); };
+    auto service = r.rig.make_service(real_time);
+    StoreController controller(*service, r.rig.screen, QStringLiteral("0.1.0"), QString::fromStdString(r.rig.root() + "/system/pbstore/app/pbstore.log"));
+    controller.startUp();
+    const int earlier = r.rig.radio.count("connect");                    // the refresh of prepare() has used the radio once
+    r.rig.radio.set_connect(FakeRadio::Connect::NeverConnects);
+    controller.refresh();
+    PB_CHECK(wait_for([&] { return r.rig.radio.count("connect") == earlier + 1; }));
+    PB_CHECK(r.rig.radio.powered());
+    PB_CHECK(r.rig.run_state->radio_marker());
+    controller.leaveAndWait();                                           // what the icon does before it closes the program
+    PB_CHECK(!r.rig.radio.powered());                                    // the session ended: Wi-Fi is back as it was
+    PB_CHECK(!r.rig.run_state->radio_marker());
 }
 
 PB_TEST(declining_an_app_in_update_all_skips_it) {

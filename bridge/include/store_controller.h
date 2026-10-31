@@ -140,6 +140,7 @@ public:
     Q_INVOKABLE void confirmDeleteData();                                             // each of the two confirmations
     Q_INVOKABLE void startUpdateAll();
     Q_INVOKABLE void startRepair(bool acceptUnknownBattery);
+    Q_INVOKABLE void leaveAndWait();           // the house icon: stop what runs and wait until its worker has ended (Wi-Fi back as it was), before the program is closed
     Q_INVOKABLE void resumed();                // the app came back after a sleep: a new action may start
     Q_INVOKABLE void cancel();                 // the Cancel control: stops a refresh at once
 

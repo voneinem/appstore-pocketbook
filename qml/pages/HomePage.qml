@@ -22,7 +22,7 @@ Item {
                 objectName: "home"
                 label: qsTr("home.home")
                 icon: "home"
-                onClicked: device.quit()
+                onClicked: { store.leaveAndWait(); device.quit() }
             },
             IconButton {
                 objectName: "menu"
