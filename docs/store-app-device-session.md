@@ -43,7 +43,7 @@ only the named lines run: `--wifi`, `--battery`, `--identity`, `--https`). The f
 |---|---|---|---|
 | B1 | none (default) | nothing | T091, T096 (tools) |
 | B2 | `--wifi --battery --identity` | Wi-Fi off in the reader's settings, a saved network in range, cable out (on battery) | T092, T093, T094 |
-| B3 | `--wifi --https` | Wi-Fi on and connected, cable out | T092, T095 |
+| B3 | `--wifi` | Wi-Fi on and connected, cable out (`--https` only prints n/a: the handshake is checked by the store itself, which refreshed the live catalog on 2026-10-31) | T092 (c) |
 | B4 (optional) | `--battery` | cable to a wall charger | T093 |
 | B5 (optional) | `--battery` | cable to the computer, charge-only mode | T093 |
 | B6 (optional) | `--wifi` | Wi-Fi off and no saved network in range | T092 |
