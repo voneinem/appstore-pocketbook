@@ -180,7 +180,7 @@ struct EngineRig {
         pbstore::install::Config config;
         config.catalog_url = host.catalog_url();
         config.trusted_keys = {key.pub};
-        config.program_version = "0.2.0";
+        config.program_version = PBSTORE_VERSION;   // what the command line writes into the install record (VERSION)
         if (!program_name.empty()) config.program_name = program_name;
         pbstore::install::Deps deps;
         deps.open_fs = [](const std::string& root) -> std::unique_ptr<pbstore::install::ReaderFs> { return std::make_unique<pbstore::install::PosixReaderFs>(root); };

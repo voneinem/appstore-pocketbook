@@ -15,10 +15,10 @@ released installer 0.2.0, the real install with `--confirm-plan`, a check of the
 | T091 DS-01 | dev package on the reader, the probe | done in part (dev builds were installed by the installer; 0.0.7 is on the reader now) | whether a restart was needed to see the entry, and how long the next start took, are not recorded; the probe results are not recorded |
 | T092 DS-02 | Wi-Fi from the app | partly evidenced | the store switches Wi-Fi on for an action and off again; the notice "Wi-Fi was switched on and off again" was dropped on 2026-10-29; the probe lines for the three cases are not recorded |
 | T093 DS-03 | battery | open | the thresholds are as designed (the repair needs 10 %) and unverified |
-| T094 DS-04 | model and firmware strings | open | Settings shows what the firmware returns since 2026-10-30 (`Reader` line); the strings are to be written into the fixture of `test_inkview_identity_parse` (task T172, T173) |
+| T094 DS-04 | model and firmware strings | done 2026-10-31 | `GetDeviceModel()` = `PB1030`, `GetSoftwareVersion()` = `U1030.6.11.1437` (read from `pbstore.log`, the `identity` line the store writes at each start); `parse_firmware` accepts the `U<model>.` form, fixture in `test_inkview_identity_parse`; the owner confirmed on dev 0.0.12 (2026-10-31): Settings shows `model PB1030, firmware 6.11.1437` and the plan page no longer carries the two "unknown model / unknown firmware" confirmations |
 | T095 DS-07 | certificates, clock, time zone | open | |
-| T096 DS-08 | launcher tools and exit statuses | open | |
-| T097 DS-09 | memory | open | |
+| T096 DS-08 | launcher tools and exit statuses | partly | after a normal start and leave with the home key `run/last-exit` and the log line say `exit code: 0` (2026-10-31); the cases switch of app, power-off and auto power-off are open |
+| T097 DS-09 | memory | partly | `MemAvailable` 1740096 kB (about 1.66 GiB) on the first start after the owner mounted and unmounted the reader, 2026-10-31 (launcher diagnostics line); far above the 160 MiB threshold; after reading a book and after a Wi-Fi session are open |
 | T098 DS-10 | e-ink behaviour of Home and Detail | partly | the top bar was reworked on 2026-10-29 to the look of PB Notes; no numbers for ghosting or taps are recorded |
 | T141 DS-05 | a running app edits `view.json` | partly | install, update and remove of PB Notes from the store worked on 2026-10-29; the `hash.txt` comparison and the restart question are not recorded |
 | T142 DS-06 | an entry that points to a missing file | open | |
@@ -30,11 +30,14 @@ released installer 0.2.0, the real install with `--confirm-plan`, a check of the
 | T148 DS-16 | remove the store and restore | open | |
 | T149 SC-011 | release walkthrough | open | |
 | T149a DS-10b | e-ink check of Settings, About, Log | open | |
-| T171 | install dev 0.0.6, restart | done | dev 0.0.7 is installed on the reader; 0.0.8 is built and not installed |
+| T171 | install dev 0.0.6, restart | done | dev 0.0.11 is installed on the reader (2026-10-31; 0.0.9, 0.0.10 and 0.0.11 were installed the same way: backup, dry run, the released installer 0.2.0, hashes equal to the plan, empty journal) |
 | T182 | the GPU notice after a restart | open | the code is in dev 0.0.8 and later; whether InkView draws the notice before the program has its screen is the open question |
 
 ## Findings from the reader so far
 
+- **2026-10-31, T181 not reproduced:** on dev 0.0.12 the owner removed PB Cloud and installed it again with Wi-Fi off (the same order as the stall of 2026-10-30). `pbstore.log` shows the stages with their times: remove at 07:53:24Z, Wi-Fi brought up at 07:53:35Z and disconnected at 07:53:44Z (the download of the plan), then `preparing` 0.5 s to 1.6 s for 623 files, `applying` 1.8 s to 2.4 s for 650 steps, `finishing` 2.6 s, `install pbcloud 0.6.1 ok`. The whole write took 2.6 seconds, the journal is empty. The stall of 2.5 minutes did not happen; the cause is still unknown and the stage lines will show it if it comes back.
+
+- **2026-10-31:** dev 0.0.10 (keyed strings table, progress figures in MB, the repair-page fix) ran on the reader; the owner reported that everything looked good (no manual checklist was run). Dev 0.0.11 added the `identity` log line, which gave the model and firmware strings (T094). The reader's `pbstore.log` shows the identity line and the launcher's log an exit code of 0.
 - **After a restart the first start can be refused `/dev/mali0`** (it is opened late). The first designs treated that as a failed start; since 2026-10-30 the launcher retries
   for up to two minutes with a notice and never counts it as a failure of the version (commits `e85eb77`, `aae3ae0`).
 - **The plan page was too crowded** for an end user (PB Cloud: 621 files); it now shows a few plain sentences first and the installer's full text behind *Show details* (2026-10-30).

@@ -34,6 +34,19 @@ the source, run `scripts/extract-strings.py --check` (ctest `check_strings`: eve
 is missing shows as the key itself. The texts of the engine and of the store's rules (`E-INS-*`, `E-STO-*`) are not in this table: they live with their rules
 (`core/install/src/messages.cpp`, `core/store/src/store_rules.cpp`) and are tested against the rule documents.
 
+## Numbers of the final checks (2026-10-31)
+
+`scripts/pre-merge.sh` and `scripts/pre-merge.sh --sanitize` (AddressSanitizer and UndefinedBehaviorSanitizer) both pass: 160 tests, 158 run and 2 skipped
+(`test_release_binary` needs the installer's release binary, `test_install_vfat` needs a loop mount), including the 16 scripted UI walks, `app --self-test`,
+the secrets scan, `check-version-bump.sh` (VERSION 0.3.0, app/VERSION 0.1.0), `check-constitution.sh` and `check-ui-style.sh`.
+`scripts/check-arm-build.sh` compiles 59 files with the SDK's compiler and links an ARM executable.
+
+Fault points (a power loss after every mutating call, clean and pessimistic): the engine's matrix install 421, remove 479, update 631 (install again with the real
+planner 421); the store's matrix the same three plus adopt 120 (1651 in all); the launcher's matrix 25 (9 for a good update, 16 for a failing one).
+
+The release candidate `dist/pbstore-inkpad-one-0.1.0.zip` is 1,280,869 bytes, sha256 `e2f466a06e5876b2f9d557ed028223fd2a2f4a6fd192a8951ff69eafd00ce621`;
+`scripts/check-store-binary.sh` and `scripts/check-release.sh` pass. It has not been installed on a reader yet.
+
 ## Tests
 
 Everything runs with `ctest --test-dir build` (labels `unit`, `store`, `integration`, `bridge`, `launcher`, `contract`); `scripts/pre-merge.sh [--sanitize]` runs the whole gate

@@ -252,7 +252,7 @@ PB_TEST(start_without_arguments_and_without_a_graphical_session_prints_the_help_
     PB_CHECK(has(res.out + res.err, "--dry-run"));
     RunResult version = r.run({"--version"});
     PB_CHECK_EQ(version.code, 0);
-    PB_CHECK(has(version.out, "0.2.0"));
+    PB_CHECK(has(version.out, PBSTORE_VERSION));
 }
 
 PB_TEST(an_empty_catalog_prints_an_explicit_message) {

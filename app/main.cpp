@@ -164,6 +164,9 @@ int main(int argc, char** argv) {
     config.trust_source = trust_source;
 #ifdef PBSTORE_ON_READER
     config.reader_identity = [&identity] { return identity->describe(); };
+    // what InkView gives for model and firmware, once per start, so that the real forms can be read from the mounted reader (device task DS-04;
+    // printable ASCII and at most 40 characters of each, never the serial number)
+    log.event("identity", "-", "-", "ok", {}, identity->describe());
 #endif
     pbstore::store::StoreParts parts{engine, storage, radio, battery, memory, screen, cache, run_state, pending_note, clock, last_fetch};
     pbstore::store::StoreService service(parts, config);

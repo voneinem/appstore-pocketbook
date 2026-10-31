@@ -41,14 +41,19 @@ std::string completion_text(const Plan& plan) {
     };
     const std::string name = neutralize(plan.app_name.empty() ? plan.app_id : plan.app_name);
     const std::string group = neutralize(plan.menu.group), title = neutralize(plan.menu.title);
+    // where the app appears in the menu; nothing is said when the plan leaves the menu entry as it is (no group and title in the plan)
+    auto appears = [&]() -> std::string {
+        if (title.empty()) return "";
+        return group.empty() ? " It appears as \"" + title + "\"." : " It appears in the group \"" + group + "\" as \"" + title + "\".";
+    };
     std::string t;
     switch (plan.kind) {
         case PlanKind::Install:
-            t = "Done. " + name + " " + plan.to_version + " is installed. It appears in the group \"" + group + "\" as \"" + title + "\".\n";
+            t = "Done. " + name + " " + plan.to_version + " is installed." + appears() + "\n";
             break;
         case PlanKind::Update:
-            t = "Done. " + name + " is now version " + plan.to_version + " (it was " + plan.from_version + "). It appears in the group \"" + group + "\" as \"" + title +
-                "\"; its data folder was kept.\n";
+            t = "Done. " + name + " is now version " + plan.to_version + " (it was " + plan.from_version + ")." + appears() +
+                (plan.data && plan.data->exists ? " Its data folder was kept." : "") + "\n";
             break;
         case PlanKind::Replace:
             t = "Done. " + name + " was replaced by version " + plan.to_version + " and is now managed by the installer. Its data folder was kept.\n";

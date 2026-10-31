@@ -34,6 +34,12 @@ std::optional<std::string> parse_model(const std::string& text) {
 std::optional<std::string> parse_firmware(const std::string& text) {
     std::string t = trim(text);
     if (!t.empty() && (t[0] == 'v' || t[0] == 'V')) t.erase(0, 1);
+    // the reader's own form: "U<model>.<major>.<minor>.<build>", for example U1030.6.11.1437 (device task DS-04); the model number is dropped
+    if (t.size() > 1 && t[0] == 'U') {
+        const size_t dot = t.find('.');
+        if (dot == std::string::npos || !all_digits(t.substr(1, dot - 1))) return std::nullopt;
+        t.erase(0, dot + 1);
+    }
     const size_t a = t.find('.');
     const size_t b = a == std::string::npos ? std::string::npos : t.find('.', a + 1);
     if (b == std::string::npos) return std::nullopt;

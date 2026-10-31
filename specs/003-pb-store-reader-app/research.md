@@ -75,6 +75,11 @@ The old feature 002 question F12 ("where model and firmware can be read") is **c
 *mounted storage*; the store runs on the reader and may ask InkView. Whether `GetDeviceModel()` returns `"1030"`-style
 text and `GetSoftwareVersion()` a `6.11.1437`-style string is **Unverified (DS-04)**.
 
+**Observed 2026-10-31 (DS-04, T172, T173):** on the owner's InkPad One `GetDeviceModel()` returns `PB1030` (the engine's `is_ink_pad_one` accepts it) and
+`GetSoftwareVersion()` returns `U1030.6.11.1437`: `U<model>.<major>.<minor>.<build>`. `parse_firmware` now drops the `U<model>.` prefix and returns
+`6.11.1437`; with both values recognised the plan no longer asks the two "unknown model / unknown firmware" confirmations and `check_compatibility` compares
+with `min_firmware` (test `the_strings_of_the_real_reader_are_recognised`). The store logs one `identity` line per start (no serial number).
+
 ## R-04. Self-update: the design, and why it differs from the brief's wording
 
 The brief: the new package is installed by the engine "except that its files are staged next to the live ones (for

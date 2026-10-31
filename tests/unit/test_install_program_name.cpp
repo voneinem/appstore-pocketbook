@@ -43,13 +43,14 @@ bool has(const std::string& t, const std::string& n) { return t.find(n) != std::
 PB_TEST(a_program_name_is_written_into_installed_by) {
     const std::string record = install_testapp("pbstore-app");
     if (record == "SKIP") PB_SKIP("openssl CLI not available");
-    PB_CHECK(has(record, "\"installed_by\": \"pbstore-app 0.2.0\"") || has(record, "\"installed_by\":\"pbstore-app 0.2.0\""));
+    const std::string who = std::string("pbstore-app ") + PBSTORE_VERSION;   // the installer's VERSION: the rig writes what the command line writes
+    PB_CHECK(has(record, "\"installed_by\": \"" + who + "\"") || has(record, "\"installed_by\":\"" + who + "\""));
 }
 
 PB_TEST(the_default_is_the_installers_name_exactly_as_before) {
     const std::string record = install_testapp("");
     if (record == "SKIP") PB_SKIP("openssl CLI not available");
-    PB_CHECK(has(record, "pbstore-install 0.2.0"));
+    PB_CHECK(has(record, std::string("pbstore-install ") + PBSTORE_VERSION));
     PB_CHECK(!has(record, "pbstore-app"));
 }
 
