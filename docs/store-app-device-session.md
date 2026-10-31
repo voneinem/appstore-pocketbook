@@ -33,18 +33,22 @@ The agent installs the dev package first (mounted, the install cycle above); the
 | Let the reader go to sleep during a Refresh (auto power-off if it is short enough) | the same | T144 (d) |
 | Plug the USB cable in during an operation | the same, and which event the app received | T144 (e) |
 
-## Block B: the probe (mounted, owner only opens the app twice, about 10 minutes)
+## Block B: the probe (mounted, owner only opens the app, about 10 minutes)
 
-The agent writes `system/pbstore/app/run/run-probe` with the words `files wifi battery identity https tools` (one run, or one word per run for the Wi-Fi
-cases), the owner ejects and opens PB Store (the launcher runs the probe instead of the store), the owner mounts again, the agent reads
-`system/pbstore/app/probe/report.txt` and removes `run-probe`.
+The agent writes `system/pbstore/app/run/run-probe` with the probe's flags (an empty file runs the default checks: files, free space, memory, tools; with flags
+only the named lines run: `--wifi`, `--battery`, `--identity`, `--https`). The flag is used up by one start, so each run below is one eject, one tap on PB Store
+(the launcher runs the probe instead of the store), one mount; the agent then reads `system/pbstore/app/probe/report.txt` and writes it into the results.
 
-| Setup the owner provides | Task |
-|---|---|
-| Wi-Fi off, a saved network in range; then off with no saved network (move out of range or forget nothing, say so); then on | T092 |
-| On battery; cable to a charger; cable to a computer in charge-only mode; Wi-Fi on | T093 |
-| Nothing special for `files`, `identity`, `https`, `tools` | T091, T094, T095, T096 |
-| Read the reader's own Settings screen for free space once (to compare with the probe) | T091 |
+| Run | Flags | Setup the owner provides | Task |
+|---|---|---|---|
+| B1 | none (default) | nothing | T091, T096 (tools) |
+| B2 | `--wifi --battery --identity` | Wi-Fi off in the reader's settings, a saved network in range, cable out (on battery) | T092, T093, T094 |
+| B3 | `--wifi --https` | Wi-Fi on and connected, cable out | T092, T095 |
+| B4 (optional) | `--battery` | cable to a wall charger | T093 |
+| B5 (optional) | `--battery` | cable to the computer, charge-only mode | T093 |
+| B6 (optional) | `--wifi` | Wi-Fi off and no saved network in range | T092 |
+
+Also once: read the reader's own Settings screen for free space (to compare with the probe's `free-space` line, T091).
 
 Then, with the real store: leave with the home key; switch to another app from the task view; power off from the power button while the list is shown; let
 the auto power-off happen. After each, the agent reads `run/last-exit` (T096). The `MemAvailable` lines after a fresh restart, after reading a book for a few
