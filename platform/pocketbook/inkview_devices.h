@@ -41,5 +41,10 @@ public:
 // after the program ends.
 void show_notice(const std::string& title, const std::string& text);
 
+// A program that has no Qt (the launcher's `pbstore.bin --radio-off`, the probe) attaches InkView's shared state with OpenScreen() before it calls
+// anything of the classes above; without it a call can crash (the probe ended with a segmentation fault on the reader, 2026-10-31).
+// The Qt platform plugin does this for the store itself.
+void open_inkview_session();
+
 // GetDeviceModel and GetSoftwareVersion through the parsers of core/store. The serial number is never read.
 std::unique_ptr<pbstore::store::StoreIdentitySource> make_inkview_identity();

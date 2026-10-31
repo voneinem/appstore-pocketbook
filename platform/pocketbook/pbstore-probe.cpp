@@ -245,6 +245,12 @@ int main(int argc, char** argv) {
         return 2;
     }
     std::vector<Line> report;
+#ifdef PBSTORE_ON_READER
+    if (want_wifi || want_battery || want_identity || want_https) {
+        std::fprintf(stderr, "pbstore-probe: opening the InkView session\n");
+        OpenScreen();   // without it the calls below crashed on the reader (2026-10-31)
+    }
+#endif
     if (!(want_wifi || want_battery || want_identity || want_https)) {
         Work work(scratch);
         report.push_back(check_renameat2(work));
@@ -256,10 +262,10 @@ int main(int argc, char** argv) {
         report.push_back(check_meminfo());
         report.push_back(check_tools());
     } else {
-        if (want_wifi) report.push_back(mode_wifi());
-        if (want_battery) report.push_back(mode_battery());
-        if (want_identity) report.push_back(mode_identity());
-        if (want_https) report.push_back(mode_https());
+        if (want_wifi) { std::fprintf(stderr, "pbstore-probe: wifi\n"); report.push_back(mode_wifi()); }
+        if (want_battery) { std::fprintf(stderr, "pbstore-probe: battery\n"); report.push_back(mode_battery()); }
+        if (want_identity) { std::fprintf(stderr, "pbstore-probe: identity\n"); report.push_back(mode_identity()); }
+        if (want_https) { std::fprintf(stderr, "pbstore-probe: https\n"); report.push_back(mode_https()); }
     }
     std::string text;
     for (const Line& l : report) text += l.text() + "\n";

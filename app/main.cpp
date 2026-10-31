@@ -81,6 +81,8 @@ int show_launch_notice(const char* kind) {
 // asks the program to switch the radio off, with InkView alone and before anything of Qt exists. Status 0 only when the radio was seen off.
 int switch_radio_off() {
 #ifdef PBSTORE_ON_READER
+    std::fprintf(stderr, "[pbstore] radio-off: opening the InkView session\n");
+    open_inkview_session();
     InkViewRadio radio;
     const auto sleep = [](int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); };
     const auto now = [] { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); };

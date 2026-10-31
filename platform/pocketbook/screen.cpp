@@ -2,3 +2,5 @@
 #include "platform/pocketbook/inkview_devices.h"
 
 void InkViewScreen::full_update() { FullUpdate(); }
+
+void open_inkview_session() { OpenScreen(); }
