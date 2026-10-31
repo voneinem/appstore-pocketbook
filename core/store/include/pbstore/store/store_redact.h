@@ -17,7 +17,7 @@ std::string store_redact(const std::string& text);
 
 class StoreRedactor : public install::Redactor {
 public:
-    void set_user_name(const std::string& name) { user_ = name; }
+    void set_user_name(const std::string& name) { user_ = name.size() >= 3 ? name : std::string(); }   // a short name ("pb", "app") would hide ordinary words
     // A string that must never appear (a Wi-Fi name, a serial number). Strings of less than 3 characters are ignored.
     void add_secret(const std::string& secret);
 

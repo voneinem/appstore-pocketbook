@@ -14,19 +14,19 @@ Item {
 
     TopBar {
         id: bar
-        title: qsTr("PB Store")
+        title: qsTr("home.pb_store")
         // Home leaves the store: the house icon at the top left of the main screen, as in the reader's own apps. The menu beside it holds
         // the rarer controls; Refresh and Search stay in reach at the right (the look of PB Notes).
         leftItems: [
             IconButton {
                 objectName: "home"
-                label: qsTr("Home")
+                label: qsTr("home.home")
                 icon: "home"
                 onClicked: device.quit()
             },
             IconButton {
                 objectName: "menu"
-                label: qsTr("Menu")
+                label: qsTr("home.menu")
                 icon: "menu"
                 onClicked: page.menuOpen = !page.menuOpen
             }
@@ -34,14 +34,14 @@ Item {
         rightItems: [
             IconButton {
                 objectName: "refresh"
-                label: qsTr("Refresh")
+                label: qsTr("home.refresh")
                 icon: "refresh"
                 enabled: !store.busy
                 onClicked: { page.menuOpen = false; store.refresh() }
             },
             IconButton {
                 objectName: "search"
-                label: qsTr("Search")
+                label: qsTr("home.search")
                 icon: "search"
                 onClicked: { page.menuOpen = false; page.searching = !page.searching }
             }
@@ -79,7 +79,7 @@ Item {
                     border.width: Style.ruleWidth
                     border.color: Style.ink
                     color: okTap.pressed ? Style.pressed : Style.paper
-                    Text { anchors.centerIn: parent; text: qsTr("OK"); font.pixelSize: Style.rowTitleSize; font.bold: true; color: Style.ink }
+                    Text { anchors.centerIn: parent; text: qsTr("home.ok"); font.pixelSize: Style.rowTitleSize; font.bold: true; color: Style.ink }
                     MouseArea { id: okTap; objectName: "messageOk"; anchors.fill: parent; onClicked: store.clearMessage() }
                 }
             }
@@ -105,7 +105,7 @@ Item {
                 height: Style.touchMin
                 font.pixelSize: Style.bodySize
                 color: Style.ink
-                placeholderText: qsTr("Name of an app")
+                placeholderText: qsTr("home.name_of_an_app")
                 inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
                 verticalAlignment: TextInput.AlignVCenter
                 background: Rectangle { color: Style.paper; radius: Style.radiusField; border.width: Style.ruleWidth; border.color: Style.ink }
@@ -114,7 +114,7 @@ Item {
             IconButton {
                 id: clearButton
                 objectName: "searchClear"
-                label: qsTr("Clear")
+                label: qsTr("home.clear")
                 icon: "close"
                 onClicked: { searchField.text = ""; store.search("") }
             }
@@ -208,7 +208,7 @@ Item {
                 objectName: "menuUpdateAll"
                 visible: store.canUpdateAll
                 height: visible ? Style.touchMin : 0
-                text: qsTr("Update all")
+                text: qsTr("home.update_all")
                 enabled: !store.busy
                 onChosen: {
                     store.startUpdateAll()
@@ -217,7 +217,7 @@ Item {
             }
             MenuRow {
                 objectName: "menuSettings"
-                text: qsTr("Settings")
+                text: qsTr("home.settings")
                 onChosen: {
                     store.loadSettings()
                     page.nav.push(Qt.resolvedUrl("SettingsPage.qml"), {"nav": page.nav})
@@ -225,7 +225,7 @@ Item {
             }
             MenuRow {
                 objectName: "menuAbout"
-                text: qsTr("About")
+                text: qsTr("home.about")
                 onChosen: page.nav.push(Qt.resolvedUrl("AboutPage.qml"), {"nav": page.nav})
             }
         }

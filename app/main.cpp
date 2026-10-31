@@ -37,6 +37,7 @@
 #include "pbstore/store/run_state.h"
 #include "pbstore/store/store_service.h"
 #include "store_controller.h"
+#include "table_translator.h"
 #include "pbstore_cacert.h"
 
 #ifdef PBSTORE_ON_READER
@@ -78,6 +79,12 @@ int main(int argc, char** argv) {
     if (argc == 3 && std::string(argv[1]) == "--notice") return show_launch_notice(argv[2]);
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("pbstore"));
+    // The texts of the interface: every qsTr()/tr() names a key of bridge/strings/strings.tsv (compiled in), looked up before anything is shown.
+    TableTranslator strings;
+    QFile strings_file(QStringLiteral(":/qml/strings.tsv"));
+    const bool strings_ok = strings_file.open(QIODevice::ReadOnly) && strings.loadTable(strings_file.readAll()) && strings.entryCount() > 0;
+    if (!strings_ok) std::cerr << "[pbstore] the table of interface texts is not available" << std::endl;
+    app.installTranslator(&strings);
     const bool self_test = app.arguments().contains(QStringLiteral("--self-test"));
     QString screenshots;
     for (int i = 1; i + 1 < app.arguments().size(); ++i)
@@ -202,7 +209,7 @@ int main(int argc, char** argv) {
         // every page is opened once on top of the list: a QML error in any of them fails the self-test
         static const char* const kPages[] = {"DetailPage", "SettingsPage", "AboutPage", "LicensesPage", "LogPage", "OperationPage", "RepairPage"};
         const int delay = screenshots.isEmpty() ? 60 : 500;
-        QTimer::singleShot(screenshots.isEmpty() ? 300 : 900, &app, [&app, &controller, &qml, &qml_warnings, window, delay, screenshots] {   // by value: this block has ended when the timer fires
+        QTimer::singleShot(screenshots.isEmpty() ? 300 : 900, &app, [&app, &controller, &qml, &qml_warnings, window, delay, screenshots, strings_ok] {   // by value: this block has ended when the timer fires
             const bool shown = window && window->property("pageLoaded").toBool();
             if (!shown) std::cerr << "[pbstore] no page is shown" << std::endl;
             QObject* root_object = qml.rootObjects().first();
@@ -226,7 +233,7 @@ int main(int argc, char** argv) {
                     });
                 });
             }
-            QTimer::singleShot((step + 2) * delay, &app, [&app, shown, licenses, &qml_warnings] { app.exit((shown && qml_warnings == 0 && licenses) ? 0 : 2); });
+            QTimer::singleShot((step + 2) * delay, &app, [&app, shown, licenses, strings_ok, &qml_warnings] { app.exit((shown && qml_warnings == 0 && licenses && strings_ok) ? 0 : 2); });
         });
     }
 #ifdef PBSTORE_TEST_BUILD

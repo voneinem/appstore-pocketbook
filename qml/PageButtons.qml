@@ -26,7 +26,7 @@ Row {
         turned()
     }
 
-    IconButton { objectName: "pageUp"; label: qsTr("Up"); icon: "chevron-up"; enabled: bar.canUp; onClicked: bar.pageBy(-1) }
+    IconButton { objectName: "pageUp"; label: qsTr("pagebuttons.up"); icon: "chevron-up"; enabled: bar.canUp; onClicked: bar.pageBy(-1) }
     Text {
         objectName: "pageIndicator"
         width: 170
@@ -37,5 +37,5 @@ Row {
         color: Style.ink
         text: bar.pageNumber + " / " + bar.pageCount
     }
-    IconButton { objectName: "pageDown"; label: qsTr("Down"); icon: "chevron-down"; enabled: bar.canDown; onClicked: bar.pageBy(1) }
+    IconButton { objectName: "pageDown"; label: qsTr("pagebuttons.down"); icon: "chevron-down"; enabled: bar.canDown; onClicked: bar.pageBy(1) }
 }

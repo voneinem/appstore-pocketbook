@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include "store_controller.h"
+#include "qt_strings.h"
 #undef emit   // a Qt macro; the test support has a method of that name
 #include "store_rig.h"
 #include "test_support.h"
@@ -23,6 +24,7 @@ QCoreApplication& app() {
     static char name[] = "test";
     static char* argv[] = {name, nullptr};
     static QCoreApplication a(argc, argv);
+    install_strings();
     return a;
 }
 
@@ -192,6 +194,21 @@ PB_TEST(cancel_is_offered_until_the_engine_reports_the_commit_point_and_not_afte
     PB_CHECK(wait_for([&] { return !r.controller->busy(); }));
     PB_CHECK(!r.controller->cancellable());                              // the engine passed "finishing" on the way
     r.controller->finishResult();
+}
+
+PB_TEST(an_operation_cut_short_by_a_leave_does_not_leave_the_store_busy_after_it_is_resumed) {
+    // the reader's sleep or the Home button: the worker ends without reporting (nothing is shown while leaving); on wake the buttons must work again
+    Rig r;
+    if (!r.prepare()) PB_SKIP("openssl CLI not available");
+    r.controller->leave(1);
+    r.controller->refresh();
+    PB_CHECK(r.controller->busy());
+    r.controller->resumed();
+    PB_CHECK(!r.controller->busy());
+    PB_CHECK_EQ(r.controller->phase().toStdString(), std::string("idle"));
+    r.controller->refresh();                                             // and the next operation runs through
+    PB_CHECK(wait_for([&] { return !r.controller->busy(); }));
+    PB_CHECK(r.controller->catalogLine().contains(QStringLiteral("Catalog last updated")));
 }
 
 PB_TEST(declining_an_app_in_update_all_skips_it) {

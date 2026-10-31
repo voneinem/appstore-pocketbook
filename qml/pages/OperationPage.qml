@@ -55,11 +55,11 @@ Item {
         Text { visible: store.notice.length > 0; width: parent.width; text: store.notice; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
         // a step that takes long must not look like a frozen screen: one repaint every 10 seconds, no faster (e-ink)
         Text { objectName: "stillWorking"; visible: page.waited >= 10; width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink
-               text: qsTr("Still working, %1 seconds so far. Please wait.").arg(page.waited) }
-        ActionButton { objectName: "cancel"; visible: store.cancellable; text: qsTr("Cancel"); onClicked: store.cancel() }
+               text: qsTr("operation.still_working").arg(page.waited) }
+        ActionButton { objectName: "cancel"; visible: store.cancellable; text: qsTr("operation.cancel"); onClicked: store.cancel() }
         Text { objectName: "cancelNote"; visible: store.cancellable && page.phase === "executing"; width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink
-               text: qsTr("Cancelling puts the reader back as it was.") }
-        Text { visible: !store.cancellable; width: parent.width; text: qsTr("Finishing; this cannot be cancelled"); wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
+               text: qsTr("operation.cancel_hint") }
+        Text { visible: !store.cancellable; width: parent.width; text: qsTr("operation.finishing"); wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
     }
 
     // the plan: a few plain sentences, the consents as separate tap controls, then Confirm and Cancel; the engine's full text (every file) is behind Show details
@@ -102,13 +102,13 @@ Item {
                 visible: active
                 sourceComponent: TickRow {
                     objectName: "batteryRisk"
-                    text: qsTr("The battery level cannot be read; continue at my own risk")
+                    text: qsTr("operation.battery_unreadable")
                     onToggled: page.riskTicked = checked
                 }
             }
             ActionButton {
                 objectName: "toggleDetails"
-                text: store.planDetailsShown ? qsTr("Hide details") : qsTr("Show details")
+                text: store.planDetailsShown ? qsTr("operation.hide_details") : qsTr("operation.show_details")
                 onClicked: store.toggleDetails()
             }
             Text { objectName: "planText"; visible: store.planDetailsShown; width: parent.width; text: store.planText; wrapMode: Text.WrapAnywhere; font.pixelSize: Style.bodySize; color: Style.ink }
@@ -123,8 +123,8 @@ Item {
         Row {
             anchors { bottom: parent.bottom; bottomMargin: 10; horizontalCenter: parent.horizontalCenter }
             spacing: Style.gap
-            ActionButton { objectName: "decline"; text: qsTr("Cancel"); onClicked: store.decline() }
-            ActionButton { objectName: "confirm"; primary: true; text: qsTr("Confirm"); enabled: page.ready; onClicked: store.confirm(page.names(), page.riskTicked) }
+            ActionButton { objectName: "decline"; text: qsTr("operation.cancel"); onClicked: store.decline() }
+            ActionButton { objectName: "confirm"; primary: true; text: qsTr("operation.confirm"); enabled: page.ready; onClicked: store.confirm(page.names(), page.riskTicked) }
         }
     }
 
@@ -143,19 +143,19 @@ Item {
             width: parent.width
             spacing: 16
             Text { objectName: "deletePrompt"; width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; font.bold: true; color: Style.ink
-                   text: store.deleteStep === 1 ? qsTr("Delete the data of this app? %1").arg(store.dataFolderText)
-                                                : qsTr("Really delete it? This cannot be undone. %1").arg(store.dataFolderText) }
+                   text: store.deleteStep === 1 ? qsTr("operation.delete_ask_first").arg(store.dataFolderText)
+                                                : qsTr("operation.delete_ask_second").arg(store.dataFolderText) }
             Row {
                 spacing: Style.gap
-                ActionButton { objectName: "keepData"; text: qsTr("Keep"); onClicked: store.finishResult() }
-                ActionButton { objectName: "deleteData"; text: qsTr("Delete"); onClicked: store.confirmDeleteData() }
+                ActionButton { objectName: "keepData"; text: qsTr("operation.keep"); onClicked: store.finishResult() }
+                ActionButton { objectName: "deleteData"; text: qsTr("operation.delete"); onClicked: store.confirmDeleteData() }
             }
         }
         Row {
             visible: store.deleteStep === 0
             spacing: Style.gap
-            ActionButton { objectName: "askDelete"; visible: store.canDeleteData; text: qsTr("Delete data too?"); onClicked: store.askDeleteData() }
-            ActionButton { objectName: "ok"; primary: true; text: qsTr("OK"); onClicked: store.finishResult() }
+            ActionButton { objectName: "askDelete"; visible: store.canDeleteData; text: qsTr("operation.delete_data_title"); onClicked: store.askDeleteData() }
+            ActionButton { objectName: "ok"; primary: true; text: qsTr("operation.ok"); onClicked: store.finishResult() }
         }
     }
 }

@@ -250,6 +250,16 @@ PB_TEST(a_message_is_at_most_600_characters_and_a_path_in_it_at_most_60) {
     PB_CHECK(has(t2, "E-INS-19"));
     PB_CHECK(has(t2, "Next:"));
     PB_CHECK(has(t2, "The reader was not changed."));
+    // the cut does not split a multi-byte character, and the id stays
+    Finding umlauts = make_error("E-INS-19", "x", [] { std::string w; for (int i = 0; i < 2500; ++i) w += "\xC3\xA4"; return w; }());
+    const std::string t3 = store_message(umlauts).text();
+    PB_CHECK(t3.size() <= 600);
+    PB_CHECK(has(t3, "(E-INS-19)"));
+    for (size_t i = 0; i < t3.size(); ++i) {
+        const unsigned char c = static_cast<unsigned char>(t3[i]);
+        if ((c & 0xC0) == 0x80) PB_CHECK(i > 0 && (static_cast<unsigned char>(t3[i - 1]) & 0x80) != 0);   // a continuation byte follows a multi-byte one
+        if (c >= 0xC0) PB_CHECK(i + 1 < t3.size() && (static_cast<unsigned char>(t3[i + 1]) & 0xC0) == 0x80);   // a lead byte is completed
+    }
     // a short message is not changed
     PB_CHECK_EQ(shorten_paths("see applications/a.bin now", 60), std::string("see applications/a.bin now"));
     const std::string shortened = shorten_paths("see " + long_path + " now", 60);

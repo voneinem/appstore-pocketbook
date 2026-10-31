@@ -10,9 +10,9 @@ Item {
 
     TopBar {
         id: bar
-        title: qsTr("Settings")
-        leftItems: [ IconButton { objectName: "back"; label: qsTr("Back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
-        rightItems: [ IconButton { objectName: "log"; label: qsTr("Log"); icon: "info"; onClicked: { store.loadLog(); page.nav.push(Qt.resolvedUrl("LogPage.qml"), {"nav": page.nav}) } } ]
+        title: qsTr("settings.settings")
+        leftItems: [ IconButton { objectName: "back"; label: qsTr("settings.back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
+        rightItems: [ IconButton { objectName: "log"; label: qsTr("settings.log"); icon: "info"; onClicked: { store.loadLog(); page.nav.push(Qt.resolvedUrl("LogPage.qml"), {"nav": page.nav}) } } ]
     }
     Column {
         anchors { top: bar.bottom; left: parent.left; right: parent.right; margins: Style.pad }
@@ -27,14 +27,14 @@ Item {
             color: Style.ink
             text: caption + ": " + value
         }
-        Fact { objectName: "setCatalog"; caption: qsTr("Catalog address (cannot be changed)"); value: page.s.catalogUrl || "" }
-        Fact { objectName: "setRefreshed"; caption: qsTr("Catalog last updated"); value: page.s.refreshedAt || "" }
-        Fact { objectName: "setGenerated"; caption: qsTr("Catalog dated"); value: page.s.generatedAt || "" }
-        Fact { objectName: "setTrust"; caption: qsTr("Certificates"); value: page.s.trustSource || "" }
-        Fact { objectName: "setCustomCa"; caption: qsTr("Custom CA file"); value: page.s.customCa || "" }
-        Fact { objectName: "setReader"; caption: qsTr("Reader"); value: page.s.readerIdentity || "" }
-        Fact { objectName: "setLog"; caption: qsTr("Log"); value: page.s.logLocation || "" }
-        Fact { objectName: "setStorage"; caption: qsTr("Free storage"); value: page.s.freeSpace || "" }
-        Fact { objectName: "setBattery"; caption: qsTr("Battery"); value: page.s.battery || "" }
+        Fact { objectName: "setCatalog"; caption: qsTr("settings.catalog_address"); value: page.s.catalogUrl || "" }
+        Fact { objectName: "setRefreshed"; caption: qsTr("settings.catalog_last_updated"); value: page.s.refreshedAt || "" }
+        Fact { objectName: "setGenerated"; caption: qsTr("settings.catalog_dated"); value: page.s.generatedAt || "" }
+        Fact { objectName: "setTrust"; caption: qsTr("settings.certificates"); value: page.s.trustSource || "" }
+        Fact { objectName: "setCustomCa"; caption: qsTr("settings.custom_ca_file"); value: page.s.customCa || "" }
+        Fact { objectName: "setReader"; caption: qsTr("settings.reader"); value: page.s.readerIdentity || "" }
+        Fact { objectName: "setLog"; caption: qsTr("settings.log"); value: page.s.logLocation || "" }
+        Fact { objectName: "setStorage"; caption: qsTr("settings.free_storage"); value: page.s.freeSpace || "" }
+        Fact { objectName: "setBattery"; caption: qsTr("settings.battery"); value: page.s.battery || "" }
     }
 }

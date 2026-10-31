@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include "store_controller.h"
+#include "qt_strings.h"
 #undef emit   // a Qt macro; the test support has a method of that name
 #include "store_rig.h"
 #include "test_support.h"
@@ -25,6 +26,7 @@ QCoreApplication& app() {
     static char name[] = "test";
     static char* argv[] = {name, nullptr};
     static QCoreApplication a(argc, argv);
+    install_strings();
     return a;
 }
 

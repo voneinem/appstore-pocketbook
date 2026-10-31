@@ -2,7 +2,7 @@
 find_package(Qt6 QUIET COMPONENTS Core)
 find_package(Threads REQUIRED)
 if(TARGET pbstore_bridge AND Qt6Core_FOUND)
-    foreach(name test_store_controller_operations test_store_controller_repair test_store_controller_browse test_about_licenses)
+    foreach(name test_store_controller_operations test_store_controller_repair test_store_controller_browse test_about_licenses test_strings_table)
         add_executable(${name} ${name}.cpp)
         target_link_libraries(${name} PRIVATE pbstore_bridge pbstore_store pbstore_install pbstore_core OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
         target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/tests/support ${CMAKE_SOURCE_DIR}/bridge/include)

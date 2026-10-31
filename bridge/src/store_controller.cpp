@@ -93,14 +93,14 @@ void StoreController::addNotices(const std::vector<pbstore::Finding>& notices) {
 void StoreController::applyView(const pbstore::store::ListView& view) {
     lastView_ = view;
     catalogLoaded_ = view.catalog.loaded;
-    if (view.catalog.loaded) catalogLine_ = tr("Catalog last updated %1").arg(view.catalog.refreshed_at.empty() ? tr("(date unknown)") : dateOf(view.catalog.refreshed_at));
-    else if (view.catalog.discarded) catalogLine_ = tr("The saved catalog was discarded. Tap Refresh.");
-    else catalogLine_ = tr("No catalog yet. Tap Refresh.");
+    if (view.catalog.loaded) catalogLine_ = tr("store.catalog_last_updated").arg(view.catalog.refreshed_at.empty() ? tr("store.date_unknown") : dateOf(view.catalog.refreshed_at));
+    else if (view.catalog.discarded) catalogLine_ = tr("store.cache_discarded");
+    else catalogLine_ = tr("store.no_catalog");
     const std::vector<AppRow> shown = service_.rows(search_.toStdString());
     model_.setRows(shown);
-    if (search_.isEmpty()) summary_ = view.rows.empty() ? tr("The catalog has no apps") : QString();
-    else if (shown.empty()) summary_ = tr("No app matches");
-    else summary_ = tr("%1 of %2 apps").arg(shown.size()).arg(view.rows.size());
+    if (search_.isEmpty()) summary_ = view.rows.empty() ? tr("store.catalog_empty") : QString();
+    else if (shown.empty()) summary_ = tr("store.no_app_matches");
+    else summary_ = tr("store.count").arg(shown.size()).arg(view.rows.size());
     emit viewChanged();
 }
 
@@ -145,7 +145,7 @@ void StoreController::select(const QString& appId) {
     d[QStringLiteral("packageSize")] = sizeText(r->package_size);
     d[QStringLiteral("inCatalog")] = r->in_catalog;
     d[QStringLiteral("isStore")] = r->is_store;
-    d[QStringLiteral("storeNote")] = r->is_store ? tr("PB Installer on a computer can remove PB Store.") : QString();
+    d[QStringLiteral("storeNote")] = r->is_store ? tr("store.remove_store_hint") : QString();
     QStringList actions;
     for (pbstore::store::RowAction a : r->actions) actions << QString::fromLatin1(pbstore::store::action_words(a));
     d[QStringLiteral("actions")] = actions;
@@ -158,7 +158,7 @@ void StoreController::refresh() {
     if (worker_.joinable()) worker_.join();
     clearMessage();
     setBusy(true);
-    progress_ = tr("Refreshing the catalog");
+    progress_ = tr("store.refreshing");
     emit progressChanged();
     cancel_ = std::make_unique<pbstore::install::CancelToken>();   // a fresh token for each operation
     pageKind(QStringLiteral("progress"));
@@ -169,7 +169,7 @@ void StoreController::refresh() {
             QMetaObject::invokeMethod(this, [this, text] { progress_ = text; emit progressChanged(); }, Qt::QueuedConnection);
         };
         pbstore::store::StoreOutcome out = service_.refresh(*cancel_, progress);
-        if (leaving_) return;
+        if (leaving_) { reportDropped_ = true; return; }
         QMetaObject::invokeMethod(this, [this, out] {
             applyView(out.view);
             addNotices(out.notices);
@@ -187,14 +187,14 @@ void StoreController::loadSettings() {
     const pbstore::store::SettingsFacts f = service_.settings_facts();
     QVariantMap s;
     s[QStringLiteral("catalogUrl")] = q(f.catalog_url);
-    s[QStringLiteral("refreshedAt")] = f.refreshed_at.empty() ? tr("never") : q(f.refreshed_at);
-    s[QStringLiteral("generatedAt")] = f.generated_at.empty() ? tr("never") : q(f.generated_at);
+    s[QStringLiteral("refreshedAt")] = f.refreshed_at.empty() ? tr("store.never") : q(f.refreshed_at);
+    s[QStringLiteral("generatedAt")] = f.generated_at.empty() ? tr("store.never") : q(f.generated_at);
     s[QStringLiteral("trustSource")] = q(f.trust_source);
     s[QStringLiteral("customCa")] = q(f.custom_ca);
     s[QStringLiteral("logLocation")] = q(f.log_location);
     s[QStringLiteral("readerIdentity")] = q(f.reader_identity);
-    s[QStringLiteral("battery")] = f.battery_percent ? QStringLiteral("%1 %").arg(*f.battery_percent) : tr("unknown");
-    s[QStringLiteral("freeSpace")] = f.free_bytes ? QStringLiteral("%1 MiB").arg(*f.free_bytes / (1024 * 1024)) : tr("unknown");
+    s[QStringLiteral("battery")] = f.battery_percent ? QStringLiteral("%1 %").arg(*f.battery_percent) : tr("store.unknown");
+    s[QStringLiteral("freeSpace")] = f.free_bytes ? QStringLiteral("%1 MiB").arg(*f.free_bytes / (1024 * 1024)) : tr("store.unknown");
     settings_ = s;
     emit settingsChanged();
 }
@@ -208,13 +208,13 @@ void StoreController::loadLog() {
         lines = all.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
     }
     if (lines.size() > 50) lines = lines.mid(lines.size() - 50);
-    log_ = lines.isEmpty() ? tr("The log is empty.") : lines.join(QLatin1Char('\n'));
+    log_ = lines.isEmpty() ? tr("store.log_empty") : lines.join(QLatin1Char('\n'));
     emit logChanged();
 }
 
 // ---- About and the licenses (story 8) --------------------------------------------------------------------------------------
 
-QString StoreController::aboutNotice() const { return tr("PB Store is unofficial and is not made, endorsed or supported by PocketBook."); }
+QString StoreController::aboutNotice() const { return tr("store.unofficial"); }
 
 void StoreController::setLicensesRoot(const QString& root) {
     licensesRoot_ = root;
@@ -282,8 +282,8 @@ void StoreController::loadLicense(const QString& id) {
         QStringList paragraphs;
         for (const std::string& p : t.paragraphs) paragraphs << q(p);
         licenseText_ = t.available ? paragraphs.join(QStringLiteral("\n\n"))
-                                   : (entry->text.empty() ? tr("There is no license text to show: %1 publishes none; it is part of the reader's firmware and is not redistributed with PB Store.").arg(licenseTitle_).replace(QStringLiteral("There is no license text"), QStringLiteral("There is no license text"))
-                                                          : tr("The license text is not available."));
+                                   : (entry->text.empty() ? tr("store.license_none").arg(licenseTitle_)
+                                                          : tr("store.license_missing"));
     }
     emit licenseChanged();
 }
@@ -294,8 +294,16 @@ void StoreController::leave(int reason) {
 }
 
 void StoreController::resumed() {
+    // a worker that was cancelled by the leave ended without reporting (nothing may be shown while leaving): wait for it, so that whether it
+    // dropped its report is settled, and then bring the page back to the list; otherwise busy would stay true and every button stay off
+    if (worker_.joinable()) worker_.join();
     leaving_ = false;
     service_.resume();
+    if (reportDropped_.exchange(false)) {
+        clearMessage();
+        finishResult();
+        setBusy(false);
+    }
 }
 
 void StoreController::cancel() { if (cancel_) cancel_->cancel(); }
@@ -306,7 +314,7 @@ void StoreController::async(std::function<void()> work, std::function<void()> do
     if (worker_.joinable()) worker_.join();
     worker_ = std::thread([this, work = std::move(work), done = std::move(done)]() mutable {
         work();
-        if (leaving_) return;
+        if (leaving_) { reportDropped_ = true; return; }
         QMetaObject::invokeMethod(this, std::move(done), Qt::QueuedConnection);
     });
 }
@@ -330,7 +338,7 @@ void StoreController::setPhase(const QString& phase) {
 
 void StoreController::showFailure(const std::vector<pbstore::install::Message>& messages) {
     resultOk_ = false;
-    resultText_ = messages.empty() ? tr("The action did not work.") : q(messages.front().what);
+    resultText_ = messages.empty() ? tr("store.action_failed") : q(messages.front().what);
     resultReader_ = messages.empty() ? QString() : q(messages.front().reader_effect);
     resultTodo_ = messages.empty() ? QString() : q(messages.front().next);
     dataFolderLeft_ = false;
@@ -369,11 +377,13 @@ void StoreController::startAction(const QString& action, const QString& appId) {
     action_ = action;
     appId_ = appId;
     appName_ = row ? q(row->name) : appId;
-    if (!updateAll_) title_ = (a == pbstore::store::RowAction::Check ? tr("Adopt") : action) + QLatin1Char(' ') + appName_;
-    else title_ = tr("Updating %1 of %2: %3").arg(queuePos_ + 1).arg(queue_.size()).arg(appName_);
+    const QString word = a == pbstore::store::RowAction::Check ? tr("store.adopt") : a == pbstore::store::RowAction::Update ? tr("store.update")
+                       : a == pbstore::store::RowAction::Remove ? tr("store.remove") : a == pbstore::store::RowAction::Replace ? tr("store.replace") : tr("store.install");
+    if (!updateAll_) title_ = word + QLatin1Char(' ') + appName_;
+    else title_ = tr("store.updating_queue").arg(queuePos_ + 1).arg(queue_.size()).arg(appName_);
     clearMessage();
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
-    progress_ = tr("Preparing");
+    progress_ = tr("store.preparing");
     progressThrottle_.reset();   // each phase starts with a report that is not held back by the one before it
     emit progressChanged();
     cancellable_ = true;
@@ -392,7 +402,7 @@ void StoreController::startAction(const QString& action, const QString& appId) {
               }
               if (view->nothing_to_do) {   // W-INS-01: already at the offered version
                   resultOk_ = true;
-                  resultText_ = tr("%1 is already at the offered version. Nothing was changed.").arg(appName_);
+                  resultText_ = tr("store.already_current").arg(appName_);
                   resultReader_.clear();
                   resultTodo_.clear();
                   if (updateAll_) { continueUpdateAll(); return; }
@@ -420,7 +430,7 @@ void StoreController::confirm(const QStringList& given, bool acceptUnknownBatter
     std::vector<std::string> names;
     for (const QString& g : given) names.push_back(g.toStdString());
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
-    progress_ = tr("Working");
+    progress_ = tr("store.working");
     progressThrottle_.reset();
     emit progressChanged();
     cancellable_ = true;
@@ -460,7 +470,7 @@ void StoreController::askDeleteData() {
     if (!dataFolderLeft_ || phase_ != QLatin1String("result")) return;
     const auto plan = service_.plan_delete_data();
     if (!plan.ok) { showFailure(plan.messages()); emit operationChanged(); return; }
-    dataFolderText_ = tr("%1: %2 files, %3 KiB").arg(q(plan.data_folder)).arg(plan.data_files).arg(plan.data_bytes / 1024);
+    dataFolderText_ = tr("store.data_folder").arg(q(plan.data_folder)).arg(plan.data_files).arg(plan.data_bytes / 1024);
     deleteStep_ = 1;   // the first of two confirmations, each naming the folder, the number of files and the size
     emit operationChanged();
 }
@@ -516,10 +526,10 @@ void StoreController::updateAllSummary() {
         notTried << (row ? q(row->name) : q(queue_[i]));
     }
     QStringList lines;
-    lines << tr("Updated: %1").arg(updated_.isEmpty() ? tr("none") : updated_.join(QStringLiteral(", ")));
-    if (!failed_.isEmpty()) lines << tr("Failed: %1").arg(failed_.join(QStringLiteral(", ")));
-    if (!notTried.isEmpty()) lines << tr("Not tried: %1").arg(notTried.join(QStringLiteral(", ")));
-    if (failed_.isEmpty() && updated_.isEmpty()) lines << tr("Nothing was updated.");
+    lines << tr("store.updated_list").arg(updated_.isEmpty() ? tr("store.none") : updated_.join(QStringLiteral(", ")));
+    if (!failed_.isEmpty()) lines << tr("store.failed_list").arg(failed_.join(QStringLiteral(", ")));
+    if (!notTried.isEmpty()) lines << tr("store.not_tried_list").arg(notTried.join(QStringLiteral(", ")));
+    if (failed_.isEmpty() && updated_.isEmpty()) lines << tr("store.update_all_none");
     const bool failed = !failed_.isEmpty();
     const QString reader = resultReader_, todo = resultTodo_, first = resultText_;
     resultOk_ = !failed;
@@ -527,7 +537,7 @@ void StoreController::updateAllSummary() {
     resultReader_ = failed ? reader : QString();
     resultTodo_ = failed ? todo : QString();
     updateAll_ = false;
-    title_ = tr("Update all");
+    title_ = tr("store.update_all");
     applyView(service_.list_cached());
     setPhase(QStringLiteral("result"));
 }
@@ -537,7 +547,7 @@ void StoreController::updateAllSummary() {
 QString StoreController::repairText() const {
     const auto s = service_.repair_status();
     if (!s.pending) return QString();
-    return tr("An operation of %1 was interrupted (%2 of %3 to %4). PB Store can %5 it now. Until it is done, nothing can be installed, updated or removed. The app named may be incomplete or unusable until it is repaired.")
+    return tr("store.repair_text")
         .arg(q(s.app_id.empty() ? std::string("an app") : s.app_id), q(s.kind), q(s.from_version.empty() ? std::string("nothing") : s.from_version),
              q(s.to_version.empty() ? std::string("nothing") : s.to_version), q(s.action == "finish" ? std::string("finish") : std::string("undo")));
 }
@@ -545,7 +555,7 @@ QString StoreController::repairText() const {
 void StoreController::startRepair(bool acceptUnknownBattery) {
     if (busy_) return;
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
-    title_ = tr("Repair");
+    title_ = tr("store.repair");
     cancellable_ = false;
     setBusy(true);
     setPhase(QStringLiteral("executing"));

@@ -187,7 +187,15 @@ install::Message store_message(const Finding& finding, ReaderEffect effect) {
     if (fixed < kMaxMessageChars && m.what.size() + fixed > kMaxMessageChars) {
         const size_t budget = kMaxMessageChars - fixed;
         const std::string tail = "..." + id_suffix;   // the rule id stands at the end and stays
-        m.what = budget > tail.size() ? m.what.substr(0, budget - tail.size()) + tail : m.what.substr(0, budget);
+        // the cut never splits a UTF-8 character, and the rule id stays even when the budget is small
+        auto cut = [](const std::string& text, size_t n) {
+            if (n >= text.size()) return text;
+            while (n > 0 && (static_cast<unsigned char>(text[n]) & 0xC0) == 0x80) --n;
+            return text.substr(0, n);
+        };
+        if (budget > tail.size()) m.what = cut(m.what, budget - tail.size()) + tail;
+        else if (budget > id_suffix.size()) m.what = cut(m.what, budget - id_suffix.size()) + id_suffix;
+        else m.what = id_suffix.substr(1);
     }
     return m;
 }

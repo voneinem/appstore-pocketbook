@@ -143,7 +143,8 @@ endforeach()
 add_test(NAME check_ui_style_selftest COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-ui-style.sh --self-test)
 add_test(NAME check_ui_style COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-ui-style.sh ${CMAKE_SOURCE_DIR})
 add_test(NAME check_release_selftest COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-release.sh --self-test)
-set_tests_properties(check_ui_style_selftest check_ui_style check_release_selftest PROPERTIES LABELS "script")
+add_test(NAME check_strings COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/extract-strings.py --check)
+set_tests_properties(check_ui_style_selftest check_ui_style check_release_selftest check_strings PROPERTIES LABELS "script")
 
 # Shell tests: the launcher on a fake tree (with its fault matrix), the packaging script, the probe on the host.
 # Each is registered once its file exists, so the tree configures at every stage of the work.

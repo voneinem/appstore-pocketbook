@@ -188,6 +188,7 @@ private:
     bool repairPending_ = false;
     bool catalogLoaded_ = false;
     pbstore::store::ProgressThrottle progressThrottle_;
+    std::atomic<bool> reportDropped_{false};   // a worker ended without reporting because the store was being left (see resumed())
     std::thread worker_;
     std::atomic<bool> leaving_{false};
     std::unique_ptr<pbstore::install::CancelToken> cancel_ = std::make_unique<pbstore::install::CancelToken>();

@@ -9,8 +9,8 @@ Item {
 
     TopBar {
         id: bar
-        title: qsTr("Log")
-        leftItems: [ IconButton { objectName: "back"; label: qsTr("Back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
+        title: qsTr("log.log")
+        leftItems: [ IconButton { objectName: "back"; label: qsTr("log.back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
     }
     Flickable {
         id: flick

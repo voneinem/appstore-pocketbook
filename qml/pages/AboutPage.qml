@@ -9,8 +9,8 @@ Item {
 
     TopBar {
         id: bar
-        title: qsTr("About")
-        leftItems: [ IconButton { objectName: "back"; label: qsTr("Back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
+        title: qsTr("about.title")
+        leftItems: [ IconButton { objectName: "back"; label: qsTr("about.back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
     }
     Flickable {
         id: flick
@@ -31,16 +31,16 @@ Item {
                 font.pixelSize: Style.bodySize
                 color: Style.ink
             }
-            Para { objectName: "aboutVersion"; font.bold: true; font.pixelSize: Style.rowTitleSize; text: qsTr("PB Store %1").arg(store.version) }
+            Para { objectName: "aboutVersion"; font.bold: true; font.pixelSize: Style.rowTitleSize; text: qsTr("about.version").arg(store.version) }
             Para { objectName: "aboutNotice"; text: store.aboutNotice }
-            Para { text: qsTr("PB Store browses the signed catalog of apps for the PocketBook InkPad One. It contacts the catalog host and the host of the package address of an app, and nothing else; it does nothing until you tap a button, and it sends no identifier.") }
+            Para { text: qsTr("about.description") }
             Para {
                 objectName: "aboutAuthor"
                 visible: store.licensesAvailable
-                text: qsTr("%1. %2.").arg(store.appLicense.copyright).arg(store.appLicense.license)
+                text: qsTr("about.copyright").arg(store.appLicense.copyright).arg(store.appLicense.license)
             }
-            Para { visible: store.licensesAvailable; font.bold: true; text: qsTr("Built with") }
-            Para { visible: !store.licensesAvailable; objectName: "licensesMissing"; text: qsTr("The list of components is not available.") }
+            Para { visible: store.licensesAvailable; font.bold: true; text: qsTr("about.built_with") }
+            Para { visible: !store.licensesAvailable; objectName: "licensesMissing"; text: qsTr("about.no_components") }
             Repeater {
                 model: store.licenses
                 delegate: Item {

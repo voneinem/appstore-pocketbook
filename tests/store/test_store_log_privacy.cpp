@@ -119,6 +119,10 @@ PB_TEST(store_redact_replaces_addresses_of_every_shape_and_leaves_ordinary_text_
     const std::string url = r.redact("get https://max:secret@host.example/catalog.json?token=abc#frag failed, user volker, network HomeWLAN-Meier-5G");
     PB_CHECK(!has(url, "secret") && !has(url, "token=abc") && !has(url, kUser) && !has(url, kWifi));
     PB_CHECK(has(url, "host.example/catalog.json"));
+    // a user name too short to be one (USER=pb, app) is not replaced either: it would hide ordinary words
+    StoreRedactor shortUser;
+    shortUser.set_user_name("pb");
+    PB_CHECK_EQ(shortUser.redact("pb store app log"), std::string("pb store app log"));
     // a secret too short to be one is not replaced everywhere
     StoreRedactor shorty;
     shorty.add_secret("ab");

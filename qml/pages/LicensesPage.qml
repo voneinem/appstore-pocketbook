@@ -10,7 +10,7 @@ Item {
     TopBar {
         id: bar
         title: store.licenseTitle
-        leftItems: [ IconButton { objectName: "back"; label: qsTr("Back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
+        leftItems: [ IconButton { objectName: "back"; label: qsTr("licenses.back"); icon: "chevron-left"; onClicked: page.nav.pop() } ]
     }
     Flickable {
         id: flick

@@ -1,0 +1,101 @@
+# The texts of the PB Store interface, English: one line per text, the key, a TAB, the text. \n, \t and \\ are escapes.
+# Keys are page.element (the page or part that shows the text, then a short name of the text). QML uses qsTr("key"), the bridge tr("key");
+# bridge/include/table_translator.h looks the key up here. scripts/extract-strings.py --check: every key used exists, every key is used.
+
+about.back	Back
+about.built_with	Built with
+about.copyright	%1. %2.
+about.description	PB Store browses the signed catalog of apps for the PocketBook InkPad One. It contacts the catalog host and the host of the package address of an app, and nothing else; it does nothing until you tap a button, and it sends no identifier.
+about.no_components	The list of components is not available.
+about.title	About
+about.version	PB Store %1
+detail.author	Author
+detail.back	Back
+detail.changelog	Changelog
+detail.downloaded_from	Downloaded from
+detail.installed_version	Installed version
+detail.license	License
+detail.minimum_firmware	Minimum firmware
+detail.not_in_catalog	This app is not in the catalog. Nothing is changed because of that.
+detail.package_size	Package size
+detail.source	Source
+detail.version_in_the_catalog	Version in the catalog
+home.about	About
+home.clear	Clear
+home.home	Home
+home.menu	Menu
+home.name_of_an_app	Name of an app
+home.ok	OK
+home.pb_store	PB Store
+home.refresh	Refresh
+home.search	Search
+home.settings	Settings
+home.update_all	Update all
+licenses.back	Back
+log.back	Back
+log.log	Log
+operation.battery_unreadable	The battery level cannot be read; continue at my own risk
+operation.cancel	Cancel
+operation.cancel_hint	Cancelling puts the reader back as it was.
+operation.confirm	Confirm
+operation.delete	Delete
+operation.delete_ask_first	Delete the data of this app? %1
+operation.delete_ask_second	Really delete it? This cannot be undone. %1
+operation.delete_data_title	Delete data too?
+operation.finishing	Finishing; this cannot be cancelled
+operation.hide_details	Hide details
+operation.keep	Keep
+operation.ok	OK
+operation.show_details	Show details
+operation.still_working	Still working, %1 seconds so far. Please wait.
+pagebuttons.down	Down
+pagebuttons.up	Up
+repair.battery_unreadable	The battery level cannot be read; continue at my own risk
+repair.not_now	Not now
+repair.repair	Repair
+repair.unknown	unknown
+settings.back	Back
+settings.battery	Battery
+settings.catalog_address	Catalog address (cannot be changed)
+settings.catalog_dated	Catalog dated
+settings.catalog_last_updated	Catalog last updated
+settings.certificates	Certificates
+settings.custom_ca_file	Custom CA file
+settings.free_storage	Free storage
+settings.log	Log
+settings.reader	Reader
+settings.settings	Settings
+store.action_failed	The action did not work.
+store.adopt	Adopt
+store.already_current	%1 is already at the offered version. Nothing was changed.
+store.cache_discarded	The saved catalog was discarded. Tap Refresh.
+store.catalog_empty	The catalog has no apps
+store.catalog_last_updated	Catalog last updated %1
+store.count	%1 of %2 apps
+store.data_folder	%1: %2 files, %3 KiB
+store.date_unknown	(date unknown)
+store.failed_list	Failed: %1
+store.install	Install
+store.license_missing	The license text is not available.
+store.license_none	There is no license text to show: %1 publishes none; it is part of the reader's firmware and is not redistributed with PB Store.
+store.log_empty	The log is empty.
+store.never	never
+store.no_app_matches	No app matches
+store.no_catalog	No catalog yet. Tap Refresh.
+store.none	none
+store.not_tried_list	Not tried: %1
+store.preparing	Preparing
+store.refreshing	Refreshing the catalog
+store.remove	Remove
+store.remove_store_hint	PB Installer on a computer can remove PB Store.
+store.repair	Repair
+store.repair_text	An operation of %1 was interrupted (%2 of %3 to %4). PB Store can %5 it now. Until it is done, nothing can be installed, updated or removed. The app named may be incomplete or unusable until it is repaired.
+store.replace	Replace
+store.unknown	unknown
+store.unofficial	PB Store is unofficial and is not made, endorsed or supported by PocketBook.
+store.update	Update
+store.update_all	Update all
+store.update_all_none	Nothing was updated.
+store.updated_list	Updated: %1
+store.updating_queue	Updating %1 of %2: %3
+store.working	Working

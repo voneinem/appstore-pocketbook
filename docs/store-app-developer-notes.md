@@ -25,6 +25,15 @@ to it: `core/store/include/pbstore/store/device_facts.h` (the wording) or `ident
 (`tests/store/test_device_facts.cpp`, `test_inkview_identity_parse.cpp`), watch it fail, change the constant, and write the evidence into the device results
 (`store-app-device-results.md`) and the research record.
 
+## Interface texts
+
+Every text of the pages is a key of one table, `bridge/strings/strings.tsv` (English, one line: key, TAB, text; `\n`, `\t`, `\\` are escapes). The QML writes
+`qsTr("home.refresh")`, the bridge `tr("store.never")`; `bridge/include/table_translator.h` gives the text of the key and is installed before anything is shown
+(the table is compiled in as `:/qml/strings.tsv`). Keys are `page.element`. To add or change a text: put the key and the text in the table, use the key in
+the source, run `scripts/extract-strings.py --check` (ctest `check_strings`: every key used exists, every key is used) and `test_strings_table`. A key that
+is missing shows as the key itself. The texts of the engine and of the store's rules (`E-INS-*`, `E-STO-*`) are not in this table: they live with their rules
+(`core/install/src/messages.cpp`, `core/store/src/store_rules.cpp`) and are tested against the rule documents.
+
 ## Tests
 
 Everything runs with `ctest --test-dir build` (labels `unit`, `store`, `integration`, `bridge`, `launcher`, `contract`); `scripts/pre-merge.sh [--sanitize]` runs the whole gate

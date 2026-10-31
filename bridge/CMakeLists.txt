@@ -2,8 +2,8 @@
 # decides nothing. ARM: SDK Qt with a manual moc. HOST: host Qt6 when its Core/Gui/Quick development packages are installed; otherwise
 # the bridge, the app and their tests are simply not built.
 
-set(PBSTORE_BRIDGE_SOURCES src/app_list_model.cpp src/store_controller.cpp)
-set(PBSTORE_BRIDGE_HEADERS include/app_list_model.h include/store_controller.h)
+set(PBSTORE_BRIDGE_SOURCES src/app_list_model.cpp src/store_controller.cpp src/table_translator.cpp)
+set(PBSTORE_BRIDGE_HEADERS include/app_list_model.h include/store_controller.h include/table_translator.h)
 
 if(PBSTORE_TARGET STREQUAL "ARM")
     pbstore_moc(PBSTORE_BRIDGE_MOC ${PBSTORE_BRIDGE_HEADERS})

@@ -18,7 +18,7 @@ target_link_libraries(pbstore_app_config PUBLIC pbstore_store)
 target_compile_definitions(pbstore_app_config PRIVATE PBSTORE_RELEASE_DATE="${PBSTORE_RELEASE_DATE}")
 
 file(GLOB PBSTORE_QML_FILES CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/qml/*.qml ${CMAKE_SOURCE_DIR}/qml/pages/*.qml ${CMAKE_SOURCE_DIR}/qml/qmldir ${CMAKE_SOURCE_DIR}/qml/icons/*.svg)
+    ${CMAKE_SOURCE_DIR}/qml/*.qml ${CMAKE_SOURCE_DIR}/qml/pages/*.qml ${CMAKE_SOURCE_DIR}/qml/qmldir ${CMAKE_SOURCE_DIR}/qml/icons/*.svg ${CMAKE_SOURCE_DIR}/bridge/strings/strings.tsv)
 # The license texts and their manifest are compiled into the program (a running program never reads a package file that an update could replace
 # under it; research R-04). licenses.qrc is generated here: the files are the manifest, the texts it names under licenses/, and LICENSE.
 file(GLOB PBSTORE_LICENSE_TEXTS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/licenses/*.txt)
