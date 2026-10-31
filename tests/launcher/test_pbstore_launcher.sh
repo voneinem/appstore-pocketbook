@@ -40,13 +40,14 @@ adapt() {
 
 # a fresh device layout; $1 = body of the fake package program
 fresh() {
-    rm -rf "$STORE" "$tmp/count" "$tmp/notices" "$tmp/bin" "$tmp/changed" "$tmp/second" "$tmp/ran-as"; mkdir -p "$APPDIR" "$STORE/system/pbstore"
+    rm -rf "$STORE" "$tmp/count" "$tmp/notices" "$tmp/bin" "$tmp/changed" "$tmp/second" "$tmp/ran-as" "$tmp/radio-off" "$tmp/radio-off-fails"; mkdir -p "$APPDIR" "$STORE/system/pbstore"
     program "$1" > "$APPDIR/pbstore.bin"; chmod +x "$APPDIR/pbstore.bin"
     adapt > "$tmp/launch.sh"
 }
 # a fake program: counts its runs, then does what the body says; $RUNNING_AS is the path it was started from
 # (with --notice <kind> the real program shows a notice and ends: the fake one only records the kind, and is no run)
-program() { printf '#!/bin/sh\n[ "$1" = --notice ] && { echo "$2" >> "%s/notices"; exit 0; }\necho x >> "%s/count"\necho "$0" > "%s/ran-as"\n%s\n' "$tmp" "$tmp" "$tmp" "$1"; }
+# (with --radio-off the real program switches Wi-Fi off and ends: the fake one records the call, and fails when $tmp/radio-off-fails exists)
+program() { printf '#!/bin/sh\n[ "$1" = --notice ] && { echo "$2" >> "%s/notices"; exit 0; }\n[ "$1" = --radio-off ] && { echo off >> "%s/radio-off"; [ -e "%s/radio-off-fails" ] && exit 1; exit 0; }\necho x >> "%s/count"\necho "$0" > "%s/ran-as"\n%s\n' "$tmp" "$tmp" "$tmp" "$tmp" "$tmp" "$1"; }
 notices() { if [ -f "$tmp/notices" ]; then tr '\n' ' ' < "$tmp/notices" | sed 's/ $//'; fi; }
 runs() { if [ -f "$tmp/count" ]; then wc -l < "$tmp/count" | tr -d ' '; else echo 0; fi; }
 launch() { sh "$tmp/launch.sh"; }
@@ -280,6 +281,27 @@ launch
 check [ ! -e "$R/run-probe" ]
 check [ "$(runs)" = 1 ]
 check grep -q 'probe program is missing' "$LOG"
+
+# 16. the reader ends the app at the home key without letting it run any code: when the store switched Wi-Fi on (the marker run/wifi-on) and
+#     the program ends with the marker still there, the launcher asks the program to switch the radio off (--radio-off) and removes the marker;
+#     no marker: no call; a failing call keeps the marker and is no failure of the run
+fresh "$GOOD"
+launch; code=$?
+check [ "$code" = 0 ]
+check [ ! -e "$tmp/radio-off" ]                                          # no marker: Wi-Fi is not touched
+fresh 'rm -f "'"$R"'/trying"; echo 1 > "'"$R"'/wifi-on"; exit 0'
+launch; code=$?
+check [ "$code" = 0 ]                                                    # the exit status of the program is still the status of the launch
+check [ "$(cat "$tmp/radio-off" 2>/dev/null)" = off ]
+check [ ! -e "$R/wifi-on" ]
+check grep -q 'Wi-Fi was left on' "$LOG"
+check [ "$(runs)" = 1 ]                                                  # the call is no run of the store
+fresh 'rm -f "'"$R"'/trying"; echo 1 > "'"$R"'/wifi-on"; exit 3'
+: > "$tmp/radio-off-fails"
+launch; code=$?
+check [ "$code" = 3 ]
+check [ -e "$R/wifi-on" ]                                                # still there: the next run tries again
+check grep -q 'could not switch Wi-Fi off' "$LOG"
 
 # ---- the swap, the rollback and the power-cut matrix (contracts/launcher.md, tasks T126 and T131) --------------------------------------
 

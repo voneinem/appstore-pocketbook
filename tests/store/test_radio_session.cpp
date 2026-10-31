@@ -183,4 +183,90 @@ PB_TEST(a_radio_that_stays_on_is_given_the_wait_and_then_the_notice) {
     PB_CHECK(t.ms - before <= static_cast<int64_t>(kOffWaitSeconds) * 1000 + 1000);
 }
 
+// The reader ends the app without running any of its code when the home key is pressed (trace of 2026-10-31: no signal, no exit handler), so
+// the store leaves a marker (run/wifi-on) for as long as it holds Wi-Fi on; the launcher switches the radio off if the marker is still there.
+namespace {
+struct Marks {
+    std::vector<bool> calls;
+    bool present = false;
+    RadioSession::Mark mark() { return [this](bool on) { calls.push_back(on); present = on; }; }
+};
+}  // namespace
+
+PB_TEST(the_marker_is_set_before_wifi_is_asked_for_and_cleared_when_the_radio_is_off_again) {
+    FakeRadio radio;
+    radio.set_connect(FakeRadio::Connect::Succeeds, 1);
+    Time t;
+    Marks m;
+    RadioSession s(radio, t.sleep(), t.now(), m.mark());
+    PB_CHECK(!s.begin().has_value());
+    PB_CHECK(m.present);                                              // a program killed from here on leaves the marker
+    PB_CHECK(!s.end().has_value());
+    PB_CHECK(!radio.powered());
+    PB_CHECK(!m.present);
+}
+
+PB_TEST(a_radio_that_was_on_or_cannot_be_read_never_leaves_a_marker) {
+    FakeRadio on;
+    on.set_on(true);
+    Time t;
+    Marks m;
+    {
+        RadioSession s(on, t.sleep(), t.now(), m.mark());
+        PB_CHECK(!s.begin().has_value());
+        PB_CHECK(!m.present);
+    }
+    FakeRadio unreadable;
+    unreadable.set_state_unreadable(true);
+    Marks m2;
+    RadioSession s2(unreadable, t.sleep(), t.now(), m2.mark());
+    PB_CHECK(!s2.begin().has_value());
+    PB_CHECK(!m2.present);
+    FakeRadio refused;
+    refused.set_connect(FakeRadio::Connect::Refused);
+    Marks m3;
+    RadioSession s3(refused, t.sleep(), t.now(), m3.mark());
+    PB_CHECK(has_rule(s3.begin(), "E-STO-02"));
+    PB_CHECK(!m3.present);                                            // nothing was switched on: nothing to take back
+}
+
+PB_TEST(a_marker_left_by_an_earlier_run_is_dropped_when_the_radio_is_found_on) {
+    FakeRadio radio;
+    radio.set_on(true);                                               // the user switched it on: not ours to switch off
+    Time t;
+    Marks m;
+    m.present = true;
+    RadioSession s(radio, t.sleep(), t.now(), m.mark());
+    PB_CHECK(!s.begin().has_value());
+    PB_CHECK(!m.present);
+}
+
+PB_TEST(the_marker_stays_when_the_radio_cannot_be_switched_off) {
+    FakeRadio radio;
+    radio.set_disconnect_works(false);
+    Time t;
+    Marks m;
+    RadioSession s(radio, t.sleep(), t.now(), m.mark());
+    PB_CHECK(!s.begin().has_value());
+    PB_CHECK(has_rule(s.end(), "W-STO-02"));
+    PB_CHECK(m.present);                                              // the launcher tries once more
+}
+
+PB_TEST(switch_off_is_the_launchers_way_to_take_wifi_back) {
+    FakeRadio radio;                                                  // the program was cut off while Wi-Fi was on: the launcher has no session
+    radio.set_on(true);
+    Time t;
+    PB_CHECK(RadioSession::switch_off(radio, t.sleep(), t.now()));
+    PB_CHECK(!radio.powered());
+    FakeRadio off;
+    PB_CHECK(RadioSession::switch_off(off, t.sleep(), t.now()));      // already off: fine
+    FakeRadio stuck;
+    stuck.set_on(true);
+    stuck.set_disconnect_works(false);
+    PB_CHECK(!RadioSession::switch_off(stuck, t.sleep(), t.now()));
+    FakeRadio unreadable;
+    unreadable.set_state_unreadable(true);
+    PB_CHECK(!RadioSession::switch_off(unreadable, t.sleep(), t.now()));   // never claims a success it cannot see
+}
+
 PB_TEST_MAIN()

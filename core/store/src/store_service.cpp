@@ -153,7 +153,7 @@ StoreOutcome StoreService::refresh(install::CancelToken& cancel, const install::
     parts_.last_fetch->clear();
     ActiveCancel active(active_cancel_, leave_requested_, cancel);
     {
-        RadioSession radio(parts_.radio, config_.sleep_ms, config_.now_ms);
+        RadioSession radio(parts_.radio, config_.sleep_ms, config_.now_ms, [this](bool on) { parts_.run_state.set_radio_marker(on); });
         auto cancelled = [&cancel] { return cancel.cancelled(); };
         if (auto f = radio.begin(cancelled)) {
             out.findings.push_back(*f);
@@ -376,7 +376,7 @@ PlanView StoreService::plan_action(RowAction action, const std::string& app_id, 
     engine_action.type = action_type(action);
     engine_action.app_id = app_id;
     {
-        RadioSession radio(parts_.radio, config_.sleep_ms, config_.now_ms);
+        RadioSession radio(parts_.radio, config_.sleep_ms, config_.now_ms, [this](bool on) { parts_.run_state.set_radio_marker(on); });
         bool connected = true;
         if (downloads) {
             auto cancelled = [&cancel] { return cancel.cancelled(); };

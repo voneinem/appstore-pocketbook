@@ -24,6 +24,7 @@ TMP=$R/pbstore.bin.tmp           # a copy in progress
 FAILED=$R/pbstore.bin.failed     # the last program that failed to start (never tried again by itself)
 TRYING=$R/trying                 # marker: the running program has not yet reached its first screen
 LASTEXIT=$R/last-exit
+WIFION=$R/wifi-on                # marker: the store switched Wi-Fi on and has not yet seen it off again
 MESSAGE=$R/message               # one line for the store to show once
 JOURNAL=$STORAGE/system/pbstore/journal/current
 LOG=$R/pbstore.launch.log
@@ -229,6 +230,24 @@ filter_log() {
 # S6: run the run copy. Its exit status is kept in a file because a pipe through the filter would hide it (no pipefail in this
 # shell); the file says "running" before the program starts and holds its status when it ends, so "running" still there at the next start
 # means the launcher itself was killed (a power-off, a hang) while the program ran.
+# The reader ends the program at the home key without running any of its code (seen 2026-10-31: no signal, no exit handler), so a Wi-Fi the
+# store switched on would stay on. The store keeps the marker for as long as it holds Wi-Fi on; one that is still there when the program has
+# ended is the launcher's to take back: the program is asked to switch the radio off (pbstore.bin --radio-off: InkView only, no Qt). Its failure
+# keeps the marker (the next run tries again) and is no failure of the run.
+wifi_cleanup() {
+    [ -e "$WIFION" ] || return 0
+    echo "=== pbstore: Wi-Fi was left on by the store; switching it off ==="
+    off_out=$("$BIN" --radio-off 2>&1)
+    off_st=$?
+    [ -z "$off_out" ] || printf '%s\n' "$off_out" | filter_log
+    if [ "$off_st" -eq 0 ]; then
+        mut_rm "$WIFION"
+    else
+        echo "=== pbstore: could not switch Wi-Fi off (status $off_st); the marker stays for the next run ==="
+    fi
+    return 0
+}
+
 run_app() {
     mut_write "running" "$LASTEXIT"
     {
@@ -237,6 +256,7 @@ run_app() {
         mut_write "$st" "$LASTEXIT"
     } 2>&1 | filter_log
     code=$(cat "$LASTEXIT" 2>/dev/null || echo 1)
+    wifi_cleanup
     return "$code"
 }
 

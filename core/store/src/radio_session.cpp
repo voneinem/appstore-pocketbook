@@ -8,9 +8,15 @@ namespace store {
 std::optional<Finding> RadioSession::begin(const Cancelled& cancelled) {
     ended_ = false;
     const std::optional<bool> was_on = radio_.is_on();
-    if (!was_on || *was_on) return std::nullopt;   // already on, or unreadable: counted as on, left alone
-    if (!radio_.connect())
+    if (!was_on || *was_on) {   // already on, or unreadable: counted as on, left alone (and a marker of an earlier run is not ours to act on)
+        if (mark_) mark_(false);
+        return std::nullopt;
+    }
+    if (mark_) mark_(true);     // before the radio is asked: a program cut off from here on leaves the marker
+    if (!radio_.connect()) {
+        if (mark_) mark_(false);
         return make_store_finding("E-STO-02", "wifi", "No connection could be made: the reader refused to switch Wi-Fi on.");
+    }
     switched_on_ = true;
     const int64_t start = now_();
     while (!radio_.is_connected()) {
@@ -23,26 +29,33 @@ std::optional<Finding> RadioSession::begin(const Cancelled& cancelled) {
     return std::nullopt;
 }
 
+bool RadioSession::switch_off(Radio& radio, const Sleep& sleep, const Now& now) {
+    const int64_t start = now();
+    int64_t last_ask = start - kDisconnectRetryMs;   // the first look asks at once
+    for (;;) {
+        const std::optional<bool> on = radio.is_on();   // what counts is the radio's state, not what disconnect() says
+        if (!on) return false;
+        if (!*on) return true;
+        if (now() - last_ask >= kDisconnectRetryMs) {   // a request that meets the bring-up of the connection is lost on the reader
+            radio.disconnect();
+            last_ask = now();
+        }
+        if (now() - start >= static_cast<int64_t>(kOffWaitSeconds) * 1000) return false;
+        sleep(kPollMs);
+    }
+}
+
 std::optional<Finding> RadioSession::end() {
     if (ended_ || !switched_on_) {
         ended_ = true;
         return std::nullopt;
     }
     ended_ = true;
-    radio_.disconnect();
-    const int64_t start = now_();
-    int64_t last_ask = start;
-    for (;;) {
-        const std::optional<bool> now = radio_.is_on();   // what counts is the radio's state, not what disconnect() says
-        if (now && !*now) return std::nullopt;   // switched off again: nothing to say (the owner found the notice too chatty, 2026-10-29)
-        if (!now || now_() - start >= static_cast<int64_t>(kOffWaitSeconds) * 1000) break;
-        sleep_(kPollMs);
-        if (now_() - last_ask >= kDisconnectRetryMs) {   // the first request may have met the bring-up of the connection (reader, 2026-10-31)
-            radio_.disconnect();
-            last_ask = now_();
-        }
+    if (switch_off(radio_, sleep_, now_)) {
+        if (mark_) mark_(false);
+        return std::nullopt;   // switched off again: nothing to say (the owner found the notice too chatty, 2026-10-29)
     }
-    return make_store_finding("W-STO-02", "wifi");
+    return make_store_finding("W-STO-02", "wifi");   // the marker stays: the launcher tries once more
 }
 
 }  // namespace store

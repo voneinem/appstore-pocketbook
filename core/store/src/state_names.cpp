@@ -21,6 +21,7 @@ const std::vector<StateName>& state_names() {
         {"run/trying", 64, true},
         {"run/last-exit", 8, false},
         {"run/message", 128, true},
+        {"run/wifi-on", 8, true},
         {"run/pbstore.bin*", 0, false},
     };
     return names;

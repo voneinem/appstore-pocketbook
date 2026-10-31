@@ -117,4 +117,18 @@ PB_TEST(the_class_writes_no_other_name_than_last_run_version_and_removes_no_othe
     PB_CHECK((r.app.names() == std::vector<std::string>{"last-run-version"}));
 }
 
+PB_TEST(the_wifi_marker_is_written_and_removed_and_nothing_else_is_touched) {
+    Rig r;
+    r.run.write_atomic("last-exit", "0\n");
+    PB_CHECK(!r.state.radio_marker());
+    r.state.set_radio_marker(true);
+    PB_CHECK(r.state.radio_marker());
+    PB_CHECK(r.run.exists("wifi-on"));
+    r.state.set_radio_marker(true);                                    // again: harmless
+    r.state.set_radio_marker(false);
+    PB_CHECK(!r.state.radio_marker());
+    PB_CHECK(!r.run.exists("wifi-on"));
+    PB_CHECK(r.run.exists("last-exit"));
+}
+
 PB_TEST_MAIN()

@@ -1,7 +1,7 @@
 #pragma once
 // The launcher's small files and the store's last-run version (data model RunState; contracts/launcher.md,
 // contracts/store-state-folder.md). Two state folders: the app folder (system/pbstore/app, for last-run-version) and its
-// run/ folder (the launcher's files). The store removes `trying` and `message`; the launcher writes everything else in run/.
+// run/ folder (the launcher's files). The store removes `trying` and `message` and writes and removes `wifi-on`; the launcher writes everything else in run/ (and removes `wifi-on` after it switched the radio off).
 
 #include <optional>
 #include <string>
@@ -29,6 +29,8 @@ public:
     RunMessage take_message();              // returns the message once and deletes the file
     std::optional<std::string> last_run_version();   // one semantic version line of at most 32 bytes
     bool remember_run_version(const std::string& version);
+    bool radio_marker();                    // run/wifi-on: the store switched Wi-Fi on and has not seen it off again
+    void set_radio_marker(bool on);         // the store writes and removes it; the launcher removes it after it switched the radio off
 
 private:
     install::StateDirs& app_;

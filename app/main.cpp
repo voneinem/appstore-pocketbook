@@ -1,5 +1,7 @@
 // PB Store on the reader: wires the engine of feature 002 to the store's service, the Qt layer and the pages. Everything with a decision
 // is in core/store; this file only builds the objects and starts the window.
+#include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <QDir>
 #include <QFile>
@@ -16,6 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <thread>
 
 #include "app/store_config.h"
 #include "device_bridge.h"
@@ -33,6 +36,7 @@
 #include "pbstore/store/launch_notice.h"
 #include "pbstore/store/pending_note.h"
 #include "pbstore/store/proc_meminfo.h"
+#include "pbstore/store/radio_session.h"
 #include "pbstore/store/reader_storage.h"
 #include "pbstore/store/run_state.h"
 #include "pbstore/store/store_service.h"
@@ -73,10 +77,27 @@ int show_launch_notice(const char* kind) {
     return 0;
 }
 
+// The launcher's Wi-Fi mode (contracts/launcher.md): the reader ended the program at the home key while the store held Wi-Fi on, so the launcher
+// asks the program to switch the radio off, with InkView alone and before anything of Qt exists. Status 0 only when the radio was seen off.
+int switch_radio_off() {
+#ifdef PBSTORE_ON_READER
+    InkViewRadio radio;
+    const auto sleep = [](int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); };
+    const auto now = [] { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count(); };
+    const bool off = pbstore::store::RadioSession::switch_off(radio, sleep, now);
+    std::fprintf(stderr, "[pbstore] radio-off: %s\n", off ? "the radio is off" : "the radio is still on or cannot be read");
+    return off ? 0 : 1;
+#else
+    std::cout << "no radio on this computer" << std::endl;
+    return 0;
+#endif
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
     if (argc == 3 && std::string(argv[1]) == "--notice") return show_launch_notice(argv[2]);
+    if (argc == 2 && std::string(argv[1]) == "--radio-off") return switch_radio_off();
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("pbstore"));
     // The texts of the interface: every qsTr()/tr() names a key of bridge/strings/strings.tsv (compiled in), looked up before anything is shown.
@@ -192,10 +213,12 @@ int main(int argc, char** argv) {
     // The user left: the home key, the reader going to sleep, the end of the app. All are handled the same way (spec FR-025): a download
     // stops and writes nothing, and Wi-Fi is restored by the session. Which events the reader sends is device task DS-13.
     QObject::connect(&app, &QGuiApplication::aboutToQuit, &controller, [&controller, &screen] {
+        std::cerr << "[pbstore] about to quit" << std::endl;   // device task DS-13: what the reader sends at the home key
         controller.leave(0);
         screen.full_update();
     });
     QObject::connect(&app, &QGuiApplication::applicationStateChanged, &controller, [&controller](Qt::ApplicationState state) {
+        std::cerr << "[pbstore] application state " << static_cast<int>(state) << std::endl;
         if (state == Qt::ApplicationSuspended) controller.leave(1);
         else if (state == Qt::ApplicationActive) controller.resumed();
     });

@@ -8,7 +8,7 @@ section. The data model is in [../data-model.md](../data-model.md).
 
 | Writer | Files |
 |--------|-------|
-| The store program (through `PosixStateDirs`) | `catalog.json`, `catalog.json.sig`, `catalog.json.tmp`, `catalog.json.sig.tmp`, `catalog.meta`, `state.json`, `pbstore.log`, `pending-note.txt`, `last-run-version`, `run/trying` (removes), `run/message` (removes) |
+| The store program (through `PosixStateDirs`) | `catalog.json`, `catalog.json.sig`, `catalog.json.tmp`, `catalog.json.sig.tmp`, `catalog.meta`, `state.json`, `pbstore.log`, `pending-note.txt`, `last-run-version`, `run/trying` (removes), `run/message` (removes), `run/wifi-on` (writes, removes) |
 | The launcher (`pbstore.app`, shell) | everything else under `run/` |
 | The installer on a computer | nothing in this folder. When it removes the store it deletes only the recorded files and **keeps this folder** (spec FR-041); its message names the folder |
 | The probe program (manual task DS-01) | `probe/` only |
@@ -33,6 +33,7 @@ everything else in the folder.
 | `run/trying` | the text of the attempt: `<version>` | 64 bytes | |
 | `run/last-exit` | an integer | 8 bytes | absent = the launcher was killed |
 | `run/message` | `update-failed <version>` or `restored <version>` or `swap-skipped <reason>` | 128 bytes | removed after being shown |
+| `run/wifi-on` | `1` | 8 bytes | the store switched Wi-Fi on and has not seen it off again; removed by the store when it is off, or by the launcher after it switched the radio off (`pbstore.bin --radio-off`) |
 | `run/pbstore.bin*` | ARM ELF | the program size | |
 
 Unknown files are ignored and never deleted by the store (anything it did not create is not its to delete); the store

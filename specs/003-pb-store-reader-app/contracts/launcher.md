@@ -66,6 +66,17 @@ The notice is best effort: if the program has no notice mode (an older package),
 is the same. The notice never counts as a run, never touches `trying`, `last-exit` or the message file. At the end the launcher still exits with
 the program's last status (134). Whether InkView draws and keeps the picture without `InkViewMain` is device task T182 (to be checked on the reader).
 
+### The Wi-Fi marker
+
+The reader ends the program at the home key without running any of its code (device trace of 2026-10-31: no signal, no exit handler, no Qt
+`aboutToQuit`), so a Wi-Fi that the store switched on would stay on. The store therefore keeps the marker `run/wifi-on` for as long as it holds
+Wi-Fi on: written before it asks for the connection, removed once the radio is seen off again; never written when Wi-Fi was already on
+(a marker of an earlier run is then removed too: that Wi-Fi is not the store's to switch off). After **every run** of the program (also a retry
+or the previous version after a rollback) the launcher looks for the marker: if it is there it runs `pbstore.bin --radio-off` (InkView only,
+no Qt: asks for the radio to be off, polls its power status, asks again every 2 s for up to 10 s, status 0 only when the radio was seen off) and,
+on status 0, removes the marker. A failing call keeps the marker and leaves a log line (`could not switch Wi-Fi off`); it never changes the
+status of the run. The call is not a run: it touches neither `trying`, `last-exit` nor the message file.
+
 ### SWAP (a new program is in `PKG`)
 
 | Step | Command | Why in this order |

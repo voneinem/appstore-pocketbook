@@ -38,6 +38,13 @@ std::optional<int> RunState::last_exit() {
     return value;
 }
 
+bool RunState::radio_marker() { return run_.size("wifi-on") != UINT64_MAX; }
+
+void RunState::set_radio_marker(bool on) {
+    if (on) run_.write_atomic("wifi-on", "1\n");
+    else run_.remove("wifi-on");
+}
+
 bool RunState::failed_present() { return run_.size("pbstore.bin.failed") != UINT64_MAX; }
 
 RunMessage RunState::take_message() {

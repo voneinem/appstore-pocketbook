@@ -26,8 +26,11 @@ public:
     using Sleep = std::function<void(int ms)>;
     using Now = std::function<int64_t()>;           // milliseconds, monotonic
     using Cancelled = std::function<bool()>;
+    // The marker run/wifi-on: set(true) before the store asks for Wi-Fi, set(false) once the radio is off again or was never the store's to switch off.
+    // The reader ends the app at the home key without running its code, so the launcher takes Wi-Fi back when it finds the marker.
+    using Mark = std::function<void(bool)>;
 
-    RadioSession(Radio& radio, Sleep sleep, Now now) : radio_(radio), sleep_(std::move(sleep)), now_(std::move(now)) {}
+    RadioSession(Radio& radio, Sleep sleep, Now now, Mark mark = nullptr) : radio_(radio), sleep_(std::move(sleep)), now_(std::move(now)), mark_(std::move(mark)) {}
     ~RadioSession() { end(); }
     RadioSession(const RadioSession&) = delete;
     RadioSession& operator=(const RadioSession&) = delete;
@@ -40,10 +43,15 @@ public:
 
     bool switched_on_by_store() const { return switched_on_; }
 
+    // For the launcher (pbstore.bin --radio-off): ask for the radio to be off and wait up to kOffWaitSeconds, asking again. True when it was seen off;
+    // false when it stayed on or its state cannot be read (a success is never claimed that cannot be seen).
+    static bool switch_off(Radio& radio, const Sleep& sleep, const Now& now);
+
 private:
     Radio& radio_;
     Sleep sleep_;
     Now now_;
+    Mark mark_;
     bool switched_on_ = false;
     bool ended_ = false;
 };

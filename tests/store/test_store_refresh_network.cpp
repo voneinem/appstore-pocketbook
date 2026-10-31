@@ -54,6 +54,19 @@ PB_TEST(wifi_off_is_switched_on_for_the_refresh_and_off_again_with_the_notice) {
     PB_CHECK(!has_rule(out.notices, "W-STO-03"));                  // not announced: that is too chatty (2026-10-29)
 }
 
+PB_TEST(the_wifi_marker_for_the_launcher_is_gone_after_a_refresh_and_stays_when_wifi_cannot_be_switched_off) {
+    // the reader ends the app at the home key without letting it run: run/wifi-on is how the launcher knows to take Wi-Fi back
+    Rig r;
+    if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
+    r.rig.radio.set_connect(FakeRadio::Connect::Succeeds, 1);
+    PB_CHECK(r.refresh().ok);
+    PB_CHECK(!r.rig.run_state->radio_marker());
+    r.rig.radio.set_connect(FakeRadio::Connect::Succeeds, 1);
+    r.rig.radio.set_disconnect_works(false);
+    r.refresh();
+    PB_CHECK(r.rig.run_state->radio_marker());
+}
+
 PB_TEST(wifi_that_was_already_on_stays_on_and_no_notice_is_shown) {
     Rig r;
     if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
