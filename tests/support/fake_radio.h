@@ -18,6 +18,8 @@ public:
     void set_state_unreadable(bool u) { unreadable_ = u; }
     void set_connect(Connect mode, int polls_until_connected = 0) { mode_ = mode; polls_ = polls_until_connected; }
     void set_disconnect_works(bool works) { disconnect_works_ = works; }
+    // The reader's connect runs on its own for a while; a disconnect asked for in that time is lost and the bring-up ends with the radio on.
+    void set_first_disconnect_lost_while_connecting(bool lost) { lost_while_connecting_ = lost; }
     const std::vector<std::string>& calls() const { return calls_; }
     int count(const std::string& call) const { int n = 0; for (const auto& c : calls_) if (c == call) ++n; return n; }
     bool powered() const { return on_; }    // the real state, not through the interface
@@ -51,6 +53,11 @@ public:
         calls_.push_back("disconnect");
         if (!on_) return true;               // idempotent
         if (!disconnect_works_) return false;
+        if (lost_while_connecting_ && connecting_) {   // the answer is "ok", the radio stays on and is connected afterwards
+            connecting_ = false;
+            connected_ = true;
+            return true;
+        }
         on_ = false;
         connected_ = false;
         connecting_ = false;
@@ -59,7 +66,7 @@ public:
     int last_error() override { return error_; }
 
 private:
-    bool on_ = false, connected_ = false, connecting_ = false, unreadable_ = false, disconnect_works_ = true;
+    bool on_ = false, connected_ = false, connecting_ = false, unreadable_ = false, disconnect_works_ = true, lost_while_connecting_ = false;
     Connect mode_ = Connect::Succeeds;
     int polls_ = 0, polls_left_ = 0, error_ = 0;
     std::vector<std::string> calls_;

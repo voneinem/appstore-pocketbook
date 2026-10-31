@@ -1,7 +1,7 @@
 #pragma once
 // Wi-Fi for one user action (spec FR-001, SC-012; research R-06). begin() records whether the radio was on; if it was off it
 // asks for a connection and waits up to 30 seconds, polling every 500 ms. end() puts the radio back in its earlier state,
-// however the action ended; it is legal in every state, idempotent, and also runs from the destructor (so an exception
+// however the action ended (it asks again for up to 10 seconds if the radio is still on: a disconnect that meets the bring-up of the connection is lost on the reader); it is legal in every state, idempotent, and also runs from the destructor (so an exception
 // thrown by the caller cannot leave Wi-Fi on) and from request_leave(). If the earlier state cannot be read the session
 // assumes it was on and never switches off: switching off a connection the user needs is worse than leaving one on.
 // The clock is injected: tests never wait.
@@ -18,6 +18,8 @@ namespace store {
 
 constexpr int kConnectSeconds = 30;
 constexpr int kPollMs = 500;
+constexpr int kOffWaitSeconds = 10;     // end() waits this long for the radio to be off, asking again every kDisconnectRetryMs (a disconnect during the bring-up is lost)
+constexpr int kDisconnectRetryMs = 2000;
 
 class RadioSession {
 public:

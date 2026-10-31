@@ -155,4 +155,32 @@ PB_TEST(a_leave_request_ends_the_session_the_same_way) {
     PB_CHECK(!radio.powered());
 }
 
+PB_TEST(a_disconnect_lost_while_the_connection_was_still_coming_up_is_asked_for_again_until_the_radio_is_off) {
+    // 2026-10-31, reader: the home key during a Refresh cancelled the wait at once; the disconnect met the bring-up and Wi-Fi stayed on
+    FakeRadio radio;
+    radio.set_connect(FakeRadio::Connect::NeverConnects);
+    radio.set_first_disconnect_lost_while_connecting(true);
+    Time t;
+    RadioSession s(radio, t.sleep(), t.now());
+    int polls = 0;
+    PB_CHECK(has_rule(s.begin([&polls] { return ++polls > 1; }), "E-STO-02"));
+    PB_CHECK(radio.powered());
+    PB_CHECK(!s.end().has_value());                                 // off in the end: nothing to say
+    PB_CHECK(!radio.powered());
+    PB_CHECK(radio.count("disconnect") >= 2);
+    PB_CHECK(t.ms <= static_cast<int64_t>(kOffWaitSeconds) * 1000 + 2000);
+}
+
+PB_TEST(a_radio_that_stays_on_is_given_the_wait_and_then_the_notice) {
+    FakeRadio radio;
+    radio.set_disconnect_works(false);
+    Time t;
+    RadioSession s(radio, t.sleep(), t.now());
+    PB_CHECK(!s.begin().has_value());
+    const int64_t before = t.ms;
+    PB_CHECK(has_rule(s.end(), "W-STO-02"));
+    PB_CHECK(t.ms - before >= static_cast<int64_t>(kOffWaitSeconds) * 1000);
+    PB_CHECK(t.ms - before <= static_cast<int64_t>(kOffWaitSeconds) * 1000 + 1000);
+}
+
 PB_TEST_MAIN()
