@@ -3,12 +3,16 @@ import QtQuick.Controls
 import ".."
 
 // The detail of one app: the long description, license, author, source repository, package size, minimum firmware, the address the package
-// comes from and the changelog link, all as text (a link is never opened or fetched, spec FR-011, FR-043).
+// comes from and the changelog link. The source and the changelog lines are links: a tap asks "Open this link?" with the whole address, and only Open
+// hands it to the reader's browser (device.openUrl); the store itself never fetches or opens a link (spec FR-011, FR-043).
 Item {
     id: page
     property var nav
     readonly property string pageKind: "list"
     readonly property var d: store.detail
+    property string pendingLink: ""    // the address the question is about; empty: no question
+    property bool linkFailed: false
+    function askLink(url) { linkFailed = false; pendingLink = url }
 
     TopBar {
         id: bar
@@ -39,6 +43,26 @@ Item {
                 color: Style.ink
                 text: caption + ": " + value
             }
+            component LinkLine: Item {
+                id: link
+                property string caption
+                property string value
+                visible: value.length > 0
+                width: column.width
+                height: Math.max(Style.touchMin, label.height + 12)
+                Rectangle { anchors.fill: parent; color: Style.pressed; visible: linkTap.pressed }
+                Text {
+                    id: label
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Style.bodySize
+                    font.underline: true
+                    color: Style.ink
+                    text: link.caption + ": " + link.value
+                }
+                MouseArea { id: linkTap; anchors.fill: parent; onClicked: page.askLink(link.value) }
+            }
             Text { objectName: "detailState"; width: parent.width; font.pixelSize: Style.rowTitleSize; font.bold: true; color: Style.ink; wrapMode: Text.Wrap
                    text: (page.d.stateWords || "") + (page.d.offeredVersion && page.d.stateWords === "Update available" ? " (" + page.d.installedVersion + " → " + page.d.offeredVersion + ")" : "") }
             Text { visible: (page.d.notes || "").length > 0; width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap; text: page.d.notes || "" }
@@ -47,13 +71,15 @@ Item {
             Line { objectName: "detailOffered"; caption: qsTr("detail.version_in_the_catalog"); value: page.d.offeredVersion || "" }
             Line { objectName: "detailLicense"; caption: qsTr("detail.license"); value: page.d.license || "" }
             Line { objectName: "detailAuthor"; caption: qsTr("detail.author"); value: page.d.author || "" }
-            Line { objectName: "detailSource"; caption: qsTr("detail.source"); value: page.d.sourceUrl || "" }
+            LinkLine { objectName: "detailSource"; caption: qsTr("detail.source"); value: page.d.sourceUrl || "" }
             Line { objectName: "detailSize"; caption: qsTr("detail.package_size"); value: page.d.packageSize || "" }
             Line { objectName: "detailMinFirmware"; caption: qsTr("detail.minimum_firmware"); value: page.d.minFirmware || "" }
             Line { objectName: "detailPackage"; caption: qsTr("detail.downloaded_from"); value: page.d.packageUrl || "" }
-            Line { objectName: "detailChangelog"; caption: qsTr("detail.changelog"); value: page.d.changelogUrl || "" }
+            LinkLine { objectName: "detailChangelog"; caption: qsTr("detail.changelog"); value: page.d.changelogUrl || "" }
             Text { visible: !(page.d.inCatalog); width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap
                    text: qsTr("detail.not_in_catalog") }
+            Text { objectName: "linkFailed"; visible: page.linkFailed; width: parent.width; font.pixelSize: Style.bodySize; font.bold: true; color: Style.ink; wrapMode: Text.Wrap
+                   text: qsTr("detail.link_failed") }
             Text { objectName: "storeNote"; visible: (page.d.storeNote || "").length > 0; width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap; text: page.d.storeNote || "" }
         }
     }
@@ -84,5 +110,45 @@ Item {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: Style.footerHeight
         PageButtons { anchors.centerIn: parent; target: flick; onTurned: store.pageTurned() }
+    }
+    // "Open this link?": the whole address, then Cancel or Open (the reader's browser is started only by Open)
+    Item {
+        id: linkOverlay
+        anchors.fill: parent
+        z: 10
+        visible: page.pendingLink.length > 0
+        MouseArea { anchors.fill: parent }   // nothing behind the question can be tapped
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: Style.pad }
+            height: askColumn.height + 2 * Style.pad
+            color: Style.paper
+            radius: Style.radiusDialog
+            border.width: Style.ruleWidth
+            border.color: Style.ink
+            Column {
+                id: askColumn
+                x: Style.pad
+                y: Style.pad
+                width: parent.width - 2 * Style.pad
+                spacing: 14
+                Text { objectName: "linkAsk"; width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.rowTitleSize; font.bold: true; color: Style.ink; text: qsTr("detail.link_title") }
+                Text { objectName: "linkAddress"; width: parent.width; wrapMode: Text.WrapAnywhere; font.pixelSize: Style.bodySize; color: Style.ink; text: page.pendingLink }
+                Text { width: parent.width; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink; text: qsTr("detail.link_hint") }
+                Row {
+                    spacing: Style.gap
+                    ActionButton { objectName: "linkCancel"; text: qsTr("detail.cancel"); onClicked: page.pendingLink = "" }
+                    ActionButton {
+                        objectName: "linkOpen"
+                        text: qsTr("detail.open")
+                        primary: true
+                        onClicked: {
+                            const url = page.pendingLink
+                            page.pendingLink = ""
+                            page.linkFailed = !device.openUrl(url)
+                        }
+                    }
+                }
+            }
+        }
     }
 }

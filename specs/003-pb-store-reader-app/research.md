@@ -52,7 +52,7 @@ before and all existing tests pass without edits (a rule of this plan, checked b
 
 Not needed (checked): `Deps::identity_sources` already exists, so the model and firmware come from an
 `IdentitySource` of the store (R-03). `NetOptions::user_agent` is already a parameter. `OpenUrl` is not in `Deps` (only the
-assistant uses it), so the store needs none: the changelog and source links are shown as text (spec FR-011).
+assistant uses it), so the store needs none for the engine. The changelog and source links of the detail page are opened by the app itself after a tap and a confirmation (spec FR-011, T183): `OpenBook(BROWSER_FOR_AUTH, url, 0)` as in PB Notes and InkFeed (`QDesktopServices::openUrl` does nothing on the reader).
 
 **Also an engine behavior the spec had assumed otherwise**: the engine keeps the whole package in memory and never writes
 the ZIP to storage (`PackageContent`, `ZipContent(package.bytes)`; spec 002 FR-008: "verified once and kept"). Spec 003

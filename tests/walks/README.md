@@ -20,5 +20,6 @@ demo server. `scripts/ui-walk.sh [--out <dir>] tests/walks/*.walk` runs them (CT
 | `05-remove`, `-delete-data`, `-pb-store` | 4 | remove keeps the data; deleting it takes two confirmations; PB Store has no Remove |
 | `06-adopt`, `06-adopt-differs` | 5 | Check then Adopt writes only the record; a differing file is named and offers Replace |
 | `07-settings-about-log` | 8 | Settings read only, the Log, the About notice, a license text |
+| `08-detail-links` | 1 | the source and changelog lines ask "Open this link?" with the address; Cancel changes nothing, Open closes the question and reports no failure |
 
 A walk proves the pages and their wiring against a fake server and a fake reader. It proves nothing about the real catalog or about a real reader (that is the device tasks).

@@ -553,8 +553,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   update, not one per letter); the result is paged again from page 1 and shows "n of m apps"; an empty result says "No app
   matches"; an empty catalog says "The catalog has no apps".
 - **FR-011**: The detail page MUST show the long description, license, author, source repository, package
-  size, minimum firmware, the address the package is downloaded from, and the changelog link (as readable text; opening
-  it is optional). Every text that comes from the catalog or a package (names, descriptions, file names) is shown as plain text, with control and
+  size, minimum firmware, the address the package is downloaded from, and the changelog link (readable text; the source and the changelog lines are links: a tap asks "Open this link?" with the whole address and only a
+  confirmation hands it to the reader's browser, https only; the store itself never fetches or opens a link, and never writes one to the log). Every text that comes from the catalog or a package (names, descriptions, file names) is shown as plain text, with control and
   direction-changing characters removed and cut at the limits of the catalog contract, on every screen and in the log.
 - **FR-012**: The list MUST carry "last updated <date>" (the date of the last successful refresh by the reader's clock,
   which may be wrong; the catalog's own date is shown in Settings). The list is always built from the cached catalog and the reader's
@@ -761,7 +761,7 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   sibling apps.
 - **FR-043**: A request to the catalog host or a package host MUST carry no identifier and no `User-Agent` or other
   header beyond what the HTTPS request needs. The store never fetches an icon or any other link of the catalog
-  on its own; links are shown as text and the icon of an app is the store's own artwork.
+  on its own; a link is opened only by the user's tap and confirmation, in the reader's own browser, and the icon of an app is the store's own artwork.
 
 ### Key Entities
 

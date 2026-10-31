@@ -69,7 +69,7 @@ PB_TEST(a_refresh_requests_only_the_catalog_and_its_signature_and_never_an_icon_
     r.service->list_cached();
     r.service->rows("test");
     PB_CHECK_EQ(r.rig.connection_attempts(), attempts);
-    // the links are shown as text only
+    // the links are data only: nothing is requested for them (the detail page opens one only after a tap and a confirmation, tests/walks/08-detail-links.walk)
     bool found = false;
     for (const AppRow& row : r.service->rows("")) {
         if (row.id != "testapp") continue;

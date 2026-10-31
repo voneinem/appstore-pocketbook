@@ -11,6 +11,7 @@
 - **PB Store on the reader** (feature 003): browse the signed catalog, install, update, update all, remove (the data folder is kept unless you delete
   it after two confirmations), adopt apps that were put there by hand, repair an operation that a power loss cut, self-update with a fallback to the
   previous version, About with the license list, Settings and the log. Plain wording for every message, with the rule id behind it.
+- The source and changelog lines of an app's detail page are links: a tap asks "Open this link?" with the whole address, and only Open starts the reader's browser (https addresses only). PB Store itself still fetches no link.
 - New notice `W-INS-04` in PB Installer when PB Store itself is removed.
 - Development builds were tried on a real InkPad One (firmware 6.11.1437); what is verified and what is still open is in `docs/store-app-device-results.md`.
 

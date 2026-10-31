@@ -11,12 +11,17 @@ about.title	About
 about.version	PB Store %1
 detail.author	Author
 detail.back	Back
+detail.cancel	Cancel
 detail.changelog	Changelog
 detail.downloaded_from	Downloaded from
 detail.installed_version	Installed version
 detail.license	License
+detail.link_failed	The link could not be opened.
+detail.link_hint	The reader's browser opens it. PB Store sends nothing itself.
+detail.link_title	Open this link?
 detail.minimum_firmware	Minimum firmware
 detail.not_in_catalog	This app is not in the catalog. Nothing is changed because of that.
+detail.open	Open
 detail.package_size	Package size
 detail.source	Source
 detail.version_in_the_catalog	Version in the catalog

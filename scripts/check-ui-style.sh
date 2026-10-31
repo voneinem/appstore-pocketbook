@@ -19,7 +19,7 @@
 #      (grey comes only from the named Style colors of a disabled control).
 #   S7 A list row is 160 px: rowHeight and the height of an InkRow, when literal, are 160.
 #   S8 No remote content: no source: set to an http(s)/ftp address, no QtWebView/QtWebEngine, no Qt.openUrlExternally
-#      (links are shown as text and never opened or fetched, FR-043).
+#      (a link is opened only through device.openUrl after the user's confirmation, never by Qt and never fetched by the store, FR-043).
 set -u
 
 SELF="$(basename "${BASH_SOURCE[0]}")"
