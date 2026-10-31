@@ -50,6 +50,8 @@ released installer 0.2.0, the real install with `--confirm-plan`, a check of the
   stages of an install are now logged with their time (`stage` lines in `pbstore.log`) so that the next stall shows which step it was; a delayed flush of the FAT after hundreds of deletions is the main suspect.
 - **The first start after a change takes noticeably longer** than usual (seen after every change by feature 002); the result texts say so.
 
+- **2026-10-31, T144 (a) Wi-Fi after the home key, three tries:** dev 0.0.12 and 0.0.13: Wi-Fi stayed on. The trace of dev 0.0.14 showed that the reader ends the program at the home key without running any of its code (no signal, no `aboutToQuit`, no exit handler), so no cleanup in the program can run. Dev 0.0.15 adds the marker `run/wifi-on` and the launcher's `pbstore.bin --radio-off` after every run (commit `99470f4`). Owner's result with 0.0.15: "Still on - but that's OK!" (accepted; the log was not read, so whether the launcher's call ran and what the radio said is **not known**). Whoever mounts the reader next can read `pbstore.launch.log` for the lines `Wi-Fi was left on by the store`, `radio-off:` and `radio power status`.
+
 ## To fill in
 
 The remaining checks above are for the owner's next sessions with the reader. When a check is done, write the result in its row (numbers, not impressions; no serial numbers, no network names, no
