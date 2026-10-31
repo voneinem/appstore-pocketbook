@@ -54,6 +54,8 @@ released installer 0.2.0, the real install with `--confirm-plan`, a check of the
 
 - **2026-10-31, T144 (b) and (c) Home key during the download and during the writing of an install (dev 0.0.15):** the owner reports that while an install runs (download and writing) the screen offers no back or home button and the home key could not be used, so the case cannot be tested on the reader ("All OK"). What the app receives when the reader ends it is known from (a): nothing it can act on. Open: whether the reader's own home key is masked by the app on purpose during an operation (the log of a start shows `hw_setglobalkeymask`), to be read from the code before it is claimed.
 
+- **2026-10-31, T183 tappable links (dev 0.0.18, owner):** on the Detail page the Source line asked "Open this link?" with the whole address; Cancel changed nothing; Open started the reader's browser ("worked as expected"). The launch log shows `task_findbyappname('/ebrmain/bin/browser.app')` and `application state` 2 then 4 after each Open, and the program ended with exit code 0; `pbstore.log` contains no address. Not checked: Open without Wi-Fi, and Back from the browser to PB Store (the owner did not report on it).
+
 ## To fill in
 
 The remaining checks above are for the owner's next sessions with the reader. When a check is done, write the result in its row (numbers, not impressions; no serial numbers, no network names, no
