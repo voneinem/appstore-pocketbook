@@ -12,14 +12,14 @@ released installer 0.2.0, the real install with `--confirm-plan`, a check of the
 | Task | Check | Status | What is recorded |
 |------|-------|--------|------------------|
 | T090 DS-00 | read-only copy and listing | open | no listing of `system/` is recorded here yet |
-| T091 DS-01 | dev package on the reader, the probe | done in part (dev builds were installed by the installer; 0.0.7 is on the reader now) | whether a restart was needed to see the entry, and how long the next start took, are not recorded; the probe results are not recorded |
+| T091 DS-01 | dev package on the reader, the probe | done in part (dev builds were installed by the installer; 0.0.7 is on the reader now) | whether a restart was needed to see the entry, and how long the next start took, are not recorded; probe run B1 (default checks), 2026-10-31, dev 0.0.16: `renameat2-noreplace` ok (a rename onto an existing name was refused), `syncfs` ok, `flock` ok (a second holder was refused), `o_nofollow` n/a (the volume cannot make links, errno 1), `fsync` ok, `free-space` ok (24292728832 bytes free, cluster 4096 bytes: 22.6 GiB, the figure the installer prints), `meminfo` ok (MemAvailable 1778466816 bytes), `tools` ok (found cp cmp cksum sync df; **missing stdbuf**: the launcher already runs without it). Still to compare: the reader's own Settings screen for free space |
 | T092 DS-02 | Wi-Fi from the app | partly evidenced | the store switches Wi-Fi on for an action and off again; the notice "Wi-Fi was switched on and off again" was dropped on 2026-10-29; the probe lines for the three cases are not recorded |
 | T093 DS-03 | battery | open | the thresholds are as designed (the repair needs 10 %) and unverified |
 | T094 DS-04 | model and firmware strings | done 2026-10-31 | `GetDeviceModel()` = `PB1030`, `GetSoftwareVersion()` = `U1030.6.11.1437` (read from `pbstore.log`, the `identity` line the store writes at each start); `parse_firmware` accepts the `U<model>.` form, fixture in `test_inkview_identity_parse`; the owner confirmed on dev 0.0.12 (2026-10-31): Settings shows `model PB1030, firmware 6.11.1437` and the plan page no longer carries the two "unknown model / unknown firmware" confirmations |
 | T095 DS-07 | certificates, clock, time zone | open | |
-| T096 DS-08 | launcher tools and exit statuses | partly | after a normal start and leave with the home key `run/last-exit` and the log line say `exit code: 0` (2026-10-31); the cases switch of app, power-off and auto power-off are open |
-| T097 DS-09 | memory | partly | `MemAvailable` 1740096 kB (about 1.66 GiB) on the first start after the owner mounted and unmounted the reader, 2026-10-31 (launcher diagnostics line); far above the 160 MiB threshold; after reading a book and after a Wi-Fi session are open |
-| T098 DS-10 | e-ink behaviour of Home and Detail | partly | the top bar was reworked on 2026-10-29 to the look of PB Notes; no numbers for ghosting or taps are recorded |
+| T096 DS-08 | launcher tools and exit statuses | partly | tools found by the probe: cp cmp cksum sync df; stdbuf is missing (2026-10-31, run B1); after a normal start and leave with the home key `run/last-exit` and the log line say `exit code: 0` (2026-10-31); the cases switch of app, power-off and auto power-off are open |
+| T097 DS-09 | memory | partly | `MemAvailable` 1740096 kB (about 1.66 GiB) on the first start after the owner mounted and unmounted the reader, 2026-10-31 (launcher diagnostics line) and 1778466816 bytes at the probe start (run B1); far above the 160 MiB threshold; after reading a book and after a Wi-Fi session are open |
+| T098 DS-10 | e-ink behaviour of Home and Detail | partly | the top bar was reworked on 2026-10-29 to the look of PB Notes; owner, 2026-10-31 (dev 0.0.12, Block A): every tap hit on the list rows, Refresh, Search, the menu, a Detail button, Settings, About and Log; a page turn took under one second; the panel was clean after 20 page turns; no progress line was seen during a Refresh (too fast). Not done: ghosting with and without the refresh policy, a Refresh long enough to judge the progress line |
 | T141 DS-05 | a running app edits `view.json` | partly | install, update and remove of PB Notes from the store worked on 2026-10-29; the `hash.txt` comparison and the restart question are not recorded |
 | T142 DS-06 | an entry that points to a missing file | open | |
 | T143 DS-12 | both programs repair each other | open on the reader | on the computer: `tests/store/test_store_cross_repair` |
@@ -29,7 +29,7 @@ released installer 0.2.0, the real install with `--confirm-plan`, a check of the
 | T147 DS-15 | three-person test | open | |
 | T148 DS-16 | remove the store and restore | open | |
 | T149 SC-011 | release walkthrough | open | |
-| T149a DS-10b | e-ink check of Settings, About, Log | open | |
+| T149a DS-10b | e-ink check of Settings, About, Log | partly | owner, 2026-10-31 (dev 0.0.12): the list, the top bar, Settings, About and Log looked fine, every screen has a working Back; taps all hit (see T098) |
 | T171 | install dev 0.0.6, restart | done | dev 0.0.11 is installed on the reader (2026-10-31; 0.0.9, 0.0.10 and 0.0.11 were installed the same way: backup, dry run, the released installer 0.2.0, hashes equal to the plan, empty journal) |
 | T182 | the GPU notice after a restart | open | the code is in dev 0.0.8 and later; whether InkView draws the notice before the program has its screen is the open question |
 
