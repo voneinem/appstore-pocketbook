@@ -41,6 +41,9 @@ endforeach()
 
 foreach(src ${PBSTORE_HELPER_SOURCES})
     get_filename_component(name ${src} NAME_WE)
+    if(name STREQUAL "gen_demo_server")
+        continue()   # needs the engine and the throw-away key: defined below
+    endif()
     add_executable(${name} ${src})
     if(name STREQUAL "gen_fixtures")
         set(PBSTORE_GEN_FIXTURES_PATH "$<TARGET_FILE:gen_fixtures>")
@@ -57,6 +60,17 @@ if(TARGET gen_test_key AND TARGET pbstore_install)
         DEPENDS gen_test_key
         COMMENT "Generating the throw-away test key")
     add_custom_target(pbstore_test_key DEPENDS ${PBSTORE_TEST_KEY_DIR}/test_trusted_key.inc ${PBSTORE_TEST_KEY_DIR}/test_signing_seed.txt)
+endif()
+
+# The demo server of the scripted walks (scripts/ui-walk.sh): the tests' catalog host and fixture reader as a program.
+if(TARGET pbstore_install AND TARGET pbstore_test_key AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/support/gen_demo_server.cpp)
+    add_executable(gen_demo_server ${CMAKE_CURRENT_SOURCE_DIR}/support/gen_demo_server.cpp)
+    target_link_libraries(gen_demo_server PRIVATE ${PBSTORE_TEST_EXTRA_LIBS} pbstore_core OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
+    target_include_directories(gen_demo_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/support ${CMAKE_SOURCE_DIR}/core/install/src ${PBSTORE_TEST_KEY_DIR})
+    target_compile_definitions(gen_demo_server PRIVATE
+        PBSTORE_SOURCE_DIR="${CMAKE_SOURCE_DIR}" PBSTORE_TOOL="${PBSTORE_TOOL_PATH}" PBSTORE_INSTALL_TEST_TOOL="" PBSTORE_TEST_SEED_FILE="${PBSTORE_TEST_SEED_FILE_PATH}"
+        PBSTORE_BUILD_DIR="${CMAKE_BINARY_DIR}" PBSTORE_GEN_FIXTURES="")
+    add_dependencies(gen_demo_server pbstore_test_key)
 endif()
 
 foreach(src ${PBSTORE_TEST_SOURCES})
@@ -128,7 +142,8 @@ endforeach()
 # Gates: the e-ink style checker proves itself and scans the QML.
 add_test(NAME check_ui_style_selftest COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-ui-style.sh --self-test)
 add_test(NAME check_ui_style COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-ui-style.sh ${CMAKE_SOURCE_DIR})
-set_tests_properties(check_ui_style_selftest check_ui_style PROPERTIES LABELS "script")
+add_test(NAME check_release_selftest COMMAND ${CMAKE_SOURCE_DIR}/scripts/check-release.sh --self-test)
+set_tests_properties(check_ui_style_selftest check_ui_style check_release_selftest PROPERTIES LABELS "script")
 
 # Shell tests: the launcher on a fake tree (with its fault matrix), the packaging script, the probe on the host.
 # Each is registered once its file exists, so the tree configures at every stage of the work.
@@ -152,8 +167,11 @@ if(TARGET pbstore-app-test AND EXISTS ${CMAKE_SOURCE_DIR}/scripts/ui-walk.sh)
     if(PBSTORE_WALKS)
         add_test(NAME ui_walks COMMAND ${CMAKE_SOURCE_DIR}/scripts/ui-walk.sh ${PBSTORE_WALKS}
                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-        set_tests_properties(ui_walks PROPERTIES LABELS "walk" SKIP_RETURN_CODE 77
-                             ENVIRONMENT "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")
+        set(walk_env "PBSTORE_BUILD_DIR=${CMAKE_BINARY_DIR}")
+        if(PBSTORE_SANITIZE)   # the programs the walks run are sanitized too; the system's libp11-kit leaks in its own initializer
+            list(APPEND walk_env "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp:print_suppressions=0")
+        endif()
+        set_tests_properties(ui_walks PROPERTIES LABELS "walk" SKIP_RETURN_CODE 77 ENVIRONMENT "${walk_env}")
     endif()
 endif()
 

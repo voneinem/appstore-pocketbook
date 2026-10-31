@@ -110,6 +110,11 @@ moves signing from the current to the next key without ever failing a consumer:
 
 The rotation is rehearsed by the test `tests/integration/test_key_rotation.cpp`.
 
+**The rule for the store on the reader (research R-04).** Switch the signing secret only after the *previous* store release also trusts the
+new key. The store can fall back to the previous program when a new version does not start (the launcher keeps `pbstore.bin.old`); that
+earlier release must still be able to verify the catalog, or the reader that fell back could no longer refresh. So step 4 above waits for a
+store release that trusts both keys **and** for the release before it to be out of use, not just for one release that has the next key.
+
 ## 6. A lost or exposed key
 
 - **Exposed** (someone else may have the private key): treat every catalog signed since as

@@ -36,9 +36,12 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Sibling projects (MIT License, same author)
-notes-pocketbook, nextcloud-pocketbook, office-pocketbook. The defensive JSON reader
-(core/src/json.cpp) and the test helpers (tests/support/tmp_dir.h, tls_test_server.h) were adapted
-from notes-pocketbook. Copyright (c) 2026 Volker von Einem.
+notes-pocketbook (PB Notes), nextcloud-pocketbook (PB Cloud), office-pocketbook (PB Office). The defensive JSON reader
+(core/src/json.cpp) and the test helpers (tests/support/tmp_dir.h, tls_test_server.h) were adapted from notes-pocketbook.
+From PB Cloud and PB Notes come patterns, not third-party code: the launcher's environment and log filter
+(platform/pocketbook/pbstore.app), the device packaging script (scripts/package-device.sh), the QML components and the icon set
+(qml/), the About screen with its manifest of components (core/store/src/about.cpp, licenses/manifest.txt, tests/support/license_check.h) and
+the scripted walk format. Copyright (c) 2026 Volker von Einem.
 
 --------------------------------------------------------------------------------
 miniz (MIT License)
@@ -75,7 +78,8 @@ zlib (zlib license)
 https://zlib.net/
 
 The released Linux installer contains zlib (static build, version in scripts/static-build.lock),
-which libcurl uses for compressed transfers. Copyright (C) Jean-loup Gailly and Mark Adler.
+which libcurl uses for compressed transfers. The store program for the reader uses the zlib of the reader's firmware (dynamic linking).
+Copyright (C) Jean-loup Gailly and Mark Adler. The license text is licenses/zlib.txt.
 
 --------------------------------------------------------------------------------
 musl libc (MIT License)
@@ -83,3 +87,33 @@ https://musl.libc.org/
 
 The released Linux installer is linked statically against musl libc from the pinned Alpine Linux
 build image. Copyright (c) Rich Felker, et al.
+
+--------------------------------------------------------------------------------
+Qt 6 (LGPL-3.0)
+https://www.qt.io/licensing/
+
+The store program for the reader (applications/pbstore.bin) is linked dynamically against the Qt 6 libraries Core, Gui, Qml and Quick that
+the PocketBook SDK provides and that are part of the reader's firmware; they are not redistributed by this project. Qt is licensed under
+the GNU Lesser General Public License 3 (licenses/LGPL-3.0.txt, which refers to licenses/GPL-3.0.txt). The libraries can be replaced by
+another build of the same version because the program links to them dynamically. Copyright (c) The Qt Company Ltd. and other contributors.
+
+--------------------------------------------------------------------------------
+PocketBook InkView
+https://www.pocketbook-int.com
+
+The store program calls libinkview, a library of the reader's firmware, for the screen, the keys and system functions. It is not
+redistributed by this project. The SDK ships no license text for it.
+
+--------------------------------------------------------------------------------
+GNU C Library (LGPL-2.1)
+https://www.gnu.org/software/libc/
+
+The store program for the reader uses the C library of the reader's firmware (dynamic linking). It is not redistributed by this project.
+Licensed under the GNU Lesser General Public License 2.1 or later (licenses/LGPL-2.1.txt).
+
+--------------------------------------------------------------------------------
+GCC runtime libraries (GPL-3.0 with the GCC Runtime Library Exception 3.1)
+https://www.gnu.org/licenses/gcc-exception-3.1.html
+
+The store program for the reader uses libstdc++ and libgcc_s of the reader's firmware (dynamic linking). They are not redistributed by this
+project. Licensed under the GPL-3.0 or later with the GCC Runtime Library Exception 3.1 (licenses/GPL-3.0.txt).

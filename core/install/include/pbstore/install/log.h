@@ -15,12 +15,13 @@ namespace install {
 // Replaces what could identify the user or the reader by fixed placeholders.
 class Redactor {
 public:
+    virtual ~Redactor() = default;
     void set_mount_path(const std::string& p) { mount_ = p; }          // -> <reader>
     void set_volume_label(const std::string& l) { label_ = l; }        // -> <label>
     void set_local_file(const std::string& f) { file_ = f; }           // -> <file>
     void set_home(const std::string& h) { home_ = h; }                 // -> <home>
 
-    std::string redact(const std::string& text) const;
+    virtual std::string redact(const std::string& text) const;
     // Drops "user:password@" and the query string and fragment of a URL.
     static std::string clean_url(const std::string& url);
 

@@ -2,6 +2,7 @@
 // docs/store-app-rules.md with the registry's words, every message has three parts, no text the store produces tells a user
 // of the reader to use a computer, a drive, a cable, a keyboard or a command-line option (except "PB Installer on a
 // computer"), and a message fits one screen.
+#include <cctype>
 #include <fstream>
 #include <map>
 #include <regex>
@@ -157,7 +158,9 @@ PB_TEST(the_installers_download_messages_lose_their_computer_but_keep_their_dist
         Finding f = download_finding(r, "the catalog", "https://example.org/catalog.json");
         const std::string text = store_message(f).text();
         if (tells_the_user_to_use_a_computer(text)) PB_FAIL_AT(std::string("download message names a computer: ") + text);
-        PB_CHECK(has(text, c.cause));
+        std::string lowered = text;   // the sentence now starts with a capital letter
+        for (char& ch : lowered) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        PB_CHECK(has(lowered, c.cause));
     }
 }
 
@@ -189,6 +192,17 @@ PB_TEST(specific_third_parts_for_the_ids_the_contract_names) {
     PB_CHECK(has(what26, "could not be downloaded"));
 }
 
+PB_TEST(the_third_part_of_a_refused_adoption_points_to_replace_and_does_not_contradict_the_first_part) {
+    // found by looking at the picture of the walk 06-adopt: the first part said "replace it instead", the third said the store does not replace files
+    const Message adopt = store_message(make_error("E-INS-20", "app-05", "the files of app-05 on the reader are not the same as the catalog package, so it cannot be adopted; replace it instead to get the package's files"));
+    PB_CHECK(has(adopt.what, "replace it instead"));
+    PB_CHECK(has(adopt.next, "Replace"));
+    PB_CHECK(!has(adopt.next, "does not replace"));
+    // a foreign file in the way of an install: no Replace to point to, the old advice stays
+    const Message in_the_way = store_message(make_error("E-INS-20", "applications/x.bin", "the path applications/x.bin exists and the installer did not create it"));
+    PB_CHECK(has(in_the_way.next, "Move or rename that file"));
+}
+
 PB_TEST(the_third_part_follows_the_state_of_the_reader) {
     const std::string repair = store_message(make_error("E-INS-24", "x", "y")).next;
     PB_CHECK(has(repair, "Open PB Store again"));                             // repair needed
@@ -207,6 +221,18 @@ PB_TEST(a_cancel_by_the_user_is_told_as_a_cancel_and_not_as_an_error) {
     PB_CHECK(!has(m.what, "error["));
     PB_CHECK(has(m.what, "E-INS-33"));                                         // the id stays, behind the sentence, for the log and for support
     PB_CHECK(has(m.reader_effect, "restored"));
+}
+
+PB_TEST(the_first_part_is_a_plain_sentence_with_the_rule_id_behind_it) {
+    const Message m = store_message(make_error("E-INS-25", "reader", "the reader changed since the plan was made: the app folder changed"));
+    PB_CHECK_EQ(m.what, std::string("The reader changed since the plan was made: the app folder changed. (E-INS-25)"));
+    // a subject that is a path stays in front, a subject that is only a label does not
+    const Message p = store_message(make_error("E-INS-20", "applications/x.bin", "a file the installer did not create is in the way"));
+    PB_CHECK_EQ(p.what, std::string("applications/x.bin: A file PB Store did not create is in the way. (E-INS-20)"));
+    // a notice reads the same way
+    const Message n = store_message(make_notice("W-INS-04", "x", "something small happened."));
+    PB_CHECK(!has(n.what, "notice["));
+    PB_CHECK(has(n.what, "(W-INS-04)"));
 }
 
 PB_TEST(a_message_is_at_most_600_characters_and_a_path_in_it_at_most_60) {

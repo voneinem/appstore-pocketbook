@@ -272,8 +272,12 @@ PB_TEST(a_leave_request_keeps_the_note_so_the_next_start_says_what_happened) {
     if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
     r.prepare();
     PB_CHECK(r.service->plan_action(RowAction::Install, "testapp", r.cancel, nullptr).ok);
-    r.service->request_leave(LeaveReason::Home);
-    r.service->execute_plan(kUnknown, false, r.cancel, nullptr);
+    bool left = false;
+    ExecView out = r.service->execute_plan(kUnknown, false, r.cancel, [&](const Progress&) {   // the user presses the home key during the write
+        if (!left) r.service->request_leave(LeaveReason::Home);
+        left = true;
+    });
+    PB_CHECK(left && !out.ok && out.cancelled);
     PB_CHECK(r.rig.storage.state->size("pending-note.txt") != UINT64_MAX);
     auto again = r.rig.make_service();
     StartResult start = again->start_check();
@@ -386,7 +390,8 @@ PB_TEST(updating_pb_store_itself_is_staged_the_record_says_the_new_version_and_t
     r.service->start_check();
     CancelToken c;
     PB_CHECK(r.service->refresh(c, nullptr).ok);
-    const AppRow* row = find(r.service->rows(""), "pbstore");
+    const std::vector<AppRow> listed = r.service->rows("");   // kept: `row` points into it
+    const AppRow* row = find(listed, "pbstore");
     PB_CHECK(row && row->state == RowState::UpdateAvailable);
     PB_CHECK(row->is_store);
     PB_CHECK(std::find(row->actions.begin(), row->actions.end(), RowAction::Remove) == row->actions.end());   // no Remove

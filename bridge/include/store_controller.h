@@ -10,9 +10,11 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <thread>
 
 #include "app_list_model.h"
+#include "pbstore/store/about.h"
 #include "pbstore/store/refresh_policy.h"
 #include "pbstore/store/screen.h"
 #include "pbstore/store/store_service.h"
@@ -35,6 +37,13 @@ class StoreController : public QObject {
     Q_PROPERTY(QVariantMap settings READ settings NOTIFY settingsChanged)
     Q_PROPERTY(QString logText READ logText NOTIFY logChanged)
     Q_PROPERTY(QString version READ version CONSTANT)
+    Q_PROPERTY(QString aboutNotice READ aboutNotice CONSTANT)
+    Q_PROPERTY(QVariantList licenses READ licenses NOTIFY licensesChanged)          // the components of licenses/manifest.txt, in file order
+    Q_PROPERTY(QVariantMap appLicense READ appLicense NOTIFY licensesChanged)       // the store's own entry: name, license, copyright
+    Q_PROPERTY(bool licensesAvailable READ licensesAvailable NOTIFY licensesChanged)
+    Q_PROPERTY(QString licenseTitle READ licenseTitle NOTIFY licenseChanged)        // the entry that loadLicense opened
+    Q_PROPERTY(QString licenseText READ licenseText NOTIFY licenseChanged)
+    Q_PROPERTY(bool licenseAvailable READ licenseAvailable NOTIFY licenseChanged)
     // the operation: idle, planning, plan, executing, result (one at a time)
     Q_PROPERTY(QString phase READ phase NOTIFY operationChanged)
     Q_PROPERTY(QString operationTitle READ operationTitle NOTIFY operationChanged)
@@ -76,6 +85,15 @@ public:
     QVariantMap settings() const { return settings_; }
     QString logText() const { return log_; }
     QString version() const { return version_; }
+    QString aboutNotice() const;
+    // Where the manifest and the license texts are read from: `:/licenses` (compiled into the program) by default, a folder in tests.
+    void setLicensesRoot(const QString& root);
+    QVariantList licenses();
+    QVariantMap appLicense();
+    bool licensesAvailable();
+    QString licenseTitle() const { return licenseTitle_; }
+    QString licenseText() const { return licenseText_; }
+    bool licenseAvailable() const { return licenseAvailable_; }
     QString phase() const { return phase_; }
     QString operationTitle() const { return title_; }
     QString planSummary() const { return planSummary_; }
@@ -105,6 +123,7 @@ public:
     Q_INVOKABLE void clearMessage();
     Q_INVOKABLE void loadSettings();
     Q_INVOKABLE void loadLog();
+    Q_INVOKABLE void loadLicense(const QString& id);   // opens the text of one entry of the manifest (the store's own license included)
     // The page kind changed ("list", "plan", "progress", "result", "other") or the user turned a page: the policy decides on a full refresh.
     Q_INVOKABLE void pageKind(const QString& kind);
     Q_INVOKABLE void pageTurned();
@@ -133,6 +152,8 @@ signals:
     void detailChanged();
     void settingsChanged();
     void logChanged();
+    void licensesChanged();
+    void licenseChanged();
 
 private:
     void applyView(const pbstore::store::ListView& view);
@@ -157,6 +178,11 @@ private:
     QString catalogLine_, notice_, progress_, search_, summary_;
     QString messageTitle_, messageReader_, messageTodo_, log_;
     QVariantMap detail_, settings_;
+    QString licensesRoot_ = QStringLiteral(":/licenses");
+    std::optional<pbstore::store::about::Manifest> manifest_;
+    QString licenseTitle_, licenseText_;
+    bool licenseAvailable_ = false;
+    const pbstore::store::about::Manifest& manifest();
     bool busy_ = false;
     bool repairPending_ = false;
     bool catalogLoaded_ = false;

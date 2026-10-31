@@ -24,6 +24,7 @@
 #include "pbstore/store/pending_note.h"
 #include "pbstore/store/reader_storage.h"
 #include "pbstore/store/run_state.h"
+#include "pbstore/store/store_redact.h"
 #include "pbstore/store/store_service.h"
 
 namespace pbtest {
@@ -39,7 +40,7 @@ struct StoreRig {
     FakeMemory memory;
     FakeScreen screen;
     FixedClock clock;
-    pbstore::install::Redactor redactor;
+    pbstore::store::StoreRedactor redactor;
     std::unique_ptr<pbstore::install::Log> log;
     std::unique_ptr<pbstore::store::StoreCatalogCache> cache;
     std::unique_ptr<pbstore::install::PosixStateDirs> run_dirs;   // system/pbstore/app/run: the launcher's files
@@ -78,7 +79,7 @@ struct StoreRig {
         deps.open_fs = storage.open_fs;
         deps.mounts = storage.mounts.get();
         deps.state = storage.state.get();
-        deps.download = pbstore::store::observe_fetches(download ? download : host.downloader(""), last_fetch);
+        deps.download = pbstore::store::observe_fetches(download ? download : host.downloader(""), last_fetch, &redactor);
         deps.clock = &clock;
         deps.log = log.get();
         deps.redactor = &redactor;

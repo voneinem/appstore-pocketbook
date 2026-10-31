@@ -131,4 +131,32 @@ PB_TEST(remove_of_an_app_that_is_not_installed_gives_e_ins_30) {
     PB_CHECK(has(res.err, "error[E-INS-30]"));
 }
 
+PB_TEST(removing_pb_store_says_that_its_cache_and_log_were_kept_and_removing_another_app_says_nothing_new) {
+    // T129 (rule W-INS-04): the installer's removal of PB Store leaves system/pbstore/app/ (the catalog cache and the log) and says so
+    SampleApp store = make_sample_app("pbstore", "0.1.0", "U_PbStore", "", 7);
+    CliRig r(with_installed(FakeReader(), store));
+    if (!r.ready()) PB_SKIP("openssl CLI or the test program is not available");
+    r.host.add_app(store);
+    r.host.publish(100);
+    ::mkdir((r.dir.path() + "/home").c_str(), 0755);
+    r.write_reader();
+    ::mkdir((r.root() + "/system/pbstore/app").c_str(), 0755);
+    { std::ofstream f(r.root() + "/system/pbstore/app/pbstore.log"); f << "a log line\n"; }
+    { std::ofstream f(r.root() + "/system/pbstore/app/catalog.json"); f << "{}"; }
+    RunResult res = r.run({"remove", "pbstore", "--reader", r.root(), "--confirm-plan"});
+    PB_CHECK_EQ(res.code, 0);
+    const std::string all = res.out + res.err;
+    PB_CHECK(has(all, "W-INS-04"));
+    PB_CHECK(has(all, "system/pbstore/app/"));
+    PB_CHECK(has(all, "were kept"));
+    PB_CHECK(std::ifstream(r.root() + "/system/pbstore/app/pbstore.log").good());       // the cache and the log are still there
+    PB_CHECK(std::ifstream(r.root() + "/system/pbstore/app/catalog.json").good());
+    // any other app: nothing new
+    Rig other;
+    if (!other.ready()) PB_SKIP("openssl CLI or the test program is not available");
+    RunResult plain = other.run({"remove", "testapp", "--reader", other.root(), "--confirm-plan"});
+    PB_CHECK_EQ(plain.code, 0);
+    PB_CHECK(!has(plain.out + plain.err, "W-INS-04"));
+}
+
 PB_TEST_MAIN()

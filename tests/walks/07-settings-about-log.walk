@@ -1,0 +1,35 @@
+# T137 (story 8): Settings (read only), the Log, About with the notice and a license text page.
+# scenario demo
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap menu
+tap menuSettings
+waitfor setCatalog
+expect setCatalog https://localhost
+expect setRefreshed 20
+expect setCustomCa not supported
+expect setLog system/pbstore/app/pbstore.log
+shot @OUT@/60-settings.png
+tap log
+waitfor logText
+expect logText list
+shot @OUT@/61-log.png
+tap back
+tap back
+waitfor appRow
+tap menu
+tap menuAbout
+waitfor aboutNotice
+expect aboutNotice unofficial
+expect aboutNotice not made, endorsed or supported by PocketBook
+expect aboutVersion PB Store
+shot @OUT@/62-about.png
+tap license-qt
+waitfor licenseText GNU LESSER GENERAL PUBLIC LICENSE
+shot @OUT@/63-license.png
+tap back
+tap back
+waitfor appRow
+quit

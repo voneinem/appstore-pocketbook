@@ -1,0 +1,88 @@
+# T069 (story 1, FR-009, FR-010, FR-012): browse the catalog. The demo reader: app-01 installed, app-02 with an update, app-03 and app-05 put
+# there by hand, zz-extra and the reader's three default entries put there by hand and not in the catalog; 14 apps in the catalog, so the
+# list has 18 rows and needs two pages (three while the search bar is open: it takes room from the list).
+# scenario demo
+size 1404 1872
+wait 400
+shot @OUT@/01-start.png
+
+# no catalog yet: the list shows what is on the reader (the catalog line says so) and every control names itself
+expect catalogLine No catalog yet
+expect refresh Refresh
+expect search Search
+expect menu Menu
+
+tap refresh
+waitfor catalogLine Catalog last updated
+waitfor appRow
+shot @OUT@/02-list.png
+
+# the apps of the first page, by name, and the states in words
+expect rowName App app-01
+expect rowName App app-02
+expect rowName App app-03
+expect rowState Installed
+expect rowState Update available
+expect rowState Installed outside the store
+expect rowState Not installed
+expect pageIndicator 1 / 2
+expect_disabled pageUp
+expect_enabled pageDown
+
+# the second page has the rest, and the app that is on the reader but not in the catalog is labelled so
+tap pageDown
+expect pageIndicator 2 / 2
+expect_enabled pageUp
+expect_disabled pageDown
+expect rowState Not in the catalog
+shot @OUT@/03-page-2.png
+tap pageUp
+expect pageIndicator 1 / 2
+
+# the detail page of an app: license, author, source, size, minimum firmware, changelog
+tap appRow 0
+waitfor detailLicense
+expect detailState Installed
+expect detailLicense MIT
+expect detailAuthor
+expect detailSource
+expect detailSize
+expect detailMinFirmware 6.
+expect detailChangelog
+shot @OUT@/04-detail.png
+
+# back: the same page of the list is shown
+tap back
+expect pageIndicator 1 / 2
+expect rowName App app-01
+
+# a search: the summary says how many apps match, the page is reset to 1, and Back from a detail page keeps the search
+tap search
+waitfor searchField
+tap searchField
+type app-07
+key Return
+waitfor searchSummary 1 of 18 apps
+expect_count appRow 1
+expect rowName App app-07
+shot @OUT@/05-search.png
+tap appRow 0
+waitfor detailLicense
+tap back
+expect searchSummary 1 of 18 apps
+expect_count appRow 1
+
+# a search with no match
+tap searchField
+type nothing like this
+key Return
+waitfor searchSummary No app matches
+expect_absent appRow
+expect_absent pageIndicator
+shot @OUT@/06-no-match.png
+
+# clearing the search brings the whole list back
+tap searchClear
+waitfor appRow
+expect pageIndicator 1 /
+quit

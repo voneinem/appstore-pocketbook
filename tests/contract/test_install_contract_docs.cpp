@@ -28,6 +28,26 @@ PB_TEST(a_promoted_contract_equals_its_source) {
     }
 }
 
+PB_TEST(the_contracts_of_the_store_are_promoted_with_their_final_text) {
+    // T152: the store's contracts live in docs/contracts/ next to the installer's; a copy never differs from its source in the feature folder
+    const std::string base = std::string(PBSTORE_SOURCE_DIR) + "/specs/003-pb-store-reader-app/contracts/";
+    for (const char* name : {"store-state-folder.md", "launcher.md", "device-interfaces.md", "engine-additions.md", "ui-pages.md"}) {
+        const std::string a = slurp(base + name);
+        const std::string b = slurp(doc(name));
+        PB_CHECK(!a.empty());
+        if (b.empty()) PB_FAIL_AT(std::string("docs/contracts/") + name + " does not exist");
+        if (a != b) PB_FAIL_AT(std::string("docs/contracts/") + name + " differs from specs/003-pb-store-reader-app/contracts/" + name);
+    }
+    // the rules of the store are in docs/store-app-rules.md, written from the registry (checked by test_store_rules_docs)
+    PB_CHECK(!slurp(std::string(PBSTORE_SOURCE_DIR) + "/docs/store-app-rules.md").empty());
+}
+
+PB_TEST(the_table_of_paths_names_the_store_s_state_folder) {
+    const std::string layout = slurp(doc("reader-layout.md"));
+    PB_CHECK(layout.find("`system/pbstore/app/**`") != std::string::npos);
+    PB_CHECK(slurp(src("reader-layout.md")).find("`system/pbstore/app/**`") != std::string::npos);   // the promoted copy equals its source
+}
+
 PB_TEST(the_design_records_that_stay_in_the_spec_folder_exist) {
     for (const char* name : {"engine-api.md", "ui-api.md", "rules.md"}) PB_CHECK(!slurp(src(name)).empty());
 }

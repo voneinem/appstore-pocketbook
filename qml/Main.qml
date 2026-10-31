@@ -35,7 +35,12 @@ ApplicationWindow {
             objectName: "nav"
             anchors.fill: parent
             // pushing the first page explicitly: an initialItem binding showed nothing on the reader (as in the sibling apps)
-            Component.onCompleted: push(Qt.resolvedUrl("pages/HomePage.qml"), {"nav": nav})
+            // An interrupted operation is shown before anything else (story 6): its page goes on top of the list. It is pushed from a timer: a push
+            // from inside the first one (while it completes) is refused ("cannot push while already in the process of completing a push").
+            Component.onCompleted: {
+                push(Qt.resolvedUrl("pages/HomePage.qml"), {"nav": nav})
+                if (store.repairPending) repairTimer.start()
+            }
             onCurrentItemChanged: if (currentItem) store.pageKind(currentItem.pageKind)
             // E-ink: no transitions (null switches the default ones off)
             pushEnter: null
@@ -44,6 +49,12 @@ ApplicationWindow {
             popExit: null
             replaceEnter: null
             replaceExit: null
+        }
+
+        Timer {
+            id: repairTimer
+            interval: 20
+            onTriggered: nav.push(Qt.resolvedUrl("pages/RepairPage.qml"), {"nav": nav})
         }
 
         Connections {

@@ -53,7 +53,7 @@ PB_TEST(the_documented_exit_status_of_each_rule_is_the_registry_one) {
         PB_CHECK_EQ(r->exit_status, std::stoi((*it)[2]));
         ++seen;
     }
-    PB_CHECK_EQ(seen, 41);
+    PB_CHECK_EQ(seen, 42);
 }
 
 PB_TEST_MAIN()

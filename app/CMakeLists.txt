@@ -19,6 +19,19 @@ target_compile_definitions(pbstore_app_config PRIVATE PBSTORE_RELEASE_DATE="${PB
 
 file(GLOB PBSTORE_QML_FILES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/qml/*.qml ${CMAKE_SOURCE_DIR}/qml/pages/*.qml ${CMAKE_SOURCE_DIR}/qml/qmldir ${CMAKE_SOURCE_DIR}/qml/icons/*.svg)
+# The license texts and their manifest are compiled into the program (a running program never reads a package file that an update could replace
+# under it; research R-04). licenses.qrc is generated here: the files are the manifest, the texts it names under licenses/, and LICENSE.
+file(GLOB PBSTORE_LICENSE_TEXTS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/licenses/*.txt)
+set(PBSTORE_LICENSE_FILES ${CMAKE_SOURCE_DIR}/LICENSE ${PBSTORE_LICENSE_TEXTS})
+set(PBSTORE_LICENSES_QRC ${CMAKE_CURRENT_BINARY_DIR}/licenses.qrc)
+set(_licenses_qrc "<RCC>\n    <qresource prefix=\"/licenses\">\n        <file alias=\"LICENSE\">${CMAKE_SOURCE_DIR}/LICENSE</file>\n")
+foreach(_text ${PBSTORE_LICENSE_TEXTS})
+    get_filename_component(_name ${_text} NAME)
+    string(APPEND _licenses_qrc "        <file alias=\"licenses/${_name}\">${_text}</file>\n")
+endforeach()
+string(APPEND _licenses_qrc "    </qresource>\n</RCC>\n")
+file(WRITE ${PBSTORE_LICENSES_QRC}.tmp "${_licenses_qrc}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PBSTORE_LICENSES_QRC}.tmp ${PBSTORE_LICENSES_QRC})
 set(PBSTORE_APP_SOURCES main.cpp device_bridge.cpp)
 
 if(NOT TARGET pbstore_bridge)
@@ -27,7 +40,8 @@ elseif(PBSTORE_TARGET STREQUAL "ARM")
     # the program for the reader: SDK Qt by absolute library paths, manual moc and rcc; packaged as applications/pbstore.bin
     pbstore_moc(PBSTORE_APP_MOC device_bridge.h)
     pbstore_rcc(PBSTORE_QML_RCC qml ${CMAKE_SOURCE_DIR}/qml/qml.qrc ${PBSTORE_QML_FILES})
-    add_executable(pbstore ${PBSTORE_APP_SOURCES} ${PBSTORE_APP_MOC} ${PBSTORE_QML_RCC}
+    pbstore_rcc(PBSTORE_LICENSES_RCC licenses ${PBSTORE_LICENSES_QRC} ${PBSTORE_LICENSE_FILES})
+    add_executable(pbstore ${PBSTORE_APP_SOURCES} ${PBSTORE_APP_MOC} ${PBSTORE_QML_RCC} ${PBSTORE_LICENSES_RCC}
                    $<TARGET_OBJECTS:pbstore_app_config> $<TARGET_OBJECTS:pbstore_install_config>)
     target_include_directories(pbstore SYSTEM PRIVATE ${PBSTORE_QT_INCLUDES})
     target_include_directories(pbstore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/third_party/cacert/include)
@@ -40,16 +54,17 @@ elseif(PBSTORE_TARGET STREQUAL "ARM")
 else()
     # the host test build: never installed or packaged. It has the installer's test configuration (a throw-away key, overrides read from
     # the environment) and stand-ins for the reader's devices, so that the scripted walks and the screenshots can run on a computer.
-    find_package(Qt6 QUIET COMPONENTS Core Gui Qml Quick)
-    if(Qt6Quick_FOUND AND Qt6Qml_FOUND AND TARGET pbstore_install_config_test)
+    find_package(Qt6 QUIET COMPONENTS Core Gui Qml Quick Test)
+    if(Qt6Quick_FOUND AND Qt6Qml_FOUND AND Qt6Test_FOUND AND TARGET pbstore_install_config_test)
         set(CMAKE_AUTOMOC ON)
         set(CMAKE_AUTORCC ON)
-        add_executable(pbstore-app-test ${PBSTORE_APP_SOURCES} ${CMAKE_SOURCE_DIR}/qml/qml.qrc
+        add_executable(pbstore-app-test ${PBSTORE_APP_SOURCES} ui_script.cpp ${CMAKE_SOURCE_DIR}/qml/qml.qrc ${PBSTORE_LICENSES_QRC}
                        $<TARGET_OBJECTS:pbstore_app_config> $<TARGET_OBJECTS:pbstore_install_config_test>)
         set_property(SOURCE ${CMAKE_SOURCE_DIR}/qml/qml.qrc PROPERTY OBJECT_DEPENDS ${PBSTORE_QML_FILES})
+        set_property(SOURCE ${PBSTORE_LICENSES_QRC} PROPERTY OBJECT_DEPENDS ${PBSTORE_LICENSE_FILES})
         target_include_directories(pbstore-app-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/third_party/cacert/include)
         target_compile_definitions(pbstore-app-test PRIVATE PBSTORE_TEST_BUILD PBSTORE_APP_VERSION="${PBSTORE_APP_VERSION}")
-        target_link_libraries(pbstore-app-test PRIVATE pbstore_bridge pbstore_cacert Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
+        target_link_libraries(pbstore-app-test PRIVATE pbstore_bridge pbstore_cacert Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)   # Qt6::Test only for the host walk (ui_script.cpp)
         add_dependencies(pbstore-app-test pbstore_test_key)
         # the pages must load without a QML error (offscreen platform, no display needed)
         add_test(NAME app_self_test COMMAND pbstore-app-test --self-test WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

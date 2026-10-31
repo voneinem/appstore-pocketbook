@@ -1,0 +1,27 @@
+# T119 (story 4): remove app-01 (it has a data folder): the data stays; deleting it takes two confirmations, and declining the second keeps it.
+# scenario demo
+# expect-no-file applications/app-01.bin
+# expect-file system/app-01/notes.db
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 0
+waitfor detailState Installed
+tap actionRemove
+waitfor planSummary Remove App app-01
+tap confirm
+waitfor resultText
+expect resultText App app-01 was removed
+expect resultText Its data was kept in system/app-01
+shot @OUT@/40-remove-result.png
+tap askDelete
+waitfor deletePrompt Delete the data of this app?
+expect deletePrompt system/app-01
+tap deleteData
+waitfor deletePrompt
+shot @OUT@/41-delete-second.png
+expect deletePrompt files
+tap keepData
+waitfor appRow
+quit

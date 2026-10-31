@@ -16,6 +16,9 @@ std::string megabytes(uint64_t bytes) {
     return buf;
 }
 
+// "about 12.3 MB", or "less than 0.1 MB" for a tiny size (never "about less than")
+std::string about_megabytes(uint64_t bytes) { return bytes < 100 * 1024 ? megabytes(bytes) : "about " + megabytes(bytes); }
+
 std::string files(uint64_t n) { return std::to_string(n) + (n == 1 ? " file" : " files"); }
 
 }  // namespace
@@ -65,8 +68,8 @@ std::string plain_plan_summary(const install::Plan& plan) {
     }
     if (plan.kind == PlanKind::Adopt) line("No files change.");
     else if (plan.kind == PlanKind::Replace) line("The files that were put there by hand are replaced by those of the catalog.");
-    if (to_write > 0) line("Needs about " + megabytes(to_write) + " on the reader.");
-    else if (plan.kind == PlanKind::Remove && to_free > 0) line("Frees about " + megabytes(to_free) + " on the reader.");
+    if (to_write > 0) line("Needs " + about_megabytes(to_write) + " on the reader.");
+    else if (plan.kind == PlanKind::Remove && to_free > 0) line("Frees " + about_megabytes(to_free) + " on the reader.");
 
     switch (plan.menu.action) {
         case install::MenuChange::Action::Add: line("It appears as \"" + title + "\" in the menu."); break;

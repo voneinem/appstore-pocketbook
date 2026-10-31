@@ -42,3 +42,4 @@ The reasoning is in `specs/003-pb-store-reader-app/research.md` R-14.
 | `E-INS-36` | the installer's text (no progress for 30 seconds); third part "Check the Wi-Fi connection and try again." |
 | `E-CAT-01` … `E-CAT-05`, `E-PKG-nn`, `E-ENT-nn` | the catalog tool's texts; `E-CAT-03` third part is "PB Store needs an update; use PB Installer on a computer, because the store cannot read this catalog" |
 | `W-INS-01`, `W-INS-02`, `W-INS-03` | as in the installer |
+| `W-INS-04` | cannot occur (the store does not remove itself, E-STO-08) |

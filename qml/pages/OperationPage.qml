@@ -80,7 +80,9 @@ Item {
             Text { objectName: "planSummary"; width: parent.width; text: store.planSummary; wrapMode: Text.Wrap; font.pixelSize: Style.rowTitleSize; color: Style.ink }
             Text { visible: store.extraLine.length > 0; width: parent.width; text: store.extraLine; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; font.bold: true; color: Style.ink }
             Repeater {
-                model: store.confirmations
+                // empty outside the plan phase, so that the boxes are made anew for every plan: a box that stayed ticked from the plan before (Update
+                // all shows several plans on this page) would look ticked without counting, and never preselected is a rule (spec FR-015)
+                model: page.phase === "plan" ? store.confirmations : []
                 TickRow {
                     objectName: "consent"
                     text: modelData.label
@@ -94,11 +96,15 @@ Item {
                     }
                 }
             }
-            TickRow {
-                objectName: "batteryRisk"
-                visible: store.batteryUnreadable
-                text: qsTr("The battery level cannot be read; continue at my own risk")
-                onToggled: page.riskTicked = checked
+            Loader {   // made anew for every plan, like the consents above
+                width: parent.width
+                active: store.batteryUnreadable && page.phase === "plan"
+                visible: active
+                sourceComponent: TickRow {
+                    objectName: "batteryRisk"
+                    text: qsTr("The battery level cannot be read; continue at my own risk")
+                    onToggled: page.riskTicked = checked
+                }
             }
             ActionButton {
                 objectName: "toggleDetails"

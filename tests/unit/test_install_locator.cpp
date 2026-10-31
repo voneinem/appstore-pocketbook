@@ -208,4 +208,18 @@ PB_TEST(a_read_only_or_unwritable_reader_is_found_before_any_plan) {
     PB_CHECK(check_writable(fine).empty());
 }
 
+PB_TEST(a_reader_cut_between_the_two_renames_of_view_json_is_still_a_reader_when_a_journal_says_why) {
+    // found by the store's fault matrix (T101): view.json is moved aside and the new one put in place with two renames; a pulled cable
+    // between them leaves no view.json, and without this the interrupted operation could not be repaired by either program
+    CrashFs fs;
+    pbtest::FakeReader().load_into(fs);
+    PB_CHECK(missing_markers(fs).empty());
+    PB_CHECK(fs.remove_file("system/config/desktop/view.json"));
+    PB_CHECK_EQ(missing_markers(fs), (std::vector<std::string>{kMarkerDesktop}));   // no journal: still not a reader
+    PB_CHECK(fs.make_dir("system/pbstore"));
+    PB_CHECK(fs.make_dir("system/pbstore/journal"));
+    PB_CHECK(fs.make_dir("system/pbstore/journal/current"));
+    PB_CHECK(missing_markers(fs).empty());                                           // a journal: the repair needs the reader
+}
+
 PB_TEST_MAIN()

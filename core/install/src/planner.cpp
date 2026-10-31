@@ -562,6 +562,8 @@ struct Planner {
         } else {
             notice("W-INS-02", r.menu_entry.id, "the menu entry " + r.menu_entry.id + " is no longer in the desktop configuration");
         }
+        if (req.app_id == "pbstore")   // the store's own cache and log are not part of its package and stay (feature 003, research R-04)
+            notice("W-INS-04", "system/pbstore/app", "PB Store's own cache and log in system/pbstore/app/ were kept");
         if (r.data_dir) {
             DataDirPlan d;
             d.path = *r.data_dir;

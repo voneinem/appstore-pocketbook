@@ -5,6 +5,7 @@
 #include <map>
 
 #include "pbstore/install/text_safety.h"
+#include "pbstore/store/store_redact.h"
 
 namespace pbstore {
 namespace store {
@@ -146,13 +147,27 @@ std::string shorten_paths(const std::string& text, size_t max_chars) {
 
 install::Message store_message(const Finding& finding, ReaderEffect effect) {
     install::Message m = install::describe(finding, effect);
-    m.what = to_the_reader(m.what);
-    if (finding.rule_id == "E-INS-33") m.what = "You cancelled the action. (E-INS-33)";   // a cancel is the user's own act, not an error
+    // A sentence, then the rule id in brackets for the log and for support; the installer's `error[ID] subject:` line is for the command line.
+    std::string sentence = install::neutralize(store_redact(to_the_reader(finding.message)));   // an address in a network error is not shown
+    if (sentence.empty()) {
+        if (const StoreRule* s = find_store_rule(finding.rule_id)) sentence = s->what;
+        else if (const install::InstallRule* r = install::find_install_rule(finding.rule_id)) sentence = r->description;
+    }
+    if (sentence.empty()) sentence = "The action did not work";
+    sentence[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(sentence[0])));
+    if (sentence.back() != '.') sentence += '.';
+    const std::string subject = install::neutralize(finding.subject);
+    if (subject.find('/') != std::string::npos) sentence = subject + ": " + sentence;   // a path says where; a label such as "reader" does not
+    const std::string id_suffix = " (" + finding.rule_id + ")";
+    m.what = sentence + id_suffix;
+    if (finding.rule_id == "E-INS-33") m.what = "You cancelled the action." + id_suffix;   // a cancel is the user's own act, not an error
     std::string next;
     bool final_next = false;   // a store rule's own text is the third part as it stands
     if (const StoreRule* s = find_store_rule(finding.rule_id)) {
         next = s->next;
         final_next = true;
+    } else if (finding.rule_id == "E-INS-20" && finding.message.find("replace it instead") != std::string::npos) {
+        next = "Tap Replace on the app to put the catalog version in place of its files; read the plan first.";   // the engine says so in the first part
     } else if (auto it = next_overrides().find(finding.rule_id); it != next_overrides().end()) {
         next = it->second;
     } else {
@@ -171,7 +186,8 @@ install::Message store_message(const Finding& finding, ReaderEffect effect) {
     const size_t fixed = reader_effect_line.size() + m.next.size() + std::string("\nNext: ").size() + 1;   // + the line break after `what`
     if (fixed < kMaxMessageChars && m.what.size() + fixed > kMaxMessageChars) {
         const size_t budget = kMaxMessageChars - fixed;
-        m.what = m.what.substr(0, budget > 3 ? budget - 3 : budget) + "...";   // the rule id stands at the start and stays
+        const std::string tail = "..." + id_suffix;   // the rule id stands at the end and stays
+        m.what = budget > tail.size() ? m.what.substr(0, budget - tail.size()) + tail : m.what.substr(0, budget);
     }
     return m;
 }

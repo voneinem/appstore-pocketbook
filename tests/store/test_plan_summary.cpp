@@ -123,4 +123,22 @@ PB_TEST(the_deletion_of_a_data_folder_names_the_folder_and_the_number_of_files_t
     PB_CHECK(has(s, "cannot be undone"));
 }
 
+PB_TEST(a_tiny_package_is_told_without_about_less_than) {
+    // found by looking at the picture of the install walk: "Needs about less than 0.1 MB on the reader."
+    install::Plan p = cloud_plan();
+    p.items.clear();
+    install::PlanItem it;
+    it.op = install::ItemOp::Add;
+    it.path = "applications/tiny.bin";
+    it.size = 4096;
+    it.sha256 = "0123456789abcdef";
+    p.items.push_back(it);
+    const std::string text = plain_plan_summary(p);
+    PB_CHECK(has(text, "Needs less than 0.1 MB on the reader."));
+    PB_CHECK(!has(text, "about less than"));
+    // an ordinary size keeps its "about"
+    install::Plan big = cloud_plan();
+    PB_CHECK(has(plain_plan_summary(big), "Needs about "));
+}
+
 PB_TEST_MAIN()

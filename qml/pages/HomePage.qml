@@ -8,8 +8,7 @@ Item {
     property var nav
     readonly property string pageKind: "list"
     property bool searching: false
-    // an interrupted operation is shown before anything else (story 6)
-    Component.onCompleted: if (store.repairPending) page.nav.push(Qt.resolvedUrl("RepairPage.qml"), {"nav": page.nav})
+    // an interrupted operation is shown before anything else (story 6): Main.qml pushes its page on top of this one
 
     property bool menuOpen: false
 
@@ -126,7 +125,9 @@ Item {
     ListView {
         id: list
         objectName: "appList"
-        anchors { top: info.bottom; topMargin: Style.gap; left: parent.left; right: parent.right; bottom: footer.top }
+        anchors { top: info.bottom; topMargin: Style.gap; left: parent.left; right: parent.right }
+        // whole rows only: a page never ends in half a row (it looked like a fault on the panel), the rest of the height stays empty
+        height: Math.max(Style.rowHeight, Math.floor((footer.y - info.y - info.height - Style.gap) / Style.rowHeight) * Style.rowHeight)
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         interactive: false          // by whole pages with the buttons: no kinetic scrolling, nothing smeared on e-ink

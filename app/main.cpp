@@ -1,5 +1,6 @@
 // PB Store on the reader: wires the engine of feature 002 to the store's service, the Qt layer and the pages. Everything with a decision
 // is in core/store; this file only builds the objects and starts the window.
+#include <cstdlib>
 #include <QDir>
 #include <QFile>
 #include <QFont>
@@ -18,11 +19,15 @@
 
 #include "app/store_config.h"
 #include "device_bridge.h"
+#ifdef PBSTORE_TEST_BUILD
+#include "ui_script.h"
+#endif
 #include "pbstore/install/clock.h"
 #include "pbstore/install/engine.h"
 #include "pbstore/install/log.h"
 #include "pbstore/install/net.h"
 #include "pbstore/install/posix_state_dirs.h"
+#include "pbstore/store/store_redact.h"
 #include "pbstore/store/catalog_cache.h"
 #include "pbstore/store/last_fetch.h"
 #include "pbstore/store/launch_notice.h"
@@ -111,7 +116,8 @@ int main(int argc, char** argv) {
     net.user_agent.clear();   // no User-Agent: nothing but what an HTTPS request needs (spec FR-043)
 
     pbstore::install::SystemClock clock;
-    pbstore::install::Redactor redactor;
+    pbstore::store::StoreRedactor redactor;
+    if (const char* user = std::getenv("USER")) redactor.set_user_name(user);   // there is none on the reader; a host run has one
     pbstore::install::Log log(*storage.state, clock, redactor, "pbstore.log");
     auto last_fetch = std::make_shared<pbstore::store::LastFetch>();
     pbstore::store::StoreCatalogCache cache(*storage.state, clock);
@@ -133,7 +139,11 @@ int main(int argc, char** argv) {
     deps.open_fs = storage.open_fs;
     deps.mounts = storage.mounts.get();
     deps.state = storage.state.get();
-    deps.download = pbstore::store::observe_fetches(pbstore::install::make_https_downloader(net), last_fetch);
+    pbstore::install::Downloader download = pbstore::install::make_https_downloader(net);
+#ifdef PBSTORE_TEST_BUILD
+    download = apply_test_host_map(download);
+#endif
+    deps.download = pbstore::store::observe_fetches(download, last_fetch, &redactor);
     deps.clock = &clock;
     deps.log = &log;
     deps.redactor = &redactor;
@@ -190,7 +200,7 @@ int main(int argc, char** argv) {
             window->resize(1404, 1872);
         }
         // every page is opened once on top of the list: a QML error in any of them fails the self-test
-        static const char* const kPages[] = {"DetailPage", "SettingsPage", "AboutPage", "LogPage", "OperationPage", "RepairPage"};
+        static const char* const kPages[] = {"DetailPage", "SettingsPage", "AboutPage", "LicensesPage", "LogPage", "OperationPage", "RepairPage"};
         const int delay = screenshots.isEmpty() ? 60 : 500;
         QTimer::singleShot(screenshots.isEmpty() ? 300 : 900, &app, [&app, &controller, &qml, &qml_warnings, window, delay, screenshots] {   // by value: this block has ended when the timer fires
             const bool shown = window && window->property("pageLoaded").toBool();
@@ -202,6 +212,9 @@ int main(int argc, char** argv) {
             shot(QStringLiteral("01-home"));
             if (controller.model()->rowCount() > 0)
                 controller.select(controller.model()->data(controller.model()->index(0, 0), AppListModel::AppIdRole).toString());
+            controller.loadLicense(QStringLiteral("qt"));   // the page of one license has something to show
+            const bool licenses = controller.licensesAvailable() && controller.licenseAvailable();   // the texts are compiled in
+            if (!licenses) std::cerr << "[pbstore] the compiled-in license texts are not available" << std::endl;
             int step = 0;
             for (const char* page : kPages) {
                 ++step;
@@ -213,8 +226,13 @@ int main(int argc, char** argv) {
                     });
                 });
             }
-            QTimer::singleShot((step + 2) * delay, &app, [&app, shown, &qml_warnings] { app.exit((shown && qml_warnings == 0) ? 0 : 2); });
+            QTimer::singleShot((step + 2) * delay, &app, [&app, shown, licenses, &qml_warnings] { app.exit((shown && qml_warnings == 0 && licenses) ? 0 : 2); });
         });
     }
+#ifdef PBSTORE_TEST_BUILD
+    // a scripted walk through the pages (tests/walks, scripts/ui-walk.sh): only the host test build has it
+    if (const QByteArray script = qgetenv("PBSTORE_UI_SCRIPT"); !script.isEmpty())
+        ui_script::start(qobject_cast<QQuickWindow*>(qml.rootObjects().first()), QString::fromLocal8Bit(script));
+#endif
     return app.exec();
 }

@@ -128,10 +128,30 @@ std::vector<Finding> StoreService::adapt(std::vector<Finding> findings) {
     return findings;
 }
 
+namespace {
+
+// While an operation runs, a request to leave cancels its token. If the request came first, the token is cancelled at once.
+class ActiveCancel {
+public:
+    ActiveCancel(std::atomic<install::CancelToken*>& slot, const std::atomic<bool>& leave, install::CancelToken& token) : slot_(slot) {
+        slot_ = &token;
+        if (leave.load()) token.cancel();
+    }
+    ~ActiveCancel() { slot_ = nullptr; }
+    ActiveCancel(const ActiveCancel&) = delete;
+    ActiveCancel& operator=(const ActiveCancel&) = delete;
+
+private:
+    std::atomic<install::CancelToken*>& slot_;
+};
+
+}  // namespace
+
 StoreOutcome StoreService::refresh(install::CancelToken& cancel, const install::ProgressFn& progress) {
     StoreOutcome out;
+    if (leave_requested_.load()) return out;   // the user left: nothing is started (spec FR-025)
     parts_.last_fetch->clear();
-    active_cancel_ = &cancel;
+    ActiveCancel active(active_cancel_, leave_requested_, cancel);
     {
         RadioSession radio(parts_.radio, config_.sleep_ms, config_.now_ms);
         auto cancelled = [&cancel] { return cancel.cancelled(); };
@@ -157,7 +177,6 @@ StoreOutcome StoreService::refresh(install::CancelToken& cancel, const install::
         }
         if (auto notice = radio.end()) out.notices.push_back(*notice);
     }
-    active_cancel_ = nullptr;
     if (!out.ok) {
         ListView cached = list_cached();                  // after a failure the list still comes from the cache
         out.view = cached;
@@ -231,6 +250,8 @@ void StoreService::mark_started(const std::string& version) {
     parts_.run_state.mark_started();
     parts_.run_state.remember_run_version(version);
 }
+
+void StoreService::resume() { leave_requested_ = false; }
 
 void StoreService::request_leave(LeaveReason) {
     leave_requested_ = true;
@@ -315,6 +336,8 @@ PlanView StoreService::plan_action(RowAction action, const std::string& app_id, 
     v.app_id = app_id;
     Slot slot(operation_);
     if (!slot.held()) return v;   // one operation at a time: further taps are ignored
+    if (leave_requested_.load()) return v;
+    ActiveCancel active(active_cancel_, leave_requested_, cancel);
     plan_.reset();
     parts_.last_fetch->clear();
     const AppRow* row = nullptr;
@@ -399,6 +422,8 @@ ExecView StoreService::execute_plan(const std::vector<std::string>& given_names,
     ExecView e;
     Slot slot(operation_);
     if (!slot.held()) return e;
+    if (leave_requested_.load()) return e;
+    ActiveCancel active(active_cancel_, leave_requested_, cancel);
     auto handle = reader();
     if (!plan_ || !handle) {
         e.findings.push_back(make_error("E-INS-25", "plan", "there is no plan to carry out; make a new plan"));
@@ -431,7 +456,7 @@ ExecView StoreService::execute_plan(const std::vector<std::string>& given_names,
     e.findings = res.findings;
     if (!res.missing_confirmations.empty() && e.findings.empty())
         e.findings.push_back(make_error("E-INS-25", "plan", "a confirmation that the plan names was not given"));
-    if (!leave_requested_.load()) parts_.pending_note.clear();   // after a leave the note stays, so that the next start says what happened
+    if (e.ok || !leave_requested_.load()) parts_.pending_note.clear();   // after a leave that stopped the action the note stays, so that the next start says what happened
     if (res.outcome == install::ExecResult::Outcome::RepairNeeded) needs_repair_.insert(plan.app_id);
     if (e.ok) {
         WordingArgs args;
@@ -461,6 +486,7 @@ PlanView StoreService::plan_delete_data() {
     v.kind = "delete-data";
     Slot slot(operation_);
     if (!slot.held()) return v;
+    if (leave_requested_.load()) return v;
     auto handle = reader();
     if (!removal_plan_ || !handle) {
         v.findings.push_back(make_error("E-INS-25", "plan", "there is no removal whose data folder could be deleted"));
@@ -489,6 +515,8 @@ ExecView StoreService::execute_delete_data(install::CancelToken& cancel, const i
     ExecView e;
     Slot slot(operation_);
     if (!slot.held()) return e;
+    if (leave_requested_.load()) return e;
+    ActiveCancel active(active_cancel_, leave_requested_, cancel);
     auto handle = reader();
     if (!delete_plan_ || !handle || !delete_plan_->plan.data) {
         e.findings.push_back(make_error("E-INS-25", "plan", "there is no plan to delete the data folder; make a new plan"));
@@ -514,6 +542,8 @@ ExecView StoreService::repair(bool accept_unknown_battery, install::CancelToken&
     ExecView e;
     Slot slot(operation_);
     if (!slot.held()) return e;
+    if (leave_requested_.load()) return e;
+    ActiveCancel active(active_cancel_, leave_requested_, cancel);
     auto handle = reader();
     if (!handle || !repair_pending_) {
         e.findings.push_back(make_error("E-INS-25", "reader", "there is nothing to repair"));

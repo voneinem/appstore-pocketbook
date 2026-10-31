@@ -1,0 +1,20 @@
+# T123 (story 5): app-03 was put on the reader by hand and its files equal the catalog package: Check shows the adoption plan, Adopt writes only the record.
+# scenario demo
+# expect-file system/pbstore/installed/app-03.json
+# expect-file applications/app-03.bin
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 2
+waitfor detailState Installed outside the store
+tap actionCheck
+waitfor planSummary App app-03
+tap consent 0
+tap consent 1
+tap confirm
+waitfor resultText
+expect resultText App app-03 is now managed by PB Store
+tap ok
+waitfor appRow
+quit

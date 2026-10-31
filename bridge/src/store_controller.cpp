@@ -215,12 +215,91 @@ void StoreController::loadLog() {
     emit logChanged();
 }
 
+// ---- About and the licenses (story 8) --------------------------------------------------------------------------------------
+
+QString StoreController::aboutNotice() const { return tr("PB Store is unofficial and is not made, endorsed or supported by PocketBook."); }
+
+void StoreController::setLicensesRoot(const QString& root) {
+    licensesRoot_ = root;
+    manifest_.reset();
+    emit licensesChanged();
+}
+
+const pbstore::store::about::Manifest& StoreController::manifest() {
+    if (!manifest_) {
+        QFile f(licensesRoot_ + QStringLiteral("/licenses/manifest.txt"));
+        pbstore::store::about::Manifest m;
+        if (f.open(QIODevice::ReadOnly)) m = pbstore::store::about::parse_manifest(f.readAll().toStdString());
+        manifest_ = std::move(m);
+    }
+    return *manifest_;
+}
+
+bool StoreController::licensesAvailable() { return manifest().readable && !manifest().components.empty(); }
+
+QVariantList StoreController::licenses() {
+    QVariantList list;
+    for (const auto& c : manifest().components) {
+        QVariantMap row;
+        row[QStringLiteral("id")] = q(c.id);
+        row[QStringLiteral("name")] = q(c.name);
+        row[QStringLiteral("purpose")] = q(c.purpose);
+        row[QStringLiteral("license")] = q(c.license);
+        row[QStringLiteral("holder")] = q(c.holder);
+        row[QStringLiteral("url")] = q(c.url);
+        row[QStringLiteral("hasText")] = !c.text.empty();
+        list << row;
+    }
+    return list;
+}
+
+QVariantMap StoreController::appLicense() {
+    QVariantMap m;
+    if (const auto& app = manifest().app) {
+        m[QStringLiteral("id")] = q(app->id);
+        m[QStringLiteral("name")] = q(app->name);
+        m[QStringLiteral("license")] = q(app->license);
+        m[QStringLiteral("holder")] = q(app->holder);
+        m[QStringLiteral("copyright")] = q(app->copyright);
+    }
+    return m;
+}
+
+void StoreController::loadLicense(const QString& id) {
+    const pbstore::store::about::Manifest& m = manifest();
+    const pbstore::store::about::Entry* entry = nullptr;
+    if (m.app && q(m.app->id) == id) entry = &*m.app;
+    for (const auto& c : m.components) if (q(c.id) == id) entry = &c;
+    licenseTitle_ = entry ? q(entry->name) : QString();
+    licenseAvailable_ = false;
+    licenseText_.clear();
+    if (entry) {
+        const QString root = licensesRoot_;
+        pbstore::store::about::LicenseText t = pbstore::store::about::load_text(*entry, [&root](const std::string& rel, std::string* data) {
+            QFile f(root + QLatin1Char('/') + QString::fromStdString(rel));
+            if (!f.open(QIODevice::ReadOnly)) return false;
+            *data = f.read(256 * 1024 + 1).toStdString();
+            return true;
+        });
+        licenseAvailable_ = t.available;
+        QStringList paragraphs;
+        for (const std::string& p : t.paragraphs) paragraphs << q(p);
+        licenseText_ = t.available ? paragraphs.join(QStringLiteral("\n\n"))
+                                   : (entry->text.empty() ? tr("There is no license text to show: %1 publishes none; it is part of the reader's firmware and is not redistributed with PB Store.").arg(licenseTitle_).replace(QStringLiteral("There is no license text"), QStringLiteral("There is no license text"))
+                                                          : tr("The license text is not available."));
+    }
+    emit licenseChanged();
+}
+
 void StoreController::leave(int reason) {
     leaving_ = true;
     service_.request_leave(static_cast<pbstore::store::LeaveReason>(reason));
 }
 
-void StoreController::resumed() { leaving_ = false; }
+void StoreController::resumed() {
+    leaving_ = false;
+    service_.resume();
+}
 
 void StoreController::cancel() { if (cancel_) cancel_->cancel(); }
 

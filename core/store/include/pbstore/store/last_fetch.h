@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "pbstore/fetch.h"
+#include "pbstore/install/log.h"
 #include "pbstore/install/net.h"
 
 namespace pbstore {
@@ -33,8 +34,9 @@ private:
     std::optional<FetchKind> failure_;
 };
 
-// The same downloader, remembering the kind of the last failed transfer.
-install::Downloader observe_fetches(install::Downloader inner, std::shared_ptr<LastFetch> record);
+// The same downloader, remembering the kind of the last failed transfer. The error text of a failed transfer comes from the network library and
+// may name an address or a network; it passes the redactor before anything else sees it (research R-20).
+install::Downloader observe_fetches(install::Downloader inner, std::shared_ptr<LastFetch> record, const install::Redactor* redactor = nullptr);
 
 }  // namespace store
 }  // namespace pbstore

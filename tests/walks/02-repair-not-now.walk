@@ -1,0 +1,17 @@
+# T085: "Not now" on the repair page leaves browse-only: the list is there, nothing can be installed, updated or removed, and nothing is changed.
+# scenario repair
+# expect-unchanged
+size 1404 1872
+wait 400
+waitfor repairText
+tap notNow
+waitfor appRow
+expect notice repaired first
+shot @OUT@/12-browse-only.png
+tap appRow 1
+waitfor detailState
+expect_absent actionUpdate
+expect_absent actionRemove
+expect_absent actionInstall
+tap back
+quit

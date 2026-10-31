@@ -190,6 +190,8 @@ public:
     // The user left (home key, sleep, cable, the reader ended the app): stops what runs; a download stops and writes nothing.
     void request_leave(LeaveReason reason);
     bool leave_requested() const { return leave_requested_.load(); }
+    // The reader came back (wake from sleep): operations may start again.
+    void resume();
 
 private:
     std::shared_ptr<install::ReaderHandle> reader();

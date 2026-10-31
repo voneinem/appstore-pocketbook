@@ -3,10 +3,11 @@
 namespace pbstore {
 namespace store {
 
-install::Downloader observe_fetches(install::Downloader inner, std::shared_ptr<LastFetch> record) {
-    return [inner = std::move(inner), record = std::move(record)](const std::string& url, uint64_t max_bytes, long total_seconds, const install::DownloadProgress& progress) {
+install::Downloader observe_fetches(install::Downloader inner, std::shared_ptr<LastFetch> record, const install::Redactor* redactor) {
+    return [inner = std::move(inner), record = std::move(record), redactor](const std::string& url, uint64_t max_bytes, long total_seconds, const install::DownloadProgress& progress) {
         FetchResult r = inner(url, max_bytes, total_seconds, progress);
         if (!r.ok && record) record->record(r.kind);
+        if (!r.ok && redactor) r.error = redactor->redact(r.error);
         return r;
     };
 }
