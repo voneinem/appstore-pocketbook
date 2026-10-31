@@ -180,6 +180,20 @@ PB_TEST(update_all_updates_the_apps_one_after_the_other_with_a_plan_and_a_summar
     PB_CHECK(!r.controller->canUpdateAll());
 }
 
+PB_TEST(cancel_is_offered_until_the_engine_reports_the_commit_point_and_not_after) {
+    // the page then shows "Finishing; this cannot be cancelled" (OperationPage.qml, visible: !cancellable); the figures are tested in test_progress_text
+    Rig r;
+    if (!r.prepare()) PB_SKIP("openssl CLI not available");
+    r.controller->startAction(QStringLiteral("Install"), QStringLiteral("testapp"));
+    PB_CHECK(r.phase("plan"));
+    PB_CHECK(r.controller->cancellable());                               // an operation that can still be undone
+    r.controller->confirm(kConsents, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(wait_for([&] { return !r.controller->busy(); }));
+    PB_CHECK(!r.controller->cancellable());                              // the engine passed "finishing" on the way
+    r.controller->finishResult();
+}
+
 PB_TEST(declining_an_app_in_update_all_skips_it) {
     Rig r(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")));
     if (!r.prepare(true)) PB_SKIP("openssl CLI not available");

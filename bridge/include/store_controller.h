@@ -15,6 +15,7 @@
 
 #include "app_list_model.h"
 #include "pbstore/store/about.h"
+#include "pbstore/store/progress_text.h"
 #include "pbstore/store/refresh_policy.h"
 #include "pbstore/store/screen.h"
 #include "pbstore/store/store_service.h"
@@ -186,7 +187,7 @@ private:
     bool busy_ = false;
     bool repairPending_ = false;
     bool catalogLoaded_ = false;
-    qint64 lastProgressMs_ = 0;
+    pbstore::store::ProgressThrottle progressThrottle_;
     std::thread worker_;
     std::atomic<bool> leaving_{false};
     std::unique_ptr<pbstore::install::CancelToken> cancel_ = std::make_unique<pbstore::install::CancelToken>();

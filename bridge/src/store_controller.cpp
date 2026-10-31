@@ -6,6 +6,7 @@
 #include <QStringList>
 
 #include "pbstore/store/app_filter.h"
+#include "pbstore/store/progress_text.h"
 #include "pbstore/store/store_rules.h"
 
 using pbstore::store::AppRow;
@@ -163,12 +164,8 @@ void StoreController::refresh() {
     pageKind(QStringLiteral("progress"));
     worker_ = std::thread([this] {
         auto progress = [this](const pbstore::install::Progress& p) {
-            const qint64 now = QDateTime::currentMSecsSinceEpoch();
-            if (now - lastProgressMs_ < 2000) return;   // at most once every 2 seconds (spec FR-017)
-            lastProgressMs_ = now;
-            QString text = q(p.text);
-            if (p.total > 0) text += QStringLiteral(" (%1 of %2 KiB)").arg(p.done / 1024).arg(p.total / 1024);
-            else if (p.done > 0) text += QStringLiteral(" (%1 KiB)").arg(p.done / 1024);
+            if (!progressThrottle_.pass(QDateTime::currentMSecsSinceEpoch())) return;   // at most once every 2 seconds (spec FR-017)
+            const QString text = q(pbstore::store::progress_line(p));
             QMetaObject::invokeMethod(this, [this, text] { progress_ = text; emit progressChanged(); }, Qt::QueuedConnection);
         };
         pbstore::store::StoreOutcome out = service_.refresh(*cancel_, progress);
@@ -318,12 +315,8 @@ pbstore::install::ProgressFn StoreController::operationProgress() {
     return [this](const pbstore::install::Progress& p) {
         // after the commit point nothing can be cancelled: the engine's last phase is "finishing"
         if (p.phase == "finishing") QMetaObject::invokeMethod(this, [this] { cancellable_ = false; emit operationChanged(); }, Qt::QueuedConnection);
-        const qint64 now = QDateTime::currentMSecsSinceEpoch();
-        if (now - lastProgressMs_ < 2000) return;   // at most once every 2 seconds (spec FR-017)
-        lastProgressMs_ = now;
-        QString text = q(p.text);
-        if (p.total > 0) text += QStringLiteral(" (%1 of %2 %3)").arg(p.done).arg(p.total).arg(q(p.unit));
-        else if (p.done > 0) text += QStringLiteral(" (%1 %2)").arg(p.done).arg(q(p.unit));
+        if (!progressThrottle_.pass(QDateTime::currentMSecsSinceEpoch())) return;   // at most once every 2 seconds (spec FR-017)
+        const QString text = q(pbstore::store::progress_line(p));
         QMetaObject::invokeMethod(this, [this, text] { progress_ = text; emit progressChanged(); }, Qt::QueuedConnection);
     };
 }
@@ -381,7 +374,7 @@ void StoreController::startAction(const QString& action, const QString& appId) {
     clearMessage();
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
     progress_ = tr("Preparing");
-    lastProgressMs_ = 0;   // each phase starts with a report that is not held back by the one before it
+    progressThrottle_.reset();   // each phase starts with a report that is not held back by the one before it
     emit progressChanged();
     cancellable_ = true;
     setBusy(true);
@@ -428,7 +421,7 @@ void StoreController::confirm(const QStringList& given, bool acceptUnknownBatter
     for (const QString& g : given) names.push_back(g.toStdString());
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
     progress_ = tr("Working");
-    lastProgressMs_ = 0;
+    progressThrottle_.reset();
     emit progressChanged();
     cancellable_ = true;
     setBusy(true);
