@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 - 2026-10-31
+
+- CI only: the pull request check may run 30 minutes instead of 15 (the exhaustive `test_store_leave` takes about 6 minutes on the runner). No change for PB Installer users.
+
 ## 0.3.0 - 2026-10-31
 
 - Engine: optional catalog cache hook, program name and log file name for the store app; new notice `W-INS-04` when PB Store is removed
