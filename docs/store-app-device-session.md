@@ -26,7 +26,7 @@ The agent installs the dev package first (mounted, the install cycle above); the
 |---|---|---|
 | Tap PB Store at once after the restart. Is "PB Store is getting ready" on the panel, then the list? | `run/pbstore.launch.log`: the `retry N of M` lines and the seconds | T182, T171 |
 | Look at the list, the top bar (house and menu left, title, Refresh and Search right), Settings, About, Log; say what looks wrong | `pbstore.log` identity line: model and firmware strings | T174, T172 |
-| Open Detail of PB Cloud: "Show the files (N)" is there; Replace is offered, Check is refused with the first differing file named | the log | T174 |
+| Open Detail of an app the store installed (PB Cloud since 2026-10-31): the actions fit the state (Remove, Update when offered); the source and changelog lines are shown. "Show the files (N)", Replace and Check belong to the plan page of an app installed by hand: try them only on such an app | the log | T174 |
 | Ten finger taps on each of: the list rows, Refresh, Search, the menu, a Detail button, and each of Settings, About, Log; count the hits; time a page turn | - | T098, T149a |
 | Turn 20 pages of the list and look for ghosting; during a Refresh, say whether the progress line looks calm | - | T098 |
 | Home key during a Refresh; again during the download of an install; again on the progress page before the commit point | `run/last-exit`, `pending-note.txt`, the journal, whether Wi-Fi is off again | T144 (a) to (c) |
