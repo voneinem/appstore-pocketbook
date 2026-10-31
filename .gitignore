@@ -3,3 +3,5 @@ build*/
 *.seed
 .cache/
 dist/
+dist-dev/
+walk-out/

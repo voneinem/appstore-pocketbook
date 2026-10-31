@@ -1,0 +1,36 @@
+# T183 (owner request, Block A of the device session): the source and the changelog lines of the detail page are links. A tap asks "Open this link?" and
+# shows the real address; Cancel changes nothing; Open hands the address to the reader's browser (on the computer nothing is opened) and the page stays.
+# The store itself never fetches a link (FR-043): this walk proves only the asking and the wiring.
+# scenario demo
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+waitfor appRow
+tap appRow 0
+waitfor detailLicense
+expect_absent linkAsk
+expect detailSource https://
+shot @OUT@/70-detail.png
+
+# the source line asks first, with the address in full
+tap detailSource
+waitfor linkAsk Open this link?
+expect linkAddress https://
+shot @OUT@/71-link-ask.png
+# Cancel closes the question and nothing else happens
+tap linkCancel
+expect_absent linkAsk
+expect_absent linkFailed
+expect detailLicense MIT
+
+# the changelog line asks too; Open closes the question and reports no failure
+tap detailChangelog
+waitfor linkAsk Open this link?
+tap linkOpen
+expect_absent linkAsk
+expect_absent linkFailed
+expect detailLicense MIT
+tap back
+waitfor appRow
+quit

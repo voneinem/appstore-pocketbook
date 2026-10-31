@@ -712,7 +712,7 @@ Story 8.
     command line has one option per confirmation, never a combined "yes to all". The second data
     folder confirmation differs in wording from the first.
   - *Stale plan*: immediately before the first write the program MUST compare the reader's state with
-    the state the plan was built on (the desktop configuration, the target paths, the free space);
+    the state the plan was built on (the desktop configuration, the target paths); the free space is not part of that comparison (a screenshot or a log written meanwhile would make every plan stale) and is checked on its own against what the plan needs;
     if anything differs it MUST write nothing, say what changed, and offer a new plan.
   - *Reader removed while idle or before a write*: the program says so and writes nothing.
   - *Cancel*: the Cancel button, closing the window and an interrupt from the keyboard (command

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 - 2026-10-31
+
+- Engine: optional catalog cache hook, program name and log file name for the store app; new notice `W-INS-04` when PB Store is removed
+  (its own cache and log in `system/pbstore/app/` are kept). The closing message after an update no longer says that the app appears in the
+  group "" as "" when the menu entry is left as it is, and says that the data folder was kept only when there is one.
+
+## store-0.1.0 - 2026-10-31
+
+- **PB Store on the reader** (feature 003): browse the signed catalog, install, update, update all, remove (the data folder is kept unless you delete
+  it after two confirmations), adopt apps that were put there by hand, repair an operation that a power loss cut, self-update with a fallback to the
+  previous version, About with the license list, Settings and the log. Plain wording for every message, with the rule id behind it.
+- The source and changelog lines of an app's detail page are links: a tap asks "Open this link?" with the whole address, and only Open starts the reader's browser (https addresses only). PB Store itself still fetches no link.
+- New notice `W-INS-04` in PB Installer when PB Store itself is removed.
+- Development builds were tried on a real InkPad One (firmware 6.11.1437); what is verified and what is still open is in `docs/store-app-device-results.md`.
+
 ## 0.2.0
 
 - **PB Installer for Linux**: `pbstore-install`, a command line and a browser-based assistant (loopback only) that

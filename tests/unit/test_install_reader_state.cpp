@@ -142,7 +142,7 @@ PB_TEST(a_link_like_object_is_reported) {
     PB_CHECK(s.facts["applications/testapp.app"].kind == Kind::Link);
 }
 
-PB_TEST(the_fingerprint_changes_when_view_json_a_target_path_or_the_free_space_changes) {
+PB_TEST(the_fingerprint_changes_when_view_json_or_a_target_path_changes_but_not_with_the_free_space) {
     FakeReader r;
     Volume v(r);
     SampleApp app = nested_sample_app();
@@ -158,8 +158,8 @@ PB_TEST(the_fingerprint_changes_when_view_json_a_target_path_or_the_free_space_c
     PB_CHECK(fingerprint_of(snapshot_basis(scan(v.fat, known(), req), paths)) != f0);
     v.mem.remove_file("applications/testapp.app");
     PB_CHECK_EQ(fingerprint_of(snapshot_basis(scan(v.fat, known(), req), paths)), f0);
-    v.mem.set_space(12345, 4096, true, false);
-    PB_CHECK(fingerprint_of(snapshot_basis(scan(v.fat, known(), req), paths)) != f0);
+    v.mem.set_space(12345, 4096, true, false);       // the free space is checked on its own (E-INS-07), it is no part of the fingerprint
+    PB_CHECK_EQ(fingerprint_of(snapshot_basis(scan(v.fat, known(), req), paths)), f0);
     v.mem.set_space(1ull << 30, 4096, true, false);
     std::string view = reader_view_text(v.fat);
     v.mem.remove_file("system/config/desktop/view.json");
@@ -167,21 +167,13 @@ PB_TEST(the_fingerprint_changes_when_view_json_a_target_path_or_the_free_space_c
     PB_CHECK(fingerprint_of(snapshot_basis(scan(v.fat, known(), req), paths)) != f0);
 }
 
-PB_TEST(a_free_space_change_of_less_than_one_mib_is_no_change_wherever_it_falls_between_two_mib) {
+PB_TEST(the_free_space_is_no_part_of_the_comparison_of_a_plan_with_the_reader) {
     const uint64_t mib = 1024 * 1024;
-    PB_CHECK(!free_space_changed(6842 * mib - 1, 6842 * mib));       // across a whole-MiB boundary
-    PB_CHECK(!free_space_changed(6842 * mib + 100, 6842 * mib - 100));
-    PB_CHECK(!free_space_changed(5 * mib, 5 * mib));
-    PB_CHECK(free_space_changed(6842 * mib, 6841 * mib));
-    PB_CHECK(free_space_changed(6841 * mib, 6842 * mib));
     FingerprintBasis a, b;
     a.view_sha256 = b.view_sha256 = "x";
-    a.free_bytes = 6842 * mib - 1;
-    b.free_bytes = 6842 * mib;
-    PB_CHECK(basis_unchanged(a, b));
+    a.free_bytes = 6842 * mib;
     b.free_bytes = 6840 * mib;
-    PB_CHECK(!basis_unchanged(a, b));
-    b.free_bytes = a.free_bytes;
+    PB_CHECK(basis_unchanged(a, b));
     b.facts.push_back("applications/x\tabsent");
     PB_CHECK(!basis_unchanged(a, b));
 }

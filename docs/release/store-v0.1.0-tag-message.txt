@@ -1,0 +1,11 @@
+PB Store 0.1.0 for the PocketBook InkPad One
+
+The first release of PB Store, the app on the reader that shows the signed
+catalog of apps from this project and installs, updates, removes, adopts and
+repairs them. It makes no network call until you tap, and switches Wi-Fi on
+only for Refresh, Install and Update, and off again afterwards.
+
+Release file: pbstore-inkpad-one-0.1.0.zip
+SHA-256: b58684f9128fa960002721268b132baab3c5d350d2d9323b396bf95227c67f35
+
+Unofficial. Not made, endorsed or supported by PocketBook.

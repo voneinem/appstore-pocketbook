@@ -1,0 +1,37 @@
+# T114: Update all with four outdated apps: a plan and a confirmation for each, PB Store itself last, then the summary.
+# scenario updates
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap menu
+tap menuUpdateAll
+waitfor planSummary Update App app-01
+expect topBarTitle Updating 1 of 4: App app-01
+tap consent 0
+tap consent 1
+tap confirm
+waitfor planSummary Update App app-02
+expect topBarTitle Updating 2 of 4: App app-02
+tap consent 0
+tap consent 1
+tap confirm
+waitfor planSummary Update App app-03
+expect topBarTitle Updating 3 of 4: App app-03
+tap consent 0
+tap consent 1
+tap confirm
+waitfor planSummary Update App pbstore
+expect topBarTitle Updating 4 of 4: App pbstore
+shot @OUT@/31-update-all-store-last.png
+tap consent 0
+tap consent 1
+tap confirm
+waitfor resultText Updated:
+expect resultText App app-01
+expect resultText App pbstore
+shot @OUT@/32-update-all-summary.png
+tap ok
+waitfor appRow
+expect_absent menuUpdateAll
+quit

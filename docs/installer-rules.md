@@ -71,5 +71,6 @@ Rows that say "accept with `--confirm-...`" are conditions you may accept; the o
 | `W-INS-01` | Nothing to do: the app is already at the offered version | unchanged | - | 0 |
 | `W-INS-02` | The menu entry was changed since the install | unchanged | - | 0 |
 | `W-INS-03` | No earlier catalog serial was on record | unchanged | - | 0 |
+| `W-INS-04` | PB Store was removed; its own cache and log in system/pbstore/app/ were kept | unchanged | - | 0 |
 
 `E-INS-29` is not used; the number is kept so that ids cited in the design documents stay stable.

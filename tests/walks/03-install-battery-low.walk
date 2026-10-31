@@ -1,0 +1,18 @@
+# T105: with the battery at 20 % an install is refused before anything is downloaded (E-STO-01), and the reader is unchanged.
+# scenario demo
+# env PBSTORE_TEST_BATTERY=20
+# expect-unchanged
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 3
+waitfor detailState Not installed
+tap actionInstall
+waitfor resultText
+expect resultText E-STO-01
+expect resultReader not changed
+expect resultTodo Charge the reader
+tap ok
+waitfor appRow
+quit

@@ -13,7 +13,6 @@ namespace {
 
 constexpr const char* kViewPath = "system/config/desktop/view.json";
 constexpr uint64_t kMaxHashedFile = 512ull * 1024 * 1024;
-constexpr uint64_t kFreeSpaceStep = 1024 * 1024;
 
 const char* kind_word(Kind k) {
     switch (k) {
@@ -40,11 +39,6 @@ std::vector<std::string> split_tab(const std::string& line) {
         start = t + 1;
     }
     return parts;
-}
-
-std::string mib(uint64_t bytes) {
-    const uint64_t tenths = bytes * 10 / (1024 * 1024);
-    return std::to_string(tenths / 10) + "." + std::to_string(tenths % 10) + " MiB";
 }
 
 }  // namespace
@@ -89,19 +83,15 @@ FingerprintBasis read_basis(ReaderFs& fs, const std::vector<std::string>& paths)
 std::string fingerprint_of(const FingerprintBasis& basis) {
     std::string text = "view\t" + basis.view_sha256 + "\n";
     for (const std::string& f : basis.facts) text += f + "\n";
-    // the free space counts in whole MiB: a few blocks more or less (the reader or the computer writing a log) are no change the user could see
-    text += "free\t" + std::to_string(basis.free_bytes / kFreeSpaceStep) + "\n";
+    // the free space is no part of it: anything written meanwhile (a screenshot, a log) would make the plan stale for nothing; that there is
+    // enough of it is checked again right before the first write (E-INS-07)
     return sha256_hex(text);
 }
 
 std::string current_fingerprint(ReaderFs& fs, const Plan& plan) { return fingerprint_of(read_basis(fs, plan_target_paths(plan))); }
 
-bool free_space_changed(uint64_t planned, uint64_t now) {
-    return (planned > now ? planned - now : now - planned) >= kFreeSpaceStep;
-}
-
 bool basis_unchanged(const FingerprintBasis& planned, const FingerprintBasis& now) {
-    return planned.view_sha256 == now.view_sha256 && planned.facts == now.facts && !free_space_changed(planned.free_bytes, now.free_bytes);
+    return planned.view_sha256 == now.view_sha256 && planned.facts == now.facts;
 }
 
 std::string describe_basis_change(const FingerprintBasis& planned, const FingerprintBasis& now) {
@@ -120,8 +110,6 @@ std::string describe_basis_change(const FingerprintBasis& planned, const Fingerp
             else changes.push_back(kv.first + " was changed");
         }
     }
-    if (free_space_changed(planned.free_bytes, now.free_bytes))
-        changes.push_back("the free space changed from " + mib(planned.free_bytes) + " to " + mib(now.free_bytes));
     std::string s;
     for (const std::string& c : changes) s += (s.empty() ? "" : "; ") + c;
     return s.empty() ? "something on the reader changed" : s;

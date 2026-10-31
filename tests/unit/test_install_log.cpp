@@ -126,4 +126,24 @@ PB_TEST(the_posix_state_folder_is_private) {
     PB_CHECK_EQ(int(st.st_mode & 0777), 0600);
 }
 
+PB_TEST(a_log_with_another_file_name_writes_and_rotates_that_name_and_the_default_is_unchanged) {
+    pbtest::MemStateDirs dirs;
+    pbtest::FixedClock clock;
+    Redactor red;
+    Log log(dirs, clock, red, "pbstore.log");               // the store app names its log pbstore.log
+    log.event("install", "testapp", "1.0.0", "ok", {}, std::string(1000, 'x'));
+    PB_CHECK(dirs.exists("pbstore.log"));
+    PB_CHECK(!dirs.exists("installer.log"));
+    const std::string filler(1000, 'x');
+    for (int i = 0; i < 2000; ++i) log.event("install", "testapp", "1.0.0", "ok", {}, filler);
+    PB_CHECK(dirs.exists("pbstore.log.1"));
+    PB_CHECK(dirs.exists("pbstore.log.2"));
+    PB_CHECK(!dirs.exists("pbstore.log.3"));
+    for (const auto& name : dirs.names()) PB_CHECK(name.compare(0, 11, "pbstore.log") == 0);
+    pbtest::MemStateDirs other;
+    Log plain(other, clock, red);
+    plain.event("list", "", "", "ok", {});
+    PB_CHECK(other.exists("installer.log"));                // the default constructor still uses installer.log
+}
+
 PB_TEST_MAIN()

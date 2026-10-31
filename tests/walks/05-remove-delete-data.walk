@@ -1,0 +1,25 @@
+# T119: both confirmations of the deletion of the data folder: it is gone, the app's files were already gone.
+# scenario demo
+# expect-no-file applications/app-01.bin
+# expect-no-file system/app-01/notes.db
+# expect-no-file system/app-01/sub/more.db
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 0
+waitfor detailState Installed
+tap actionRemove
+waitfor planSummary Remove App app-01
+tap confirm
+waitfor resultText App app-01 was removed
+tap askDelete
+waitfor deletePrompt Delete the data of this app?
+tap deleteData
+waitfor deletePrompt files
+tap deleteData
+waitfor resultText data folder
+expect resultText deleted
+tap ok
+waitfor appRow
+quit

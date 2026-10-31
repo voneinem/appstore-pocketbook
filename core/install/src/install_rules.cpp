@@ -63,6 +63,7 @@ const std::vector<InstallRule>& install_rule_registry() {
         {"W-INS-01", "Nothing to do: the app is already at the offered version", U, "", 0},
         {"W-INS-02", "The menu entry was changed since the install", U, "", 0},
         {"W-INS-03", "No earlier catalog serial was on record", U, "", 0},
+        {"W-INS-04", "PB Store was removed; its own cache and log in system/pbstore/app/ were kept", U, "", 0},
     };
     return rules;
 }

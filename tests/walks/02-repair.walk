@@ -1,0 +1,20 @@
+# T085 (story 6, FR-030): an update of app-02 was cut by a lost power; the first page is the repair page, and Repair finishes or undoes it.
+# scenario repair
+# expect-no-file system/pbstore/journal/current/10-intent.json
+size 1404 1872
+wait 400
+waitfor repairText
+expect repairText interrupted
+expect repairText app-02
+shot @OUT@/10-repair-page.png
+tap repair
+waitfor resultText
+expect resultText interrupted
+shot @OUT@/11-repair-result.png
+tap ok
+waitfor appRow
+# the actions are back: the first app has one again
+tap appRow 0
+waitfor detailState
+tap back
+quit

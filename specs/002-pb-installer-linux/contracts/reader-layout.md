@@ -15,6 +15,7 @@ path outside this table (`E-INS-19`), and the executor re-checks every path befo
 | App folders | directories under `applications/` needed by the manifest | create; delete if empty and recorded as created by the installer |
 | Desktop configuration | `system/config/desktop/view.json` | replace through the journal, changing only one app's entry (see below) |
 | Installer area | `system/pbstore/**` | everything the installer created there |
+| Store state folder | `system/pbstore/app/**` | written only by PB Store, the app (its program and its launcher); never by the installer, and kept when PB Store is removed (`W-INS-04`) |
 | App data folder | `system/<name>` from the manifest | **never written, read (beyond counting files and bytes) or deleted**, except the separately confirmed deletion of the whole folder (`DeleteData`) |
 
 A package can cause writes only under `applications/`; the manifest contract already requires every file to

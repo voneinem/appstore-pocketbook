@@ -61,16 +61,26 @@ PB_TEST(a_new_colliding_file_gives_e_ins_25_and_names_it) {
     PB_CHECK(compare(before, snapshot(v.fat)).identical);
 }
 
-PB_TEST(a_different_free_space_figure_gives_e_ins_25_and_says_what_changed) {
+PB_TEST(less_free_space_than_at_planning_but_still_enough_does_not_make_the_plan_stale) {
+    // seen on the reader on 2026-10-30: a screenshot (1.3 MiB) taken between the plan and Confirm caused a false E-INS-25
     FakeReader reader;
     Volume v(reader);
     Built b = make_install_plan(v.fat, nested_sample_app());
     v.mem.set_space(b.plan.space.free_bytes - 3 * 1024 * 1024, 4096, true, false);   // still enough, but not what the plan saw
+    ExecResult res = run_execute(v.fat, b);
+    PB_CHECK(res.ok());
+}
+
+PB_TEST(free_space_that_fell_below_what_the_plan_needs_is_refused_for_the_space_not_as_a_stale_plan) {
+    FakeReader reader;
+    Volume v(reader);
+    Built b = make_install_plan(v.fat, nested_sample_app());
+    v.mem.set_space(b.plan.space.needed - 1, 4096, true, false);
     const Snapshot before = snapshot(v.fat);
     ExecResult res = run_execute(v.fat, b);
     PB_CHECK(!res.ok());
-    PB_CHECK(has_rule(res, "E-INS-25"));
-    PB_CHECK(res.findings[0].message.find("free space") != std::string::npos);
+    PB_CHECK(has_rule(res, "E-INS-07"));
+    PB_CHECK(!has_rule(res, "E-INS-25"));
     PB_CHECK(compare(before, snapshot(v.fat)).identical);
 }
 

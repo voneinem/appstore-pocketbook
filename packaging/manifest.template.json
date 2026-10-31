@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "id": "pbstore",
+  "name": "PB Store",
+  "version": "@VERSION@",
+  "min_firmware": "6.11.1437",
+  "target_device": "InkPad One",
+  "menu_entry": {
+    "id": "U_PbStore",
+    "title": "PB Store",
+    "path": "applications/pbstore.app",
+    "icon": "applications/icons/pbstore.bmp",
+    "focused_icon": "applications/icons/pbstore_f.bmp",
+    "group": "@General"
+  },
+  "data_dir": null
+}

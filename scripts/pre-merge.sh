@@ -10,7 +10,7 @@
 #                                        contain its value either)
 #   scripts/pre-merge.sh --self-test     prove that the built-in secret scan detects what it should
 #
-# It also runs scripts/check-version-bump.sh (a branch that changes the product must raise VERSION
+# It also runs scripts/check-version-bump.sh (a branch that changes a product must raise its version
 # and add a CHANGELOG.md entry) and scripts/check-constitution.sh (TLS bypasses, SDK paths, private
 # keys, Qt in the core, workflow rules).
 set -euo pipefail
@@ -108,6 +108,9 @@ echo "== host build and tests (sanitizers: $SANITIZE)"
 cmake -S "$ROOT" -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DPBSTORE_SANITIZE=$SANITIZE >/dev/null
 cmake --build "$BUILD_DIR"
 ctest --test-dir "$BUILD_DIR" --output-on-failure
+
+echo "== engine builds for the reader (needs POCKETBOOK_SDK; skipped without it)"
+"$ROOT/scripts/check-arm-build.sh" "$BUILD_DIR"
 
 echo "== secret scan"
 secret_scan "$ROOT"

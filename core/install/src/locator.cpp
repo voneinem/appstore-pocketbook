@@ -2,6 +2,8 @@
 
 #include <set>
 
+#include "pbstore/install/journal.h"
+
 namespace pbstore {
 namespace install {
 
@@ -42,7 +44,9 @@ std::string describe_candidates(const std::vector<Candidate>& list) {
 std::vector<std::string> missing_markers(ReaderFs& fs) {
     std::vector<std::string> missing;
     if (fs.stat("applications").kind != Kind::Dir) missing.push_back(kMarkerApplications);
-    if (fs.stat(kMarkerDesktop).kind != Kind::File) missing.push_back(kMarkerDesktop);
+    // An operation that was cut between the two renames that replace view.json leaves no view.json until it is repaired; the journal
+    // says so, and the reader must still be recognized or nothing could repair it.
+    if (fs.stat(kMarkerDesktop).kind != Kind::File && !journal_exists(fs)) missing.push_back(kMarkerDesktop);
     return missing;
 }
 

@@ -135,6 +135,10 @@ std::vector<DirEntry> PosixReaderFs::list(const Path& dir) {
     if (fd.fd < 0) return out;
     DIR* d = ::fdopendir(::dup(fd.fd));
     if (!d) return out;
+    // The duplicate shares its read position with the handle it came from, and the handle of the root folder is
+    // kept for the life of the object: without the rewind a second listing of the root would start where the
+    // first one ended and miss everything.
+    ::rewinddir(d);
     while (dirent* e = ::readdir(d)) {
         const std::string name = e->d_name;
         if (name == "." || name == "..") continue;

@@ -1,0 +1,22 @@
+# T105: when the battery level cannot be read, Confirm needs one more tap that states the risk (E-STO-05); declining writes nothing.
+# scenario demo
+# env PBSTORE_TEST_BATTERY=unreadable
+# expect-unchanged
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 3
+waitfor detailState Not installed
+tap actionInstall
+waitfor planSummary Install App app-04 1.2.0
+expect batteryRisk cannot be read
+tap consent 0
+tap consent 1
+expect_disabled confirm
+tap batteryRisk
+expect_enabled confirm
+shot @OUT@/24-battery-risk.png
+tap decline
+waitfor appRow
+quit

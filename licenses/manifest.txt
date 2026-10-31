@@ -1,0 +1,119 @@
+# Declaration of the store and its third-party components. The About screens read this file; tests/store/test_license_consistency checks it
+# against NOTICE, third_party/ and the CMake dependencies. A component's `name` must start the heading line of its NOTICE section.
+# Paths in `text` are relative to the licenses root (the repository root, or applications/pbstore-licenses/ on the reader).
+# Format, one block per entry, blocks separated by a blank line: `key: value` lines; `kind` is app or component; a component needs
+# id, name, purpose, license, holder, url (https), origin (bundled or system); `text`, `source` and `cmake` are comma separated lists.
+
+id: pbstore
+kind: app
+name: PB Store
+license: MIT License
+holder: Volker von Einem
+copyright: Copyright (c) 2026 Volker von Einem
+text: LICENSE
+
+id: inkfeed
+kind: component
+name: InkFeed
+purpose: Build, launcher and packaging patterns adapted from it
+license: MIT License
+holder: Joost Rohde
+url: https://github.com/jrohde/InkFeed
+origin: bundled
+text: licenses/inkfeed-MIT.txt
+
+id: miniz
+kind: component
+name: miniz
+purpose: Reads the ZIP packages of the apps
+license: MIT License
+holder: RAD Game Tools, Valve Software, Rich Geldreich and Tenacious Software LLC
+url: https://github.com/richgel999/miniz
+origin: bundled
+text: licenses/miniz-MIT.txt
+source: third_party/miniz
+
+id: mozilla-ca
+kind: component
+name: Mozilla CA certificate bundle
+purpose: Trusted certificate authorities for secure connections, used only when the reader has none
+license: Mozilla Public License 2.0 (MPL-2.0)
+holder: Mozilla Foundation, extracted by the curl project
+url: https://curl.se/docs/caextract.html
+origin: bundled
+text: licenses/MPL-2.0.txt
+source: third_party/cacert
+
+id: qt
+kind: component
+name: Qt 6
+purpose: Draws the screens and runs the app (Core, Gui, Qml and Quick)
+license: GNU Lesser General Public License 3 (LGPL-3.0)
+holder: The Qt Company Ltd. and other contributors
+url: https://www.qt.io/licensing/
+origin: system
+text: licenses/LGPL-3.0.txt, licenses/GPL-3.0.txt
+cmake: Qt6
+
+id: libcurl
+kind: component
+name: libcurl
+purpose: Downloads the catalog and the packages
+license: curl license (MIT-style)
+holder: Daniel Stenberg and many contributors
+url: https://curl.se/docs/copyright.html
+origin: bundled
+text: licenses/curl.txt
+source: scripts/build-curl-arm.sh
+cmake: CURL
+
+id: openssl
+kind: component
+name: OpenSSL
+purpose: Encrypts and verifies every connection, and checks the checksums and signatures of the catalog and the packages
+license: Apache License 2.0
+holder: The OpenSSL Project Authors
+url: https://www.openssl.org/source/license.html
+origin: system
+text: licenses/Apache-2.0.txt
+cmake: OpenSSL
+
+id: zlib
+kind: component
+name: zlib
+purpose: Unpacks compressed transfers
+license: zlib license
+holder: Jean-loup Gailly and Mark Adler
+url: https://zlib.net/
+origin: system
+text: licenses/zlib.txt
+
+id: inkview
+kind: component
+name: PocketBook InkView
+purpose: Screen, keys and system functions of the reader
+license: Terms set by PocketBook (no license text published)
+holder: PocketBook
+url: https://www.pocketbook-int.com
+origin: system
+cmake: inkview
+
+id: glibc
+kind: component
+name: GNU C Library
+purpose: Basic system functions (libc, libm)
+license: GNU Lesser General Public License 2.1 or later (LGPL-2.1)
+holder: Free Software Foundation, Inc. and other contributors
+url: https://www.gnu.org/software/libc/
+origin: system
+text: licenses/LGPL-2.1.txt
+
+id: gcc-runtime
+kind: component
+name: GCC runtime libraries
+purpose: C++ runtime of the app (libstdc++, libgcc_s)
+license: GPL-3.0 or later with the GCC Runtime Library Exception 3.1
+holder: Free Software Foundation, Inc.
+url: https://www.gnu.org/licenses/gcc-exception-3.1.html
+origin: system
+text: licenses/GPL-3.0.txt

@@ -1,7 +1,9 @@
 #include "pbstore/install/engine.h"
 
 #include <algorithm>
+#include <chrono>
 
+#include "pbstore/catalog_verify.h"
 #include "pbstore/install/catalog_session.h"
 #include "pbstore/install/install_record.h"
 
@@ -149,7 +151,42 @@ bool Engine::ensure_catalog(std::vector<Finding>* findings, std::vector<Finding>
         return false;
     }
     catalog_ = s.catalog;
+    // the serial is remembered by now (refresh_catalog); keeping the bytes is an extra for callers with a cache
+    if (deps_.catalog_cache) deps_.catalog_cache->store(s.catalog_bytes, s.signature_bytes);
     return true;
+}
+
+Result<Listing> Engine::list_cached(ReaderHandle& reader) {
+    Result<Listing> r;
+    std::optional<Catalog> cached;
+    std::string bytes, signature;
+    if (deps_.catalog_cache && deps_.catalog_cache->load(&bytes, &signature)) {
+        VerifyResult v = verify_catalog(bytes, signature, config_.trusted_keys, 0);   // 0: no serial comparison
+        if (!v.ok()) {
+            deps_.catalog_cache->discard();
+            r.findings = v.findings;
+            deps_.log->event("list-cached", "", "", "failed", rule_ids(r.findings), r.findings.empty() ? "" : r.findings[0].message);
+            return r;
+        }
+        cached = v.catalog;
+    } else {
+        r.notices.push_back(make_notice("E-INS-26", "catalog", "no cached catalog is available (the catalog has not been downloaded yet)"));
+    }
+    ScanRequest req;
+    req.all_recorded = true;
+    ReaderSnapshot snap = scan(*reader.fs, reader.identity, req);
+    Listing l;
+    l.catalog_loaded = cached.has_value();
+    if (cached) l.catalog_generated_at = cached->generated_at;
+    l.apps = derive_app_states(cached ? &*cached : nullptr, snap);
+    for (const Finding& f : snap.findings) r.notices.push_back(f);
+    if (snap.journal_present) {
+        RepairCheck rc = plan_repair(*reader.fs);
+        l.interrupted = rc.plan;
+    }
+    deps_.log->event("list-cached", "", "", "ok", {});
+    r.value = std::move(l);
+    return r;
 }
 
 Result<Listing> Engine::list(ReaderHandle& reader, const ProgressFn& progress, CancelToken& cancel) {
@@ -204,7 +241,7 @@ Result<PlanHandle> Engine::plan(ReaderHandle& reader, const Action& action, cons
     req.app_id = action.app_id;
     req.now = deps_.clock->now();
     req.local_now = deps_.clock->local_now();
-    req.installed_by = "pbstore-install " + config_.program_version;
+    req.installed_by = config_.program_name + " " + config_.program_version;
     req.source = "catalog";
     req.source_label = "catalog";
 
@@ -308,7 +345,27 @@ ExecResult Engine::execute(ReaderHandle& reader, PlanHandle& handle, const Confi
         res.findings.push_back(make_error("E-INS-25", handle.plan.app_id, "this plan cannot be carried out; make a new plan"));
         return res;
     }
-    res = pbstore::install::execute(*reader.fs, handle.plan, *handle.content, given, progress, cancel);
+    // The stages of the write with the time since its start, in the log and without file names: an install stood still for 2.5 minutes on a
+    // reader (2026-10-30) and the log showed only that it was cancelled. The throttled progress of the page is not the log.
+    const auto started = std::chrono::steady_clock::now();
+    std::string last_phase, last_text;
+    const std::string stage_app = handle.plan.app_id;
+    auto staged = [&](const Progress& p) {
+        const bool counting = p.text.compare(0, 8, "Copying ") == 0 || p.phase == "applying";
+        const bool changed = p.phase != last_phase || (!counting && p.text != last_text);
+        const bool every_hundred = counting && p.done % 100 == 0;
+        if (changed || every_hundred) {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+            std::string text = "after " + std::to_string(ms / 1000) + "." + std::to_string(ms % 1000 / 100) + " s";
+            if (p.total > 0) text += ", " + std::to_string(p.done) + " of " + std::to_string(p.total) + " " + p.unit;
+            if (!counting && p.text.find('/') == std::string::npos) text += ", " + p.text;
+            deps_.log->event("stage", stage_app, version, p.phase, {}, text);
+        }
+        last_phase = p.phase;
+        last_text = p.text;
+        if (progress) progress(p);
+    };
+    res = pbstore::install::execute(*reader.fs, handle.plan, *handle.content, given, staged, cancel);
     std::string result = res.ok() ? "ok" : res.cancelled ? "cancelled" : res.outcome == ExecResult::Outcome::RepairNeeded ? "repair-needed" : "failed";
     if (!res.missing_confirmations.empty()) result = "not-confirmed";
     deps_.log->event(kind, handle.plan.app_id, version, result, rule_ids(res.findings), res.findings.empty() ? "" : res.findings[0].message);

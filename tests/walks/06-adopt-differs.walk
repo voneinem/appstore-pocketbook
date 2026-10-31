@@ -1,0 +1,24 @@
+# T123: app-05 was put there by hand and one file differs: Check names the differing file and offers no Adopt, and the reader is unchanged.
+# scenario demo
+# expect-unchanged
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 4
+waitfor detailState Installed outside the store
+expect_absent actionAdopt
+tap actionCheck
+waitfor resultText
+expect resultText applications/app-05.bin differs
+expect resultText E-INS-20
+expect resultReader not changed
+expect resultTodo Replace
+shot @OUT@/50-adopt-differs.png
+tap ok
+waitfor appRow
+tap appRow 4
+waitfor detailState
+expect_absent actionAdopt
+expect_enabled actionReplace
+quit

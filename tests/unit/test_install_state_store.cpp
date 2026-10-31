@@ -3,6 +3,7 @@
 #include "pbstore/install/posix_state_dirs.h"
 #include "pbstore/install/state_store.h"
 #include "pbstore/json.h"
+#include "state_dirs_contract.h"
 #include "test_support.h"
 #include "tmp_dir.h"
 
@@ -82,6 +83,15 @@ PB_TEST(the_folder_follows_the_xdg_rules_with_a_home_fallback) {
     ::setenv("HOME", tmp.path().c_str(), 1);
     PB_CHECK_EQ(PosixStateDirs().state_dir(), tmp.path() + "/.local/state/pbstore-installer");
     PB_CHECK_EQ(PosixStateDirs("/explicit/dir").state_dir(), std::string("/explicit/dir"));
+}
+
+PB_TEST(posix_state_dirs_meets_the_state_dirs_contract) {
+    pbtest::TmpDir tmp;
+    PosixStateDirs dirs(tmp.path() + "/state");
+    pbtest::run_state_dirs_contract(dirs);
+    struct stat st;                                          // private to the user
+    PB_CHECK_EQ(::stat((tmp.path() + "/state").c_str(), &st), 0);
+    PB_CHECK_EQ(int(st.st_mode & 0777), 0700);
 }
 
 PB_TEST_MAIN()

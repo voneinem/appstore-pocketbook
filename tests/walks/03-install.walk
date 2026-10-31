@@ -1,0 +1,38 @@
+# T105 (story 2): install app-04 from the list: the plan in plain sentences first, the installer's text behind Show details, the two consents the
+# reader still asks for, Confirm, the result. The result says where it appears and that a restart may be needed.
+# scenario demo
+# expect-file applications/app-04.bin
+# expect-file applications/app-04.app
+# expect-file system/pbstore/installed/app-04.json
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap appRow 3
+waitfor detailState Not installed
+tap actionInstall
+waitfor planSummary Install App app-04 1.2.0
+expect_disabled confirm
+shot @OUT@/20-plan.png
+expect_absent planText
+tap toggleDetails
+waitfor planText Plan: Install App app-04
+expect planText applications/app-04.bin
+expect planText @General
+shot @OUT@/21-plan-details.png
+tap toggleDetails
+expect_absent planText
+tap consent 0
+expect_disabled confirm
+tap consent 1
+expect_enabled confirm
+tap confirm
+waitfor resultText
+expect resultText App app-04 is installed
+expect resultText appear in @General
+expect resultText restart the reader
+shot @OUT@/22-result.png
+tap ok
+waitfor appRow
+expect rowState Installed
+quit

@@ -30,13 +30,15 @@ target_link_libraries(pbstore_install_config PRIVATE pbstore_core)
 target_compile_definitions(pbstore_install_config PRIVATE PBSTORE_CATALOG_URL="${PBSTORE_CATALOG_URL}")
 
 # The test build (pbstore-install-test, never shipped): a throw-away key made in the build directory and
-# overrides read from the environment.
-add_library(pbstore_install_config_test OBJECT src/build_config.cpp)
-target_include_directories(pbstore_install_config_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${PBSTORE_TEST_KEY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/generated)
-target_link_libraries(pbstore_install_config_test PRIVATE pbstore_core)
-target_compile_definitions(pbstore_install_config_test PRIVATE PBSTORE_TEST_BUILD PBSTORE_CATALOG_URL="${PBSTORE_CATALOG_URL}")
-if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
-    add_dependencies(pbstore_install_config_test pbstore_test_key)
+# overrides read from the environment. It exists only on the computer: the device build has no tests and no test key.
+if(NOT PBSTORE_TARGET STREQUAL "ARM")
+    add_library(pbstore_install_config_test OBJECT src/build_config.cpp)
+    target_include_directories(pbstore_install_config_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${PBSTORE_TEST_KEY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/generated)
+    target_link_libraries(pbstore_install_config_test PRIVATE pbstore_core)
+    target_compile_definitions(pbstore_install_config_test PRIVATE PBSTORE_TEST_BUILD PBSTORE_CATALOG_URL="${PBSTORE_CATALOG_URL}")
+    if(EXISTS ${CMAKE_SOURCE_DIR}/tests/CMakeLists.txt)
+        add_dependencies(pbstore_install_config_test pbstore_test_key)
+    endif()
 endif()
 
 # Key list rules, checked by running the script on small key folders.

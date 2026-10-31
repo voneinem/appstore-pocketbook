@@ -3,6 +3,7 @@
 // the redactor first. The log stays on the computer; nothing of it is ever written to the reader.
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "pbstore/install/clock.h"
@@ -14,12 +15,13 @@ namespace install {
 // Replaces what could identify the user or the reader by fixed placeholders.
 class Redactor {
 public:
+    virtual ~Redactor() = default;
     void set_mount_path(const std::string& p) { mount_ = p; }          // -> <reader>
     void set_volume_label(const std::string& l) { label_ = l; }        // -> <label>
     void set_local_file(const std::string& f) { file_ = f; }           // -> <file>
     void set_home(const std::string& h) { home_ = h; }                 // -> <home>
 
-    std::string redact(const std::string& text) const;
+    virtual std::string redact(const std::string& text) const;
     // Drops "user:password@" and the query string and fragment of a URL.
     static std::string clean_url(const std::string& url);
 
@@ -30,7 +32,9 @@ private:
 class Log {
 public:
     static constexpr uint64_t kMaxFileBytes = 512u * 1024u;
-    Log(StateDirs& dirs, Clock& clock, const Redactor& redactor) : dirs_(dirs), clock_(clock), redactor_(redactor) {}
+    // `file_name` is the name of the log in the state folder; rotated copies get ".1" and ".2" appended.
+    Log(StateDirs& dirs, Clock& clock, const Redactor& redactor, std::string file_name = "installer.log")
+        : dirs_(dirs), clock_(clock), redactor_(redactor), file_name_(std::move(file_name)) {}
 
     // "<UTC time> <action> <app-id> <version> <result> <rule ids...> <text>"; app id and version are "-"
     // when there are none. Failing to write the log never fails an action.
@@ -41,6 +45,7 @@ private:
     StateDirs& dirs_;
     Clock& clock_;
     const Redactor& redactor_;
+    std::string file_name_;
 };
 
 }  // namespace install

@@ -1,4 +1,4 @@
-// T018: the installer's rule registry E-INS-01..38 and W-INS-01..03 (contracts/rules.md) and the
+// T018: the installer's rule registry E-INS-01..38 and W-INS-01..04 (contracts/rules.md) and the
 // message form: what happened (with the rule id), whether the reader changed, what to do next.
 #include "pbstore/install/install_rules.h"
 #include "pbstore/install/messages.h"
@@ -13,13 +13,13 @@ PB_TEST(the_registry_holds_exactly_the_documented_ids) {
     const auto& reg = install_rule_registry();
     std::set<std::string> ids;
     for (const auto& r : reg) PB_CHECK(ids.insert(r.id).second);   // unique
-    PB_CHECK_EQ(reg.size(), size_t(41));
+    PB_CHECK_EQ(reg.size(), size_t(42));
     for (int i = 1; i <= 38; ++i) {
         char buf[16];
         std::snprintf(buf, sizeof buf, "E-INS-%02d", i);
         PB_CHECK(ids.count(buf) == 1);
     }
-    for (int i = 1; i <= 3; ++i) {
+    for (int i = 1; i <= 4; ++i) {
         char buf[16];
         std::snprintf(buf, sizeof buf, "W-INS-%02d", i);
         PB_CHECK(ids.count(buf) == 1);

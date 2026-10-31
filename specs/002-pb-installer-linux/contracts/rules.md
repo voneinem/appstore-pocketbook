@@ -77,6 +77,7 @@ Every error says three things: *what happened* (with the rule id), *whether the 
 | `W-INS-01` | Nothing to do: already at the offered version | – | |
 | `W-INS-02` | The menu entry was changed since the install and will be removed anyway | – | |
 | `W-INS-03` | No earlier catalog serial was on record (first run, or the record was missing) | – | |
+| `W-INS-04` | PB Store was removed; its own cache and log in system/pbstore/app/ were kept (added by feature 003) | – | |
 
 ## Log line
 

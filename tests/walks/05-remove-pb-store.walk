@@ -1,0 +1,20 @@
+# T119: PB Store does not remove itself: its detail page has no Remove, and the page names PB Installer on a computer.
+# scenario updates
+# expect-unchanged
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap search
+waitfor searchField
+tap searchField
+type pbstore
+key Return
+waitfor searchSummary 1 of
+tap appRow 0
+waitfor detailState
+expect_absent actionRemove
+expect storeNote PB Installer
+shot @OUT@/42-pb-store-detail.png
+tap back
+quit

@@ -1,0 +1,42 @@
+<RCC>
+    <qresource prefix="/qml">
+        <file>Main.qml</file>
+        <file>qmldir</file>
+        <file alias="strings.tsv">../bridge/strings/strings.tsv</file>
+        <file>Style.qml</file>
+        <file>Icon.qml</file>
+        <file>IconButton.qml</file>
+        <file>PageButtons.qml</file>
+        <file>RowDivider.qml</file>
+        <file>TopBar.qml</file>
+        <file>ActionButton.qml</file>
+        <file>TickRow.qml</file>
+        <file>pages/HomePage.qml</file>
+        <file>pages/DetailPage.qml</file>
+        <file>pages/SettingsPage.qml</file>
+        <file>pages/AboutPage.qml</file>
+        <file>pages/LicensesPage.qml</file>
+        <file>pages/LogPage.qml</file>
+        <file>pages/OperationPage.qml</file>
+        <file>pages/RepairPage.qml</file>
+        <file>icons/chevron-up.svg</file>
+        <file>icons/chevron-down.svg</file>
+        <file>icons/chevron-left.svg</file>
+        <file>icons/gear.svg</file>
+        <file>icons/info.svg</file>
+        <file>icons/search.svg</file>
+        <file>icons/close.svg</file>
+        <file>icons/home.svg</file>
+        <file>icons/box.svg</file>
+        <file>icons/box-checked.svg</file>
+        <file>icons/update-all.svg</file>
+        <file>icons/menu.svg</file>
+        <file>icons/refresh.svg</file>
+        <file>icons/row-dots.svg</file>
+        <file>icons/state-not-installed.svg</file>
+        <file>icons/state-installed.svg</file>
+        <file>icons/state-update.svg</file>
+        <file>icons/state-outside.svg</file>
+        <file>icons/state-unknown.svg</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,18 @@
+# Qt tests of the bridge, offscreen (tasks T067, T068 and the operation tests): the controller driven over the real service and a fake reader.
+find_package(Qt6 QUIET COMPONENTS Core)
+find_package(Threads REQUIRED)
+if(TARGET pbstore_bridge AND Qt6Core_FOUND)
+    foreach(name test_store_controller_operations test_store_controller_repair test_store_controller_browse test_about_licenses test_strings_table)
+        add_executable(${name} ${name}.cpp)
+        target_link_libraries(${name} PRIVATE pbstore_bridge pbstore_store pbstore_install pbstore_core OpenSSL::SSL OpenSSL::Crypto Threads::Threads)
+        target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR}/tests/support ${CMAKE_SOURCE_DIR}/bridge/include)
+        target_compile_definitions(${name} PRIVATE PBSTORE_SOURCE_DIR="${CMAKE_SOURCE_DIR}" PBSTORE_BUILD_DIR="${CMAKE_BINARY_DIR}"
+            PBSTORE_TOOL="" PBSTORE_INSTALL_TEST_TOOL="" PBSTORE_TEST_SEED_FILE="" PBSTORE_GEN_FIXTURES="")
+        add_test(NAME ${name} COMMAND ${name})
+        set(env "QT_QPA_PLATFORM=offscreen")
+        if(PBSTORE_SANITIZE)
+            list(APPEND env "LSAN_OPTIONS=suppressions=${CMAKE_SOURCE_DIR}/tests/lsan.supp:print_suppressions=0")
+        endif()
+        set_tests_properties(${name} PROPERTIES LABELS "bridge" SKIP_RETURN_CODE 77 ENVIRONMENT "${env}")
+    endforeach()
+endif()

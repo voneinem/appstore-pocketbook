@@ -1,0 +1,21 @@
+# T114: a failing second app stops the run: the summary says what was updated, what failed and what was not tried.
+# scenario updates
+# server broken app-02
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap menu
+tap menuUpdateAll
+waitfor planSummary Update App app-01
+tap consent 0
+tap consent 1
+tap confirm
+waitfor resultText Updated: App app-01
+expect resultText Failed: App app-02
+expect resultText Not tried: App app-03, App pbstore
+expect resultReader not changed
+shot @OUT@/33-update-all-stopped.png
+tap ok
+waitfor appRow
+quit

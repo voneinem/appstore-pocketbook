@@ -2,10 +2,10 @@
 
 An app store for PocketBook e-readers. It has three parts:
 
-- a **native store app** that runs on the PocketBook InkPad One (a later feature of this repository),
+- a **native store app** that runs on the PocketBook InkPad One (see [Install PB Store](#install-pb-store)),
 - a **signed app catalog**, published on GitHub Pages, that lists the apps and where to get them,
 - an **installer** that puts apps onto the reader: **PB Installer for Linux** exists (see below); a Windows
-  installer and the store app on the reader are later features.
+  installer is a later feature.
 
 This part of the repository holds the **catalog and the package contract**, the tool that checks and
 signs them (`pbstore-catalog`), and the automation around it.
@@ -49,6 +49,32 @@ The command line tool is `build/tools/pbstore-catalog/pbstore-catalog` (`pbstore
 The project follows its [constitution](.specify/memory/constitution.md): tests first, simplicity,
 verified installations, minimal and reversible changes to the reader, no background network
 activity, a host-testable core, versioned contracts and an open, honest ecosystem.
+
+## Install PB Store
+
+PB Store is the store app for the PocketBook **InkPad One** (firmware 6.11.1437 or newer). It shows the signed catalog of this repository on the
+reader, installs, updates and removes apps there, repairs what a cut-off left behind, and can take over apps that were copied by hand.
+**PB Store is unofficial and not made, endorsed or supported by PocketBook.** It is not released yet; this section says how it will be installed.
+
+There are two ways to get it onto the reader:
+
+1. **With PB Installer** (recommended; it does the same steps as the store itself, with a backup and a plan to confirm): connect the reader by USB in
+   storage mode and run `pbstore-install install pbstore` once the store is in the catalog. Do a `--dry-run` first.
+2. **By hand**: [INSTALL.md](INSTALL.md) lists the files to copy and the one menu entry to add, with the backup step.
+
+**First start.** Open *Applications*, then *PB Store*. The first screen shows the apps found on the reader and says "No catalog yet. Tap Refresh."
+Nothing is downloaded until you tap **Refresh**; the store uses Wi-Fi **only when you tap** an action that needs it (Refresh, Install, Update), switches
+it on if it was off and switches it off again afterwards. Removing an app and browsing work without a connection. See the
+[guide for owners of a reader](docs/store-app-guide.md).
+
+**Check the download.** The release page lists the SHA-256 of `pbstore-inkpad-one-<version>.zip` and has a `SHA256SUMS` file. Put both in one folder and run:
+
+```bash
+sha256sum -c SHA256SUMS
+```
+
+The checksum shows that the file arrived unchanged (integrity). `SHA256SUMS` is **not signed**, so it does not show who made the file: take the files only
+from the official release page. The catalog itself is signed (see above), and the store checks that signature on every load.
 
 ## PB Installer for Linux
 
