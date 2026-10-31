@@ -38,7 +38,7 @@ is missing shows as the key itself. The texts of the engine and of the store's r
 
 `scripts/pre-merge.sh` and `scripts/pre-merge.sh --sanitize` (AddressSanitizer and UndefinedBehaviorSanitizer) both pass: 160 tests, 158 run and 2 skipped
 (`test_release_binary` needs the installer's release binary, `test_install_vfat` needs a loop mount), including the 16 scripted UI walks, `app --self-test`,
-the secrets scan, `check-version-bump.sh` (VERSION 0.3.0, app/VERSION 0.1.0), `check-constitution.sh` and `check-ui-style.sh`.
+the secrets scan, `check-version-bump.sh` (VERSION 0.3.1, app/VERSION 0.1.0), `check-constitution.sh` and `check-ui-style.sh`.
 `scripts/check-arm-build.sh` compiles 59 files with the SDK's compiler and links an ARM executable.
 
 Fault points (a power loss after every mutating call, clean and pessimistic): the engine's matrix install 421, remove 479, update 631 (install again with the real
