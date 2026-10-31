@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "pbstore",
+  "package_url": "https://github.com/voneinem/appstore-pocketbook/releases/download/0.1.0/pbstore-inkpad-one-0.1.0.zip",
+  "release_date": "2026-10-31",
+  "short_description": {
+    "en": "The app store on the reader: browse the signed catalog, install, update, remove and repair apps.",
+    "de": "Der App-Store auf dem Gerät: signierten Katalog durchsuchen, Apps installieren, aktualisieren, entfernen und reparieren."
+  },
+  "long_description": {
+    "en": "PB Store runs on the InkPad One and shows the signed catalog of apps from this project. It installs, updates, removes and repairs apps on the reader without a computer, and can take over apps that you copied there by hand. It does nothing until you tap: Wi-Fi is switched on only for Refresh, Install and Update, and off again afterwards. Every plan is shown in plain words before anything is written, the catalog signature and the server certificate are checked every time, and there is no account, no statistics and no call home. Early software: it has been tried on an InkPad One with development builds, and what is still open is listed in the release notes. This is an unofficial app, not made or endorsed by PocketBook.",
+    "de": "PB Store läuft auf dem InkPad One und zeigt den signierten Katalog der Apps dieses Projekts. Es installiert, aktualisiert, entfernt und repariert Apps auf dem Gerät ohne Computer und kann Apps übernehmen, die du von Hand dorthin kopiert hast. Es tut nichts, bis du tippst: WLAN wird nur für Aktualisieren, Installieren und Update eingeschaltet und danach wieder aus. Jeder Plan wird in einfachen Worten gezeigt, bevor etwas geschrieben wird, die Signatur des Katalogs und das Zertifikat des Servers werden jedes Mal geprüft, und es gibt kein Konto, keine Statistik und keinen Anruf nach Hause. Frühe Software: Sie wurde mit Entwicklungsständen auf einem InkPad One ausprobiert, was noch offen ist, steht in den Release-Hinweisen. Inoffizielle App, nicht von PocketBook."
+  },
+  "license": "MIT",
+  "source_url": "https://github.com/voneinem/appstore-pocketbook",
+  "author": "Volker von Einem",
+  "icon_url": "https://raw.githubusercontent.com/voneinem/appstore-pocketbook/0.1.0/res/icons/pbstore.bmp",
+  "changelog_url": "https://github.com/voneinem/appstore-pocketbook/releases/tag/0.1.0"
+}
