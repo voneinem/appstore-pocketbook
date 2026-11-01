@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "id": "pbcloud",
-  "package_url": "https://github.com/voneinem/nextcloud-pocketbook/releases/download/v0.6.1/pbcloud-inkpad-one-0.6.1.zip",
-  "release_date": "2026-10-25",
+  "package_url": "https://github.com/voneinem/nextcloud-pocketbook/releases/download/v0.6.2/pbcloud-inkpad-one-0.6.2.zip",
+  "release_date": "2026-11-01",
   "short_description": {
     "en": "Nextcloud files client for the InkPad One: browse, download, upload and share.",
     "de": "Nextcloud-Dateien-Client für den InkPad One: durchsuchen, laden, hochladen und teilen."
@@ -14,6 +14,6 @@
   "license": "MIT",
   "source_url": "https://github.com/voneinem/nextcloud-pocketbook",
   "author": "Volker von Einem",
-  "icon_url": "https://raw.githubusercontent.com/voneinem/nextcloud-pocketbook/v0.6.1/res/icons/pbcloud.bmp",
-  "changelog_url": "https://github.com/voneinem/nextcloud-pocketbook/releases/tag/v0.6.1"
+  "icon_url": "https://raw.githubusercontent.com/voneinem/nextcloud-pocketbook/v0.6.2/res/icons/pbcloud.bmp",
+  "changelog_url": "https://github.com/voneinem/nextcloud-pocketbook/releases/tag/v0.6.2"
 }
