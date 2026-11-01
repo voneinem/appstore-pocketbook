@@ -228,6 +228,8 @@ plans, three confirmations.
 3. **Given** the user taps Update all, **When** several apps are outdated, **Then** the store shows the
    plan of the first and waits for the confirmation, carries it out, then shows the plan of the next,
    and so on; declining one skips that app and goes on to the next.
+   *(Amended by feature 004: Update all asks once for the whole run; only an app whose update needs a
+   consent of its own still shows its plan; see `specs/004-visible-app-updates/spec.md`, FR-009 and FR-009a.)*
 4. **Given** one update in "Update all" fails, **When** the message is shown, **Then** the remaining
    apps are not attempted, and the screen says which apps were updated, which failed and which were
    not tried.
@@ -618,7 +620,8 @@ for conditions that exist only on the reader, new ids `E-STO-nn` documented next
   message is also written to the log and can be read on the log screen afterwards.
 - **FR-020**: Update MUST keep the app's data folder, MUST leave the previous version working when it
   fails, and MUST need an extra confirmation naming any recorded file the user changed since the install.
-- **FR-021**: "Update all" MUST process the outdated apps one after the other, showing each plan and
+- **FR-021**: *(Amended by feature 004: one combined confirmation for the whole run instead of one per app.)*
+  "Update all" MUST process the outdated apps one after the other, showing each plan and
   waiting for its own confirmation, MUST stop at the first failure and show a summary (updated, failed,
   not tried), and MUST process the store itself last. Each app is its own journaled operation and no queue is kept on the
   reader: after an interruption the next start repairs the one app that was in flight (FR-028), and the apps not yet

@@ -91,6 +91,35 @@ Item {
         anchors { top: message.bottom; topMargin: message.visible ? Style.gap : 0; left: parent.left; right: parent.right; leftMargin: Style.pad; rightMargin: Style.pad }
         spacing: 8
         Text { objectName: "catalogLine"; width: parent.width; text: store.catalogLine; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
+        // how many apps can be updated, and Update all one tap away (feature 004); shown whenever Update all is possible, on every page of the list
+        Item {
+            objectName: "updateBanner"
+            visible: store.canUpdateAll
+            width: parent.width
+            height: visible ? Style.touchMin : 0
+            Text {
+                objectName: "updateNotice"
+                anchors { left: parent.left; right: updateAllButton.left; rightMargin: Style.gap; verticalCenter: parent.verticalCenter }
+                text: store.updateNotice
+                elide: Text.ElideRight
+                font.pixelSize: Style.bodySize
+                font.bold: true
+                color: Style.ink
+            }
+            ActionButton {
+                id: updateAllButton
+                objectName: "updateAllButton"
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                text: qsTr("home.update_all")
+                primary: true
+                enabled: !store.busy
+                onClicked: {
+                    page.menuOpen = false
+                    store.startUpdateAll()
+                    if (store.phase === "updateAllPlan") page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})   // set at once: an early return never leaves a blank page
+                }
+            }
+        }
         Text { objectName: "notice"; visible: store.notice.length > 0; width: parent.width; text: store.notice; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; font.bold: true; color: Style.ink }
         Text { objectName: "progress"; visible: store.busy; width: parent.width; text: store.progressText; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
         // the search field: applied when the user confirms it on the reader's keyboard, not at each letter
@@ -150,13 +179,21 @@ Item {
                     Text { id: versionText; anchors.right: parent.right; text: model.version; font.pixelSize: Style.bodySize; color: Style.ink }
                 }
                 Text { width: parent.width; text: model.shortDescription; elide: Text.ElideRight; font.pixelSize: Style.bodySize; color: Style.ink; visible: text.length > 0 }
-                Text {
-                    objectName: "rowState"
+                // an app with an update shows the inverted badge, then both versions; every other state shows its words (feature 004)
+                Row {
                     width: parent.width
-                    text: model.stateWords + (model.offeredVersion.length > 0 && model.stateKey === "update-available" ? " (" + model.installedVersion + " → " + model.offeredVersion + ")" : "") + (model.notes.length > 0 ? " · " + model.notes : "")
-                    elide: Text.ElideRight
-                    font.pixelSize: Style.bodySize
-                    color: Style.ink
+                    spacing: 12
+                    UpdateBadge { id: updateBadge; objectName: "rowBadge"; visible: model.stateKey === "update-available"; text: model.stateWords }
+                    Text {
+                        objectName: "rowState"
+                        width: parent.width - (updateBadge.visible ? updateBadge.width + parent.spacing : 0)
+                        text: model.stateKey === "update-available"
+                              ? model.installedVersion + " → " + model.offeredVersion + (model.notes.length > 0 ? " · " + model.notes : "")
+                              : model.stateWords + (model.notes.length > 0 ? " · " + model.notes : "")
+                        elide: Text.ElideRight
+                        font.pixelSize: Style.bodySize
+                        color: Style.ink
+                    }
                 }
             }
             RowDivider { anchors.bottom: parent.bottom; x: Style.pad; width: parent.width - 2 * Style.pad }
@@ -212,7 +249,7 @@ Item {
                 enabled: !store.busy
                 onChosen: {
                     store.startUpdateAll()
-                    page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})
+                    if (store.phase === "updateAllPlan") page.nav.push(Qt.resolvedUrl("OperationPage.qml"), {"nav": page.nav})
                 }
             }
             MenuRow {

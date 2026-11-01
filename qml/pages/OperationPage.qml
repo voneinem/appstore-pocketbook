@@ -7,17 +7,21 @@ Item {
     id: page
     property var nav
     readonly property string pageKind: "progress"
+    // the page is pushed after the operation has begun (the combined confirmation of Update all is shown from the start): it counts as started at once.
+    // Assigned once, not bound: a binding would turn false again when the phase returns to idle, just before the page is meant to leave.
     property bool started: false
+    Component.onCompleted: started = store.phase !== "idle"
     readonly property string phase: store.phase
     property var ticked: ({})
     property bool riskTicked: false
-    readonly property int needed: store.confirmations.length
+    readonly property int needed: page.phase === "updateAllPlan" ? store.updateAllConsents.length : store.confirmations.length
     property int tickedCount: 0
     readonly property bool ready: tickedCount >= needed && (!store.batteryUnreadable || riskTicked)
 
     function names() {
         var out = []
-        for (var i = 0; i < store.confirmations.length; ++i) if (ticked[store.confirmations[i].name]) out.push(store.confirmations[i].name)
+        var list = page.phase === "updateAllPlan" ? store.updateAllConsents : store.confirmations
+        for (var i = 0; i < list.length; ++i) if (ticked[list[i].name]) out.push(list[i].name)
         return out
     }
     Connections {
@@ -25,7 +29,7 @@ Item {
         function onOperationChanged() {
             if (store.phase !== "idle") page.started = true
             else if (page.started) { while (page.nav.depth > 1) page.nav.pop() }   // done or declined: back to the list
-            if (store.phase === "plan") { page.ticked = ({}); page.tickedCount = 0; page.riskTicked = false }
+            if (store.phase === "plan" || store.phase === "updateAllPlan") { page.ticked = ({}); page.tickedCount = 0; page.riskTicked = false }
         }
     }
 
@@ -125,6 +129,78 @@ Item {
             spacing: Style.gap
             ActionButton { objectName: "decline"; text: qsTr("operation.cancel"); onClicked: store.decline() }
             ActionButton { objectName: "confirm"; primary: true; text: qsTr("operation.confirm"); enabled: page.ready; onClicked: store.confirm(page.names(), page.riskTicked) }
+        }
+    }
+
+    // the combined confirmation of "Update all" (feature 004): every app of the run with its versions, the total, the facts and the consents about the
+    // reader (the ones that would otherwise be asked for every app); Confirm starts the run, Cancel changes nothing. Nothing has been downloaded or written yet.
+    Flickable {
+        id: allFlick
+        visible: page.phase === "updateAllPlan"
+        anchors { top: bar.bottom; left: parent.left; right: parent.right; bottom: allFooter.top; leftMargin: Style.pad; rightMargin: Style.pad }
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        interactive: false
+        contentWidth: width
+        contentHeight: allColumn.height + Style.pad
+        Column {
+            id: allColumn
+            width: allFlick.width
+            spacing: 14
+            topPadding: 14
+            Text { objectName: "updateAllIntro"; width: parent.width; text: store.updateAllIntro; wrapMode: Text.Wrap; font.pixelSize: Style.rowTitleSize; color: Style.ink }
+            Repeater {
+                model: page.phase === "updateAllPlan" ? store.updateAllEntries : []
+                Text {
+                    objectName: "updateAllEntry"
+                    width: allColumn.width
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Style.bodySize
+                    font.bold: true
+                    color: Style.ink
+                    text: modelData.name + "  " + modelData.from + " → " + modelData.to + (modelData.size.length > 0 ? "  (" + modelData.size + ")" : "")
+                }
+            }
+            Text { objectName: "updateAllFacts"; width: parent.width; text: store.updateAllLines; wrapMode: Text.Wrap; font.pixelSize: Style.bodySize; color: Style.ink }
+            Repeater {
+                // empty outside this phase, so that the boxes are made anew and never preselected (spec FR-015)
+                model: page.phase === "updateAllPlan" ? store.updateAllConsents : []
+                TickRow {
+                    objectName: "consent"
+                    text: modelData.label
+                    onToggled: {
+                        var t = page.ticked
+                        t[modelData.name] = checked
+                        page.ticked = t
+                        var n = 0
+                        for (var k in t) if (t[k]) ++n
+                        page.tickedCount = n
+                    }
+                }
+            }
+            Loader {
+                width: parent.width
+                active: store.batteryUnreadable && page.phase === "updateAllPlan"
+                visible: active
+                sourceComponent: TickRow {
+                    objectName: "batteryRisk"
+                    text: qsTr("operation.battery_unreadable")
+                    onToggled: page.riskTicked = checked
+                }
+            }
+        }
+    }
+    Item {
+        id: allFooter
+        visible: page.phase === "updateAllPlan"
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
+        height: Style.footerHeight + Style.touchMin
+        PageButtons { anchors { top: parent.top; horizontalCenter: parent.horizontalCenter } target: allFlick; onTurned: store.pageTurned() }
+        Row {
+            anchors { bottom: parent.bottom; bottomMargin: 10; horizontalCenter: parent.horizontalCenter }
+            spacing: Style.gap
+            ActionButton { objectName: "cancel"; text: qsTr("operation.cancel"); onClicked: store.cancelUpdateAll() }
+            ActionButton { objectName: "confirm"; primary: true; text: qsTr("store.update_all_confirm"); enabled: page.ready; onClicked: store.confirmUpdateAll(page.names(), page.riskTicked) }
         }
     }
 

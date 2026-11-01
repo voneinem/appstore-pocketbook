@@ -1,37 +1,35 @@
-# T114: Update all with four outdated apps: a plan and a confirmation for each, PB Store itself last, then the summary.
+# T114, amended by feature 004 (stories 2 and 3): Update all with four outdated apps asks ONCE: the banner on the first screen says how many updates there
+# are, one tap on its button opens the combined confirmation (the four apps with their versions, PB Store last, the facts and the consents about the reader),
+# one more tap on Confirm updates all four with no plan page in between, then the summary. (Before feature 004 every app had its own plan and confirmation.)
 # scenario updates
 size 1404 1872
 wait 400
 tap refresh
 waitfor catalogLine Catalog last updated
-tap menu
-tap menuUpdateAll
-waitfor planSummary Update App app-01
-expect topBarTitle Updating 1 of 4: App app-01
+expect updateNotice 4 updates available
+taps_reset
+tap updateAllButton
+waitfor updateAllIntro
+expect updateAllIntro 4 apps
+expect_count updateAllEntry 4
+expect updateAllEntry 1.2.0 → 1.3.0
+expect updateAllFacts The data of your apps is kept
+expect updateAllFacts Wi-Fi is switched on only while packages are downloaded
+shot @OUT@/31-update-all-confirm.png
 tap consent 0
 tap consent 1
 tap confirm
-waitfor planSummary Update App app-02
-expect topBarTitle Updating 2 of 4: App app-02
-tap consent 0
-tap consent 1
-tap confirm
-waitfor planSummary Update App app-03
-expect topBarTitle Updating 3 of 4: App app-03
-tap consent 0
-tap consent 1
-tap confirm
-waitfor planSummary Update App pbstore
-expect topBarTitle Updating 4 of 4: App pbstore
-shot @OUT@/31-update-all-store-last.png
-tap consent 0
-tap consent 1
-tap confirm
+expect_taps_max 4
+# (the progress titles "Updating k of n" pass too quickly for a walk; test_store_controller_operations checks them)
+expect_absent planSummary
 waitfor resultText Updated:
 expect resultText App app-01
+expect resultText App app-02
+expect resultText App app-03
 expect resultText App pbstore
 shot @OUT@/32-update-all-summary.png
 tap ok
 waitfor appRow
-expect_absent menuUpdateAll
+expect_absent updateBanner
+expect_absent updateNotice
 quit

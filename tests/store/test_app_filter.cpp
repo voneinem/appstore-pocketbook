@@ -55,6 +55,22 @@ PB_TEST(the_unfiltered_order_is_catalog_apps_by_name_ignoring_case_then_apps_not
     PB_CHECK((ids(rows) == std::vector<std::string>{"c1", "c2", "c3", "u1", "u2"}));
 }
 
+PB_TEST(apps_with_an_update_come_first_by_name_then_the_other_catalog_apps_then_the_apps_not_in_the_catalog) {
+    // feature 004, FR-013: the group key is applied before the name; inside a group the name is folded as before
+    std::vector<AppRow> rows = {row("z", "Zeta", RowState::UpdateAvailable), row("a", "Alpha", RowState::Installed),
+                                row("b", "beta", RowState::UpdateAvailable), row("g", "Gamma", RowState::NotInstalled),
+                                row("m", "Mike", RowState::InstalledOutside), row("h", "Aaa hand", RowState::NotInCatalog)};
+    sort_rows(&rows);
+    PB_CHECK((ids(rows) == std::vector<std::string>{"b", "z", "a", "g", "m", "h"}));
+}
+
+PB_TEST(a_search_keeps_the_grouping_of_the_sorted_list) {
+    std::vector<AppRow> rows = {row("z", "Zeta app", RowState::UpdateAvailable), row("a", "Alpha app", RowState::Installed),
+                                row("b", "beta app", RowState::UpdateAvailable), row("x", "Other", RowState::UpdateAvailable)};
+    sort_rows(&rows);
+    PB_CHECK((ids(filter_apps(rows, "app")) == std::vector<std::string>{"b", "z", "a"}));   // updatable matches first, then the others
+}
+
 PB_TEST(only_ascii_letters_are_folded_other_characters_must_match_exactly) {
     std::vector<AppRow> rows = {row("a", "\xC5\xBB\xC3\xB3\xC5\x82w")};   // "Żółw"
     PB_CHECK(filter_apps(rows, "\xC5\xBB\xC3\xB3").size() == 1);           // "Żó": the same bytes

@@ -13,10 +13,11 @@ demo server. `scripts/ui-walk.sh [--out <dir>] tests/walks/*.walk` runs them (CT
 
 | Walk | Story | What it proves |
 |------|-------|----------------|
-| `01-browse` | 1 | the states in words, two pages with the buttons, the detail page, search, Back keeps the page and the search |
+| `01-browse` | 1, f004 | the states in words, the update badge and banner, the app with an update first, three pages with the buttons, the detail page, search, Back keeps the page and the search |
 | `02-repair`, `02-repair-not-now` | 6 | the repair page comes first, Repair finishes or undoes, "Not now" leaves browse-only and changes nothing |
 | `03-install`, `-refused`, `-battery-low`, `-battery-unreadable` | 2 | the plan in plain sentences, the consents, Confirm; a broken package, a low battery and an unreadable battery |
-| `04-update`, `04-update-all`, `04-update-all-stops` | 3 | one update with the data kept; Update all in order with PB Store last; a failure stops the run |
+| `04-update`, `04-update-all`, `04-update-all-stops` | 3, f004 | one update with the badge, the data kept and its own plan page; Update all from the banner asks once, updates all four with PB Store last and no plan page between; a failure stops the run |
+| `04-update-all-cancel`, `04-update-all-menu`, `04-update-all-page` | f004 | Cancel on the combined confirmation changes nothing; the menu entry starts the same run; the list is back on its first page after the run and keeps its page after a look at a detail page |
 | `05-remove`, `-delete-data`, `-pb-store` | 4 | remove keeps the data; deleting it takes two confirmations; PB Store has no Remove |
 | `06-adopt`, `06-adopt-differs` | 5 | Check then Adopt writes only the record; a differing file is named and offers Replace |
 | `07-settings-about-log` | 8 | Settings read only, the Log, the About notice, a license text |

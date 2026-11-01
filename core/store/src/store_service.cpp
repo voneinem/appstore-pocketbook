@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "pbstore/catalog.h"
+#include "pbstore/firmware_version.h"
 #include "pbstore/install/text_safety.h"
 #include "pbstore/semver.h"
 #include "pbstore/store/clock_check.h"
@@ -585,6 +586,42 @@ std::vector<std::string> StoreService::update_all_queue() const {
     }
     if (store) ids.push_back(kStoreAppId);   // PB Store itself comes last (spec FR-021)
     return ids;
+}
+
+UpdateAllPreview StoreService::update_all_preview() {
+    UpdateAllPreview p;
+    if (repair_pending_) {
+        p.findings.push_back(make_error("E-INS-23", "reader", "an earlier operation on this reader was interrupted and has to be repaired first"));
+        return p;
+    }
+    p.ok = true;
+    for (const std::string& id : update_all_queue()) {
+        for (const AppRow& r : last_view_.rows) {
+            if (r.id != id) continue;
+            UpdateAllEntry e;
+            e.id = r.id;
+            e.name = r.name;
+            e.installed_version = r.installed_version;
+            e.offered_version = r.offered_version;
+            e.package_size = r.package_size;
+            e.is_store = r.is_store;
+            p.total_bytes += r.package_size;
+            p.includes_store = p.includes_store || r.is_store;
+            p.entries.push_back(std::move(e));
+            break;
+        }
+    }
+    // the consents that concern the reader itself: the same test as check_compatibility (core/install/src/identity.cpp), asked once for the run
+    install::Identity identity;
+    if (auto handle = reader()) identity = handle->identity;
+    if (!identity.model) {
+        p.reader_consents.push_back({install::confirmation_name(install::Confirmation::UnknownModel), confirmation_label(install::Confirmation::UnknownModel)});
+    }
+    if (!identity.firmware || !parse_firmware(*identity.firmware)) {
+        p.reader_consents.push_back({install::confirmation_name(install::Confirmation::UnknownFirmware), confirmation_label(install::Confirmation::UnknownFirmware)});
+    }
+    p.battery_unreadable = !parts_.battery.percent().has_value();
+    return p;
 }
 
 }  // namespace store

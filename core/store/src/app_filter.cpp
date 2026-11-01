@@ -24,9 +24,11 @@ std::vector<AppRow> filter_apps(const std::vector<AppRow>& rows, const std::stri
 }
 
 void sort_rows(std::vector<AppRow>* rows) {
-    std::stable_sort(rows->begin(), rows->end(), [](const AppRow& a, const AppRow& b) {
-        const bool au = a.state == RowState::NotInCatalog, bu = b.state == RowState::NotInCatalog;
-        if (au != bu) return !au;
+    // feature 004 (spec FR-013): the apps with an update first, then the other catalog apps, then the apps that are not in the catalog
+    auto group = [](const AppRow& r) { return r.state == RowState::UpdateAvailable ? 0 : r.state == RowState::NotInCatalog ? 2 : 1; };
+    std::stable_sort(rows->begin(), rows->end(), [&group](const AppRow& a, const AppRow& b) {
+        const int ga = group(a), gb = group(b);
+        if (ga != gb) return ga < gb;
         return fold(a.name) < fold(b.name);
     });
 }

@@ -159,4 +159,77 @@ PB_TEST(a_repair_below_the_battery_minimum_is_refused_and_a_second_tap_while_it_
     PB_CHECK(r.controller->repairPending());
 }
 
+// ---- feature 004 (research R-9): a run of Update all cut by a lost power in the middle -----------------------------------------------------
+//
+// Each app of a run is its own journaled operation and no queue is kept on the reader, so what a lost power leaves is the same as for a single
+// update: the apps before it are updated, the one in flight is repaired at the next start, the ones not reached still show an update. The run
+// is driven here through the service (a PowerLoss must not cross the controller's worker thread), exactly as the controller's run does.
+PB_TEST(a_run_cut_by_a_lost_power_in_the_second_app_leaves_the_first_updated_the_second_to_repair_and_the_third_still_offered) {
+    for (int cut = 20; cut < 200; ++cut) {
+        FakeReader reader;
+        for (const char* id : {"aapp", "bapp", "capp"}) reader = with_installed(reader, nested_sample_app(id, "1.2.0", std::string("U_") + id));
+        Rig r(reader);
+        app();
+        if (!r.rig.ready()) PB_SKIP("openssl CLI not available");
+        for (const char* id : {"aapp", "bapp", "capp"}) {
+            CatalogEntry& e = r.rig.host.add_app(nested_sample_app_v2(id, std::string("U_") + id, "1.3.0"));
+            e.listed_versions = {"1.2.0", "1.3.0"};
+        }
+        r.rig.host.publish(100);
+        r.rig.write_reader();
+        r.rig.make_engine();
+        r.service = r.rig.make_service();
+        r.service->start_check();
+        install::CancelToken c;
+        if (!r.service->refresh(c, nullptr).ok) PB_SKIP("fixture: refresh failed");
+        // from here every write counts towards the cut: the first app's update, then the second's
+        const install::ReaderFsFactory normal = r.rig.storage.open_fs;
+        r.rig.storage.open_fs = [cut, normal](const std::string& root) -> std::unique_ptr<install::ReaderFs> { return std::make_unique<ThrowingFs>(normal(root), cut); };
+        r.rig.make_engine();
+        r.service = r.rig.make_service();
+        r.service->start_check();
+        bool lost = false;
+        bool first_done = false;
+        auto run_one = [&](const char* id) {
+            store::PlanView plan = r.service->plan_action(store::RowAction::Update, id, c, nullptr);
+            if (!plan.ok) throw std::runtime_error("fixture: no plan");
+            std::vector<std::string> given;
+            for (const store::ConfirmationItem& i : plan.confirmations) given.push_back(i.name);
+            r.service->execute_plan(given, false, c, nullptr);
+        };
+        try { run_one("aapp"); first_done = true; run_one("bapp"); } catch (const PowerLoss&) { lost = true; }
+        r.rig.storage.open_fs = normal;
+        if (!lost) PB_FAIL_AT("the cut came after the end of both updates");
+        if (!first_done) continue;                                               // the power went in the first app: try a later cut
+        r.rig.make_engine();                                                     // the next start of the store
+        r.service = r.rig.make_service();
+        r.make_controller();
+        r.rig.radio = FakeRadio();
+        if (!r.controller->repairPending() || !r.controller->repairText().contains(QStringLiteral("bapp"))) continue;
+        // the repair prompt names the second app; nothing can be updated until it is repaired
+        PB_CHECK(!r.controller->canUpdateAll());
+        PB_CHECK_EQ(r.controller->updateCount(), 0);
+        PB_CHECK(r.controller->updateNotice().isEmpty());
+        const store::AppRow* a = r.controller->model()->find(QStringLiteral("aapp"));
+        const store::AppRow* cc = r.controller->model()->find(QStringLiteral("capp"));
+        PB_CHECK(a && a->state == store::RowState::Installed);                     // the first app was updated completely
+        PB_CHECK(cc && cc->state == store::RowState::UpdateAvailable);              // the third was not reached: still offered
+        r.controller->startRepair(false);
+        PB_CHECK(r.phase("result"));
+        PB_CHECK(r.controller->resultOk());
+        r.controller->finishResult();
+        PB_CHECK(!r.controller->repairPending());
+        // the repair finished or undid the second app: the count is the third app, plus the second if it was undone
+        const store::AppRow* b = r.controller->model()->find(QStringLiteral("bapp"));
+        PB_CHECK(b != nullptr);
+        const int expected = 1 + (b->state == store::RowState::UpdateAvailable ? 1 : 0);
+        PB_CHECK_EQ(r.controller->updateCount(), expected);
+        PB_CHECK_EQ(r.controller->updateNotice().toStdString(),
+                    expected == 1 ? std::string("1 update available") : std::string("2 updates available"));
+        PB_CHECK(r.controller->canUpdateAll());
+        return;
+    }
+    PB_FAIL_AT("no cut left the second app of the run to repair");
+}
+
 PB_TEST_MAIN()

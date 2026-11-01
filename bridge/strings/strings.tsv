@@ -36,6 +36,8 @@ home.refresh	Refresh
 home.search	Search
 home.settings	Settings
 home.update_all	Update all
+home.updates_many	%1 updates available
+home.updates_one	1 update available
 licenses.back	Back
 log.back	Back
 log.log	Log
@@ -100,7 +102,14 @@ store.unknown	unknown
 store.unofficial	PB Store is unofficial and is not made, endorsed or supported by PocketBook.
 store.update	Update
 store.update_all	Update all
+store.update_all_confirm	Update all
+store.update_all_data_kept	The data of your apps is kept.
+store.update_all_intro	%1 apps will be updated, one after the other:
+store.update_all_intro_one	1 app will be updated:
 store.update_all_none	Nothing was updated.
+store.update_all_store_last	PB Store comes last; the update takes effect when you open PB Store again.
+store.update_all_total	About %1 to download.
+store.update_all_wifi	Wi-Fi is switched on only while packages are downloaded.
 store.updated_list	Updated: %1
 store.updating_queue	Updating %1 of %2: %3
 store.working	Working

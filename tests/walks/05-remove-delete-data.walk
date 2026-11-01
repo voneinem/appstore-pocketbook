@@ -7,7 +7,7 @@ size 1404 1872
 wait 400
 tap refresh
 waitfor catalogLine Catalog last updated
-tap appRow 0
+tap appRow 1
 waitfor detailState Installed
 tap actionRemove
 waitfor planSummary Remove App app-01
