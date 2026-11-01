@@ -36,6 +36,12 @@ StoreController::~StoreController() {
 QString StoreController::catalogLine() const { return catalogLine_; }
 QString StoreController::searchSummary() const { return summary_; }
 
+QString StoreController::updateNotice() const {
+    const int n = updateCount();
+    if (n <= 0) return QString();
+    return n == 1 ? tr("home.updates_one") : tr("home.updates_many").arg(n);
+}
+
 void StoreController::setBusy(bool b) {
     if (busy_ == b) return;
     busy_ = b;
@@ -338,7 +344,7 @@ pbstore::install::ProgressFn StoreController::operationProgress() {
 void StoreController::setPhase(const QString& phase) {
     phase_ = phase;
     pageKind(phase == QLatin1String("planning") || phase == QLatin1String("executing") ? QStringLiteral("progress")
-             : phase == QLatin1String("plan") ? QStringLiteral("plan") : phase == QLatin1String("result") ? QStringLiteral("result") : QStringLiteral("list"));
+             : phase == QLatin1String("plan") || phase == QLatin1String("updateAllPlan") ? QStringLiteral("plan") : phase == QLatin1String("result") ? QStringLiteral("result") : QStringLiteral("list"));
     emit operationChanged();
 }
 
@@ -357,9 +363,10 @@ void StoreController::showPlan(const pbstore::store::PlanView& p) {
     planDetailsShown_ = false;
     extra_ = q(p.extra);
     nothingToDo_ = p.nothing_to_do;
-    batteryUnreadable_ = p.battery_unreadable;
+    batteryUnreadable_ = p.battery_unreadable && !(updateAll_ && runBattery_);
     confirmations_.clear();
     for (const auto& c : p.confirmations) {
+        if (updateAll_ && runConsents_.contains(q(c.name))) continue;   // given once for the run (feature 004)
         QVariantMap m;
         m.insert(QStringLiteral("name"), q(c.name));
         m.insert(QStringLiteral("label"), q(c.label));
@@ -400,6 +407,7 @@ void StoreController::startAction(const QString& action, const QString& appId) {
           [this, view] {
               setBusy(false);
               if (!view->ok && view->findings.empty()) { setPhase(QStringLiteral("idle")); return; }   // ignored: another operation was running
+              if (updateAll_) collectRunNotices(view->notices);   // Principle V: a notice such as W-STO-02 must reach the result page, plan page or not
               if (!view->ok) {
                   showFailure(view->messages());
                   if (updateAll_) { failed_ << appName_; updateAllSummary(); return; }
@@ -413,6 +421,10 @@ void StoreController::startAction(const QString& action, const QString& appId) {
                   resultTodo_.clear();
                   if (updateAll_) { continueUpdateAll(); return; }
                   setPhase(QStringLiteral("result"));
+                  return;
+              }
+              if (updateAll_ && runPlanIsCovered(*view)) {   // feature 004: the combined confirmation covers this plan, no plan page
+                  executeCurrentPlan(QStringList(), false);
                   return;
               }
               showPlan(*view);
@@ -433,6 +445,17 @@ void StoreController::decline() {
 
 void StoreController::confirm(const QStringList& given, bool acceptUnknownBattery) {
     if (busy_ || phase_ != QLatin1String("plan")) return;
+    executeCurrentPlan(given, acceptUnknownBattery);
+}
+
+// The body of confirm(). In a run the reader consents given for the whole run are added, because the plan page of a paused app shows only that
+// app's own consents; the run also calls it straight from the planning phase when the plan needs nothing beyond them.
+void StoreController::executeCurrentPlan(QStringList given, bool acceptUnknownBattery) {
+    if (updateAll_) {
+        for (const QString& c : runConsents_)
+            if (!given.contains(c)) given << c;
+        acceptUnknownBattery = acceptUnknownBattery || runBattery_;
+    }
     std::vector<std::string> names;
     for (const QString& g : given) names.push_back(g.toStdString());
     cancel_ = std::make_unique<pbstore::install::CancelToken>();
@@ -508,13 +531,83 @@ void StoreController::confirmDeleteData() {
 
 void StoreController::startUpdateAll() {
     if (busy_ || phase_ != QLatin1String("idle")) return;
-    queue_ = service_.update_all_queue();
-    if (queue_.empty()) return;
+    // the combined confirmation (feature 004): built from the cache and the reader's contents; nothing is downloaded or written before the tap
+    preview_ = service_.update_all_preview();
+    if (!preview_.ok || preview_.entries.empty()) return;
+    updateAllEntries_.clear();
+    for (const auto& e : preview_.entries) {
+        QVariantMap m;
+        m.insert(QStringLiteral("name"), q(e.name));
+        m.insert(QStringLiteral("from"), q(e.installed_version));
+        m.insert(QStringLiteral("to"), q(e.offered_version));
+        m.insert(QStringLiteral("size"), sizeText(e.package_size));
+        updateAllEntries_.append(m);
+    }
+    const size_t n = preview_.entries.size();
+    updateAllIntro_ = n == 1 ? tr("store.update_all_intro_one") : tr("store.update_all_intro").arg(n);
+    QStringList lines;
+    if (preview_.total_bytes > 0) lines << tr("store.update_all_total").arg(sizeText(preview_.total_bytes));
+    lines << tr("store.update_all_data_kept") << tr("store.update_all_wifi");
+    if (preview_.includes_store) lines << tr("store.update_all_store_last");
+    updateAllLines_ = lines.join(QLatin1Char('\n'));
+    updateAllConsents_.clear();
+    for (const auto& c : preview_.reader_consents) {
+        QVariantMap m;
+        m.insert(QStringLiteral("name"), q(c.name));
+        m.insert(QStringLiteral("label"), q(c.label));
+        updateAllConsents_.append(m);
+    }
+    batteryUnreadable_ = preview_.battery_unreadable;
+    title_ = tr("store.update_all");
+    setPhase(QStringLiteral("updateAllPlan"));
+}
+
+void StoreController::cancelUpdateAll() {
+    if (phase_ != QLatin1String("updateAllPlan") || busy_) return;
+    preview_ = pbstore::store::UpdateAllPreview();
+    updateAllEntries_.clear();
+    updateAllConsents_.clear();
+    batteryUnreadable_ = false;
+    setPhase(QStringLiteral("idle"));
+    applyView(service_.list_cached());
+}
+
+void StoreController::confirmUpdateAll(const QStringList& given, bool acceptUnknownBattery) {
+    if (phase_ != QLatin1String("updateAllPlan") || busy_) return;
+    // every consent the confirmation offered must be given (never preselected, never "yes to all": spec FR-015)
+    for (const auto& c : preview_.reader_consents)
+        if (!given.contains(q(c.name))) return;
+    if (preview_.battery_unreadable && !acceptUnknownBattery) return;
+    runConsents_.clear();
+    for (const auto& c : preview_.reader_consents) runConsents_ << q(c.name);
+    runBattery_ = acceptUnknownBattery;
+    runNotices_.clear();
+    queue_.clear();
+    for (const auto& e : preview_.entries) queue_.push_back(e.id);
     queuePos_ = 0;
     updated_.clear();
     failed_.clear();
     updateAll_ = true;
+    phase_ = QStringLiteral("idle");   // startAction refuses to start unless idle; the plan of the first app follows at once
     startAction(QStringLiteral("Update"), q(queue_[queuePos_]));
+}
+
+// A plan is covered by the combined confirmation when every consent it names was given for the run (the reader consents) and, if the battery
+// level cannot be read, the risk was accepted for the run. Anything else (a changed file, an existing data folder) is asked at that app.
+bool StoreController::runPlanIsCovered(const pbstore::store::PlanView& plan) const {
+    for (const auto& c : plan.confirmations)
+        if (!runConsents_.contains(q(c.name))) return false;
+    return !plan.battery_unreadable || runBattery_;
+}
+
+// The notices of the plans of a run (Principle V: for example that Wi-Fi could not be switched off again) are kept for the result page, because
+// the plan page that normally shows them is skipped.
+void StoreController::collectRunNotices(const std::vector<pbstore::Finding>& notices) {
+    for (const pbstore::Finding& n : notices) {
+        if (n.rule_id == "W-INS-03") continue;   // the first-run notice is for the log, not for the screen
+        const QString line = q(pbstore::store::store_message(n).what);
+        if (!runNotices_.contains(line)) runNotices_ << line;
+    }
 }
 
 void StoreController::continueUpdateAll() {
@@ -543,6 +636,10 @@ void StoreController::updateAllSummary() {
     resultReader_ = failed ? reader : QString();
     resultTodo_ = failed ? todo : QString();
     updateAll_ = false;
+    notice_ = runNotices_.join(QLatin1Char('\n'));
+    emit noticeChanged();
+    runConsents_.clear();
+    runBattery_ = false;
     title_ = tr("store.update_all");
     applyView(service_.list_cached());
     setPhase(QStringLiteral("result"));

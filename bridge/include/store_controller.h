@@ -64,6 +64,13 @@ class StoreController : public QObject {
     Q_PROPERTY(int deleteStep READ deleteStep NOTIFY operationChanged)
     Q_PROPERTY(QString dataFolderText READ dataFolderText NOTIFY operationChanged)
     Q_PROPERTY(bool canUpdateAll READ canUpdateAll NOTIFY viewChanged)
+    // feature 004: how many apps can be updated (the banner above the list) and the combined confirmation of "Update all"
+    Q_PROPERTY(int updateCount READ updateCount NOTIFY viewChanged)
+    Q_PROPERTY(QString updateNotice READ updateNotice NOTIFY viewChanged)
+    Q_PROPERTY(QString updateAllIntro READ updateAllIntro NOTIFY operationChanged)
+    Q_PROPERTY(QVariantList updateAllEntries READ updateAllEntries NOTIFY operationChanged)    // [{name, from, to, size}], PB Store last
+    Q_PROPERTY(QString updateAllLines READ updateAllLines NOTIFY operationChanged)              // the total, the facts, the PB Store line
+    Q_PROPERTY(QVariantList updateAllConsents READ updateAllConsents NOTIFY operationChanged)   // [{name, label}] about the reader, given once for the run
     Q_PROPERTY(QString repairText READ repairText NOTIFY viewChanged)
 
 public:
@@ -113,6 +120,12 @@ public:
     int deleteStep() const { return deleteStep_; }
     QString dataFolderText() const { return dataFolderText_; }
     bool canUpdateAll() const { return !service_.update_all_queue().empty() && !repairPending_; }
+    int updateCount() const { return repairPending_ ? 0 : static_cast<int>(service_.update_all_queue().size()); }
+    QString updateNotice() const;
+    QString updateAllIntro() const { return updateAllIntro_; }
+    QVariantList updateAllEntries() const { return updateAllEntries_; }
+    QString updateAllLines() const { return updateAllLines_; }
+    QVariantList updateAllConsents() const { return updateAllConsents_; }
     QString repairText() const;
 
     // At start, before the list: the cancel note, the launcher's message, an interrupted operation; then the list from the cache.
@@ -138,7 +151,11 @@ public:
     Q_INVOKABLE void finishResult();                                                  // OK on the result
     Q_INVOKABLE void askDeleteData();                                                 // "Delete data too?" after a removal
     Q_INVOKABLE void confirmDeleteData();                                             // each of the two confirmations
+    // "Update all" (feature 004): startUpdateAll builds the combined confirmation (phase `updateAllPlan`, no network, no write); confirmUpdateAll starts the
+    // run (one plan and one execution per app, no plan page unless an app asks for a consent of its own); cancelUpdateAll leaves it as it was.
     Q_INVOKABLE void startUpdateAll();
+    Q_INVOKABLE void cancelUpdateAll();
+    Q_INVOKABLE void confirmUpdateAll(const QStringList& given, bool acceptUnknownBattery);
     Q_INVOKABLE void startRepair(bool acceptUnknownBattery);
     Q_INVOKABLE void leaveAndWait();           // the house icon: stop what runs and wait until its worker has ended (Wi-Fi back as it was), before the program is closed
     Q_INVOKABLE void resumed();                // the app came back after a sleep: a new action may start
@@ -171,6 +188,9 @@ private:
     void showFailure(const std::vector<pbstore::install::Message>& messages);
     void continueUpdateAll();
     void updateAllSummary();
+    void executeCurrentPlan(QStringList given, bool acceptUnknownBattery);   // the body of confirm(), also called by the run without a plan page
+    bool runPlanIsCovered(const pbstore::store::PlanView& plan) const;       // every consent the plan names was given for the run
+    void collectRunNotices(const std::vector<pbstore::Finding>& notices);
 
     pbstore::store::StoreService& service_;
     pbstore::store::Screen& screen_;
@@ -208,4 +228,10 @@ private:
     size_t queuePos_ = 0;
     QStringList updated_, failed_;
     bool updateAll_ = false;
+    // the combined confirmation and the run (feature 004)
+    pbstore::store::UpdateAllPreview preview_;
+    QString updateAllIntro_, updateAllLines_;
+    QVariantList updateAllEntries_, updateAllConsents_;
+    QStringList runConsents_, runNotices_;     // the reader consents ticked for the run; the plans' notices, kept for the result page
+    bool runBattery_ = false;                  // the unreadable battery was accepted for the run
 };

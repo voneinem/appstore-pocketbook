@@ -18,6 +18,17 @@ contracts that other programs depend on are promoted to `docs/contracts/` (`laun
 The façade is the seam: `StoreService` takes the device interfaces (`Radio`, `Battery`, `MemoryInfo`, `Screen`), the reader's file layer and the state folder as objects,
 so every behaviour is tested on the computer with fakes (`tests/support/`: `FakeReader`, `FakeRadio`, `CrashFs`, `ThrowingFs`, `RecordingFs`, `StoreRig`).
 
+## How Update all works (feature 004)
+
+`StoreController::startUpdateAll()` asks `StoreService::update_all_preview()` (the apps of `update_all_queue()`, PB Store last, with both versions and package sizes, the reader
+consents `unknown-model` and `unknown-firmware` as `check_compatibility` would raise them, and whether the battery level is unreadable; no network, no write) and enters the phase
+`updateAllPlan`, the combined confirmation. `confirmUpdateAll(given, acceptUnknownBattery)` stores the consents for the run and starts the first app; each app is one `plan_action`
+and one `execute_plan`, as for a single update. When the plan names no consent beyond the ones given for the run (`runPlanIsCovered`), `executeCurrentPlan` runs it at once, without
+a plan page; otherwise the plan page of that app is shown with only the other consents (a changed file, an existing data folder) and Cancel skips the app. The run adds the consents given
+for the run to what the plan page passes. The notices of the plans (for example `W-STO-02`, Wi-Fi that could not be switched off) are collected in `runNotices_` and shown on the result page.
+The first failure stops the run. Nothing about the run is stored on the reader: after a power loss the next start repairs the one app in flight and the apps not reached still show an update.
+The list shows the apps with an update first (`sort_rows`); `updateCount`/`updateNotice` feed the banner and count all updatable apps, whatever the search.
+
 ## How to add a device fact
 
 A device fact is something only a real reader can say (whether a restart is needed, which strings the firmware returns). It lives in one table with its evidence cited next

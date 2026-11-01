@@ -130,6 +130,26 @@ struct PlanView {
     std::vector<install::Message> messages() const;
 };
 
+// One app of an "Update all" run, as the combined confirmation lists it (feature 004).
+struct UpdateAllEntry {
+    std::string id, name, installed_version, offered_version;
+    int64_t package_size = 0;                 // from the signed catalog entry
+    bool is_store = false;
+};
+
+// What the combined confirmation of "Update all" shows (feature 004, spec FR-009). Built from the cached catalog and the reader's contents:
+// no network call, no write, no Wi-Fi.
+struct UpdateAllPreview {
+    bool ok = false;                          // false while an interrupted operation waits for its repair (E-INS-23)
+    std::vector<Finding> findings;
+    std::vector<UpdateAllEntry> entries;      // in run order, PB Store last; empty exactly when update_all_queue() is empty
+    int64_t total_bytes = 0;                  // the sum of the package sizes
+    bool includes_store = false;
+    // consents about the reader itself, asked once for the whole run instead of at every app: "unknown-model", "unknown-firmware"
+    std::vector<ConfirmationItem> reader_consents;
+    bool battery_unreadable = false;          // the level cannot be read: one tap states the risk for the run (E-STO-05)
+};
+
 // What an executed plan returns: the result text on success, the three-part messages otherwise, and the list as it is afterwards.
 struct ExecView {
     bool ok = false;
@@ -183,6 +203,9 @@ public:
     ExecView repair(bool accept_unknown_battery, install::CancelToken& cancel, const install::ProgressFn& progress);
     // The apps with an update, PB Store itself last (spec FR-021).
     std::vector<std::string> update_all_queue() const;
+    // The combined confirmation of "Update all" (feature 004): the apps of update_all_queue() with both versions and sizes, the reader consents and
+    // the battery. Reads only; the run itself is one plan_action and one execute_plan per app.
+    UpdateAllPreview update_all_preview();
 
     // The first screen is shown after the start check: the start counts as successful (spec FR-034). Removes the launcher's marker and
     // remembers the version that reached its first screen (the next start can then say "PB Store was updated to X").

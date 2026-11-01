@@ -1,0 +1,31 @@
+# Feature 004 (spec A-10): after an operation that changes an app's state the list shows its first page again; after a look at a detail page with
+# no change it keeps its page. The demo catalog has 14 apps on three pages (the banner takes a row from each) (the app with the update is on the first).
+# scenario demo
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+waitfor appRow
+# part 1: Update all started from page 2 ends on page 1
+tap pageDown
+expect pageIndicator 2 / 3
+tap updateAllButton
+waitfor updateAllIntro
+tap consent 0
+tap consent 1
+tap confirm
+waitfor resultText Updated:
+tap ok
+waitfor appRow
+# (nothing is left to update, so the banner is gone and the list is back to two pages)
+expect pageIndicator 1 / 2
+expect_disabled pageUp
+# part 2: a look at a detail page with no change keeps the page
+tap pageDown
+expect pageIndicator 2 / 2
+tap appRow 0
+waitfor detailState
+tap back
+expect pageIndicator 2 / 2
+# (a single update needs no walk of its own here: an app with an update is always on page 1 because updatable apps are listed first)
+quit

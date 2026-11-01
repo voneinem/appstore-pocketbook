@@ -48,13 +48,15 @@ struct Rig {
     std::unique_ptr<store::StoreService> service;
     std::unique_ptr<StoreController> controller;
     explicit Rig(const FakeReader& r = FakeReader()) : rig(r) {}
-    bool start(bool refresh = true) {
+    // `extra` names more catalog apps (version 1.0.0); a test installs older copies of them on the reader to have more apps with an update
+    bool start(bool refresh = true, const std::vector<std::string>& extra = {}) {
         app();
         if (!rig.ready()) return false;
         CatalogEntry& e = rig.host.add_app(nested_sample_app_v2("testapp", "U_TestApp", "1.3.0"));
         e.listed_versions = {"1.2.0", "1.3.0"};
         rig.host.add_app(nested_sample_app("secondapp", "1.0.0", "U_SecondApp"));
         rig.host.add_app(nested_sample_app("thirdapp", "1.0.0", "U_ThirdApp"));
+        for (const std::string& id : extra) rig.host.add_app(nested_sample_app(id, "1.0.0", "U_" + id));
         rig.host.publish(100);
         rig.write_reader();
         rig.make_engine();
@@ -141,6 +143,89 @@ PB_TEST(a_search_applies_on_confirm_with_one_model_update_per_call_and_says_how_
     r.controller->search(QString());
     PB_CHECK_EQ(r.controller->model()->rowCount(), all);
     PB_CHECK_EQ(resets, 3 + 0);
+}
+
+PB_TEST(the_model_lists_the_apps_with_an_update_first_and_a_search_keeps_that_grouping) {
+    // feature 004, FR-013: testapp has an update (1.2.0 installed, 1.3.0 offered); secondapp and thirdapp are offered and not installed
+    Rig r(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")));
+    if (!r.start()) PB_SKIP("openssl CLI not available");
+    AppListModel* m = r.controller->model();
+    PB_CHECK(m->rowCount() >= 3);
+    PB_CHECK_EQ(m->data(m->index(0, 0), AppListModel::AppIdRole).toString().toStdString(), std::string("testapp"));   // "App testapp" sorts after "App secondapp" by name
+    PB_CHECK_EQ(m->data(m->index(0, 0), AppListModel::StateKeyRole).toString().toStdString(), std::string("update-available"));
+    PB_CHECK_EQ(m->data(m->index(1, 0), AppListModel::AppIdRole).toString().toStdString(), std::string("secondapp"));
+    PB_CHECK_EQ(m->data(m->index(2, 0), AppListModel::AppIdRole).toString().toStdString(), std::string("thirdapp"));
+    r.controller->search(QStringLiteral("app"));                         // every sample app's name contains "app"
+    PB_CHECK(m->rowCount() >= 3);
+    PB_CHECK_EQ(m->data(m->index(0, 0), AppListModel::AppIdRole).toString().toStdString(), std::string("testapp"));
+    PB_CHECK_EQ(m->data(m->index(1, 0), AppListModel::AppIdRole).toString().toStdString(), std::string("secondapp"));
+}
+
+// ---- feature 004, story 2: how many apps can be updated (the notice and the count above the list) ----
+
+namespace {
+// secondapp and thirdapp installed in an older version than the catalog offers (0.5.0 against 1.0.0)
+FakeReader with_older_copies(FakeReader r, const std::vector<std::string>& ids) {
+    for (const std::string& id : ids) r = with_installed(r, nested_sample_app(id, "0.5.0", "U_" + id));
+    return r;
+}
+}  // namespace
+
+PB_TEST(the_update_count_and_notice_say_how_many_apps_can_be_updated_in_singular_and_plural) {
+    {
+        Rig none;                                                          // nothing installed: nothing can be updated
+        if (!none.start()) PB_SKIP("openssl CLI not available");
+        PB_CHECK_EQ(none.controller->updateCount(), 0);
+        PB_CHECK(none.controller->updateNotice().isEmpty());
+    }
+    {
+        Rig one(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")));
+        if (!one.start()) PB_SKIP("openssl CLI not available");
+        PB_CHECK_EQ(one.controller->updateCount(), 1);
+        PB_CHECK_EQ(one.controller->updateNotice().toStdString(), std::string("1 update available"));
+    }
+    {
+        Rig three(with_older_copies(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")), {"secondapp", "thirdapp"}));
+        if (!three.start()) PB_SKIP("openssl CLI not available");
+        PB_CHECK_EQ(three.controller->updateCount(), 3);
+        PB_CHECK_EQ(three.controller->updateNotice().toStdString(), std::string("3 updates available"));
+    }
+}
+
+PB_TEST(the_count_covers_all_apps_not_only_the_searched_ones_and_does_not_change_with_a_page_turn) {
+    Rig r(with_older_copies(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")), {"secondapp", "thirdapp"}));
+    if (!r.start()) PB_SKIP("openssl CLI not available");
+    r.controller->search(QStringLiteral("no such thing"));                 // the model shows no app at all
+    PB_CHECK_EQ(r.controller->model()->rowCount(), 0);
+    PB_CHECK_EQ(r.controller->updateCount(), 3);
+    PB_CHECK_EQ(r.controller->updateNotice().toStdString(), std::string("3 updates available"));
+    r.controller->search(QStringLiteral("second"));                        // only one of the three is shown
+    PB_CHECK_EQ(r.controller->updateCount(), 3);
+    r.controller->pageTurned();
+    PB_CHECK_EQ(r.controller->updateCount(), 3);
+    PB_CHECK(r.controller->canUpdateAll());                                // Update all still means all of them
+}
+
+PB_TEST(the_count_notifies_with_viewChanged_and_follows_a_refresh) {
+    Rig r(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")));
+    if (!r.start(false)) PB_SKIP("openssl CLI not available");              // no refresh yet: the cache is empty, so nothing is known
+    PB_CHECK_EQ(r.controller->updateCount(), 0);
+    int changes = 0;
+    QObject::connect(r.controller.get(), &StoreController::viewChanged, [&changes] { ++changes; });
+    r.controller->refresh();
+    PB_CHECK(wait_for([&] { return !r.controller->busy() && r.controller->catalogLine().startsWith(QStringLiteral("Catalog last updated")); }));
+    PB_CHECK(changes >= 1);
+    PB_CHECK_EQ(r.controller->updateCount(), 1);
+    PB_CHECK_EQ(r.controller->updateNotice().toStdString(), std::string("1 update available"));
+}
+
+PB_TEST(the_count_is_right_with_more_apps_than_one_page_of_the_list_holds) {
+    std::vector<std::string> ids;
+    for (int i = 1; i <= 12; ++i) ids.push_back(std::string("bulk") + (i < 10 ? "0" : "") + std::to_string(i));   // 12 more than a page (about 9 rows of 160 px)
+    Rig r(with_older_copies(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")), ids));
+    if (!r.start(true, ids)) PB_SKIP("openssl CLI not available");
+    PB_CHECK_EQ(r.controller->updateCount(), 13);                          // testapp and the 12
+    PB_CHECK_EQ(r.controller->updateNotice().toStdString(), std::string("13 updates available"));
 }
 
 PB_TEST_MAIN()

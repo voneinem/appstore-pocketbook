@@ -80,6 +80,56 @@ struct Rig {
         return true;
     }
     bool phase(const char* p) { return wait_for([&] { return controller->phase() == QLatin1String(p); }); }
+    // Feature 004: several installed apps (1.2.0), each with 1.3.0 offered; the package of `broken` is garbage, so its plan fails the hash check.
+    bool prepare_apps(const std::vector<std::string>& outdated, const std::string& broken = std::string()) {
+        app();
+        if (!rig.ready()) return false;
+        for (const std::string& id : outdated) {
+            CatalogEntry& e = rig.host.add_app(nested_sample_app_v2(id, "U_" + id, "1.3.0"));
+            e.listed_versions = {"1.2.0", "1.3.0"};
+        }
+        rig.host.publish(100);
+        if (!broken.empty())
+            for (const CatalogEntry& e : rig.host.catalog.apps)
+                if (e.id == broken) rig.host.set_raw(package_path_of(e), "this is not the package");
+        rig.write_reader();
+        rig.make_engine();
+        service = rig.make_service();
+        controller = std::make_unique<StoreController>(*service, rig.screen, QStringLiteral("0.1.0"), QString::fromStdString(rig.root() + "/system/pbstore/app/pbstore.log"));
+        controller->startUp();
+        controller->refresh();
+        return wait_for([&] { return !controller->busy() && controller->model()->rowCount() > 0 && controller->catalogLine().startsWith(QStringLiteral("Catalog last updated")); });
+    }
+};
+
+// The reader with each of `ids` installed at 1.2.0.
+FakeReader installed_apps(const std::vector<std::string>& ids) {
+    FakeReader r;
+    for (const std::string& id : ids) r = with_installed(r, nested_sample_app(id, "1.2.0", "U_" + id));
+    return r;
+}
+
+// The reader's files without the store's own state, the journal's folder, the lock and the backups (as in test_store_service_actions.cpp).
+Snapshot apps_only(const Snapshot& s) {
+    Snapshot out;
+    for (const auto& i : s) {
+        if (i.path.compare(0, 18, "system/pbstore/app") == 0) continue;
+        if (i.path == "system/pbstore/lock" || i.path == "system/pbstore/journal") continue;
+        if (i.path == "system/pbstore/installed" && i.kind == 'd') continue;
+        if (i.path.compare(0, 22, "system/pbstore/backups") == 0) continue;
+        out.push_back(i);
+    }
+    return out;
+}
+
+// Every phase the controller passes through, in order, without repeats.
+struct PhaseLog {
+    QStringList phases;
+    PhaseLog(StoreController& c) {
+        QObject::connect(&c, &StoreController::operationChanged, [this, &c] {
+            if (phases.isEmpty() || phases.last() != c.phase()) phases << c.phase();
+        });
+    }
 };
 
 }  // namespace
@@ -168,21 +218,85 @@ PB_TEST(removing_keeps_the_data_and_deleting_it_takes_two_confirmations) {
     r.controller->finishResult();
 }
 
-PB_TEST(update_all_updates_the_apps_one_after_the_other_with_a_plan_and_a_summary) {
-    Rig r(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")));
-    if (!r.prepare(true)) PB_SKIP("openssl CLI not available");
+PB_TEST(update_all_asks_once_and_then_updates_the_apps_one_after_the_other_with_no_plan_page_between) {
+    Rig r(installed_apps({"testapp", "secondapp"}));
+    if (!r.prepare_apps({"testapp", "secondapp"})) PB_SKIP("openssl CLI not available");
     PB_CHECK(r.controller->canUpdateAll());
+    const size_t requests = r.rig.requests().size();
+    const Snapshot before = snapshot(r.rig.root());
     r.controller->startUpdateAll();
-    PB_CHECK(r.phase("plan"));
-    PB_CHECK(r.controller->operationTitle().contains(QStringLiteral("Updating 1 of 1")));
-    r.controller->confirm(kConsents, false);
+    PB_CHECK(r.controller->phase() == QLatin1String("updateAllPlan"));      // at once: the combined confirmation, nothing runs
+    PB_CHECK(!r.controller->busy());
+    const QVariantList entries = r.controller->updateAllEntries();
+    PB_CHECK_EQ(entries.size(), 2);
+    PB_CHECK_EQ(entries[0].toMap().value(QStringLiteral("name")).toString().toStdString(), std::string("App secondapp"));   // by name; no PB Store here
+    PB_CHECK_EQ(entries[0].toMap().value(QStringLiteral("from")).toString().toStdString(), std::string("1.2.0"));
+    PB_CHECK_EQ(entries[0].toMap().value(QStringLiteral("to")).toString().toStdString(), std::string("1.3.0"));
+    PB_CHECK(!entries[0].toMap().value(QStringLiteral("size")).toString().isEmpty());
+    PB_CHECK(r.controller->updateAllLines().contains(QStringLiteral("The data of your apps is kept.")));
+    PB_CHECK(r.controller->updateAllLines().contains(QStringLiteral("Wi-Fi is switched on only while packages are downloaded.")));
+    PB_CHECK_EQ(r.rig.requests().size(), requests);                          // nothing was downloaded before the confirmation
+    PB_CHECK(compare(apps_only(before), apps_only(snapshot(r.rig.root()))).identical);   // and nothing was written
+    PhaseLog log(*r.controller);
+    r.controller->confirmUpdateAll(kConsents, false);
     PB_CHECK(r.phase("result"));
+    PB_CHECK(!log.phases.contains(QStringLiteral("plan")));                  // no plan page between the apps
+    PB_CHECK(r.controller->resultOk());
     PB_CHECK(r.controller->resultText().contains(QStringLiteral("Updated:")));
     PB_CHECK(r.controller->resultText().contains(QStringLiteral("App testapp")));
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("App secondapp")));
     r.controller->finishResult();
     PB_CHECK(!r.controller->canUpdateAll());
+    PB_CHECK_EQ(r.controller->updateCount(), 0);
 }
 
+PB_TEST(the_progress_title_of_an_update_all_run_says_which_app_of_how_many) {
+    Rig r(installed_apps({"testapp", "secondapp"}));
+    if (!r.prepare_apps({"testapp", "secondapp"})) PB_SKIP("openssl CLI not available");
+    r.controller->startUpdateAll();
+    QStringList titles;
+    QObject::connect(r.controller.get(), &StoreController::operationChanged, [&] { if (titles.isEmpty() || titles.last() != r.controller->operationTitle()) titles << r.controller->operationTitle(); });
+    r.controller->confirmUpdateAll(kConsents, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(titles.contains(QStringLiteral("Updating 1 of 2: App secondapp")));
+    PB_CHECK(titles.contains(QStringLiteral("Updating 2 of 2: App testapp")));
+}
+
+PB_TEST(cancelling_the_combined_confirmation_changes_nothing_and_uses_no_network) {
+    Rig r(installed_apps({"testapp"}));
+    if (!r.prepare_apps({"testapp"})) PB_SKIP("openssl CLI not available");
+    const size_t requests = r.rig.requests().size();
+    const Snapshot before = snapshot(r.rig.root());
+    r.controller->startUpdateAll();
+    PB_CHECK(r.controller->phase() == QLatin1String("updateAllPlan"));
+    r.controller->cancelUpdateAll();
+    PB_CHECK(r.controller->phase() == QLatin1String("idle"));
+    PB_CHECK_EQ(r.rig.requests().size(), requests);
+    PB_CHECK(compare(apps_only(before), apps_only(snapshot(r.rig.root()))).identical);
+    PB_CHECK(r.controller->canUpdateAll());                                  // still outdated
+}
+
+PB_TEST(update_all_does_not_start_without_a_consent_that_the_confirmation_offered) {
+    Rig r(installed_apps({"testapp"}));
+    if (!r.prepare_apps({"testapp"})) PB_SKIP("openssl CLI not available");
+    r.controller->startUpdateAll();
+    PB_CHECK_EQ(r.controller->updateAllConsents().size(), 2);                // the fake reader has no identity: both are offered
+    r.controller->confirmUpdateAll(QStringList{QStringLiteral("unknown-model")}, false);   // unknown-firmware is missing
+    PB_CHECK(r.controller->phase() == QLatin1String("updateAllPlan"));      // refused: the page's Confirm is disabled then as well
+    r.controller->cancelUpdateAll();
+}
+
+PB_TEST(a_single_update_still_shows_its_plan_and_needs_its_own_confirmation) {
+    // regression pin: only Update all lost its per-app plan page
+    Rig r(installed_apps({"testapp"}));
+    if (!r.prepare_apps({"testapp"})) PB_SKIP("openssl CLI not available");
+    r.controller->startAction(QStringLiteral("Update"), QStringLiteral("testapp"));
+    PB_CHECK(r.phase("plan"));
+    PB_CHECK(r.controller->planSummary().contains(QStringLiteral("Update App testapp")));
+    r.controller->confirm(kConsents, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(r.controller->resultOk());
+}
 PB_TEST(cancel_is_offered_until_the_engine_reports_the_commit_point_and_not_after) {
     // the page then shows "Finishing; this cannot be cancelled" (OperationPage.qml, visible: !cancellable); the figures are tested in test_progress_text
     Rig r;
@@ -233,18 +347,100 @@ PB_TEST(leaving_through_the_house_icon_ends_the_wifi_session_before_the_program_
     PB_CHECK(!r.rig.run_state->radio_marker());
 }
 
-PB_TEST(declining_an_app_in_update_all_skips_it) {
-    Rig r(with_installed(FakeReader(), nested_sample_app("testapp", "1.2.0")));
-    if (!r.prepare(true)) PB_SKIP("openssl CLI not available");
+PB_TEST(an_app_whose_update_needs_a_consent_of_its_own_pauses_the_run_for_that_app_only_and_declining_skips_it) {
+    // aaedited sorts first and has a recorded file the user changed (E-INS-32); testapp is clean
+    FakeReader reader = installed_apps({"aaedited", "testapp"});
+    reader.files["applications/aaedited.bin"] = "edited by hand";
+    Rig r(reader);
+    if (!r.prepare_apps({"aaedited", "testapp"})) PB_SKIP("openssl CLI not available");
     r.controller->startUpdateAll();
-    PB_CHECK(r.phase("plan"));
-    r.controller->decline();
+    r.controller->confirmUpdateAll(kConsents, false);
+    PB_CHECK(r.phase("plan"));                                              // the run pauses at the app with the changed file
+    PB_CHECK(r.controller->operationTitle().contains(QStringLiteral("App aaedited")));
+    QStringList names;
+    for (const QVariant& c : r.controller->confirmations()) names << c.toMap().value(QStringLiteral("name")).toString();
+    PB_CHECK(names.contains(QStringLiteral("edited-files")));
+    PB_CHECK(!names.contains(QStringLiteral("unknown-model")));              // given once for the run: not asked again for this app
+    PB_CHECK(!names.contains(QStringLiteral("unknown-firmware")));
+    r.controller->decline();                                                // skip it; the run goes on
     PB_CHECK(r.phase("result"));
-    PB_CHECK(r.controller->resultText().contains(QStringLiteral("Nothing was updated")));
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("Updated: App testapp")));
+    PB_CHECK(!r.controller->resultText().contains(QStringLiteral("Failed")));
     r.controller->finishResult();
-    PB_CHECK(r.controller->canUpdateAll());                              // still outdated: nothing was changed
+    const store::AppRow* skipped = r.controller->model()->find(QStringLiteral("aaedited"));
+    PB_CHECK(skipped && skipped->state == store::RowState::UpdateAvailable);   // still outdated: nothing was changed
+    PB_CHECK_EQ(r.controller->updateCount(), 1);
 }
 
+PB_TEST(confirming_the_paused_app_adds_the_consents_given_for_the_run_and_updates_it) {
+    FakeReader reader = installed_apps({"aaedited", "testapp"});
+    reader.files["applications/aaedited.bin"] = "edited by hand";
+    Rig r(reader);
+    if (!r.prepare_apps({"aaedited", "testapp"})) PB_SKIP("openssl CLI not available");
+    r.controller->startUpdateAll();
+    r.controller->confirmUpdateAll(kConsents, false);
+    PB_CHECK(r.phase("plan"));
+    // the page passes only the consent that it showed; the reader consents given for the run are added by the controller
+    r.controller->confirm(QStringList{QStringLiteral("edited-files")}, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(r.controller->resultOk());
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("App aaedited")));
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("App testapp")));
+    r.controller->finishResult();
+    PB_CHECK_EQ(r.controller->updateCount(), 0);
+}
+
+PB_TEST(a_failing_app_stops_the_run_and_the_summary_says_updated_failed_and_not_tried) {
+    Rig r(installed_apps({"aapp", "bapp", "capp"}));
+    if (!r.prepare_apps({"aapp", "bapp", "capp"}, "bapp")) PB_SKIP("openssl CLI not available");
+    r.controller->startUpdateAll();
+    r.controller->confirmUpdateAll(kConsents, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(!r.controller->resultOk());
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("Updated: App aapp")));
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("Failed: App bapp")));
+    PB_CHECK(r.controller->resultText().contains(QStringLiteral("Not tried: App capp")));
+    PB_CHECK(r.controller->resultReader().contains(QStringLiteral("not changed")));
+    r.controller->finishResult();
+    PB_CHECK_EQ(r.controller->updateCount(), 2);                             // bapp and capp still have an update
+}
+
+PB_TEST(a_wifi_that_could_not_be_switched_off_is_still_shown_on_the_result_page_of_a_run) {
+    // constitution Principle V: the notice of the plan must not be lost on the path that skips the plan page
+    Rig r(installed_apps({"testapp", "secondapp"}));
+    if (!r.prepare_apps({"testapp", "secondapp"})) PB_SKIP("openssl CLI not available");
+    r.rig.radio.set_disconnect_works(false);
+    r.controller->startUpdateAll();
+    r.controller->confirmUpdateAll(kConsents, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(r.controller->resultOk());
+    PB_CHECK(r.controller->notice().contains(QStringLiteral("could not be switched off")));
+    r.controller->finishResult();
+}
+
+PB_TEST(with_one_app_a_wifi_that_could_not_be_switched_off_leaves_the_marker_for_the_launcher) {
+    // (with two apps the second plan finds the radio already on and, as RadioSession::begin does, no longer acts on the marker)
+    Rig r(installed_apps({"testapp"}));
+    if (!r.prepare_apps({"testapp"})) PB_SKIP("openssl CLI not available");
+    r.rig.radio.set_disconnect_works(false);
+    r.controller->startUpdateAll();
+    r.controller->confirmUpdateAll(kConsents, false);
+    PB_CHECK(r.phase("result"));
+    PB_CHECK(r.controller->notice().contains(QStringLiteral("could not be switched off")));
+    PB_CHECK(r.rig.run_state->radio_marker());                               // the launcher tries once more
+    r.controller->finishResult();
+}
+
+PB_TEST(starting_update_all_while_an_operation_runs_is_ignored) {
+    Rig r(installed_apps({"testapp"}));
+    if (!r.prepare_apps({"testapp"})) PB_SKIP("openssl CLI not available");
+    r.controller->refresh();
+    PB_CHECK(r.controller->busy());
+    r.controller->startUpdateAll();                                          // ignored: one operation at a time
+    PB_CHECK(r.controller->phase() == QLatin1String("idle"));
+    PB_CHECK(wait_for([&] { return !r.controller->busy(); }));
+    PB_CHECK(r.controller->phase() == QLatin1String("idle"));
+}
 PB_TEST(the_plan_page_shows_plain_sentences_first_and_the_installers_text_with_every_file_only_behind_show_details) {
     Rig r;
     const SampleApp big = app_with_files(30);

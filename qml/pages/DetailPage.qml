@@ -63,8 +63,14 @@ Item {
                 }
                 MouseArea { id: linkTap; anchors.fill: parent; onClicked: page.askLink(link.value) }
             }
-            Text { objectName: "detailState"; width: parent.width; font.pixelSize: Style.rowTitleSize; font.bold: true; color: Style.ink; wrapMode: Text.Wrap
-                   text: (page.d.stateWords || "") + (page.d.offeredVersion && page.d.stateWords === "Update available" ? " (" + page.d.installedVersion + " → " + page.d.offeredVersion + ")" : "") }
+            // an app with an update shows the same badge as the list and both versions after it (feature 004); other states show their words
+            Row {
+                width: parent.width
+                spacing: 12
+                UpdateBadge { id: detailBadge; objectName: "detailBadge"; visible: page.d.stateWords === "Update available"; text: page.d.stateWords || "" }
+                Text { objectName: "detailState"; width: parent.width - (detailBadge.visible ? detailBadge.width + parent.spacing : 0); font.pixelSize: Style.rowTitleSize; font.bold: true; color: Style.ink; wrapMode: Text.Wrap
+                       text: detailBadge.visible ? "(" + page.d.installedVersion + " → " + page.d.offeredVersion + ")" : (page.d.stateWords || "") }
+            }
             Text { visible: (page.d.notes || "").length > 0; width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap; text: page.d.notes || "" }
             Text { visible: (page.d.longDescription || "").length > 0; width: parent.width; font.pixelSize: Style.bodySize; color: Style.ink; wrapMode: Text.Wrap; text: page.d.longDescription || "" }
             Line { objectName: "detailInstalled"; caption: qsTr("detail.installed_version"); value: page.d.installedVersion || "" }

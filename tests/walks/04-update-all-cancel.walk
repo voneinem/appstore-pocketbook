@@ -1,0 +1,17 @@
+# Feature 004 (story 2, scenario 4): Cancel on the combined confirmation changes nothing: no download, no write, the banner is still there.
+# scenario demo
+# expect-unchanged
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+expect updateNotice 1 update available
+tap updateAllButton
+waitfor updateAllIntro
+expect_count updateAllEntry 1
+shot @OUT@/35-update-all-cancel.png
+tap cancel
+waitfor appRow
+expect_absent updateAllIntro
+expect updateNotice 1 update available
+quit

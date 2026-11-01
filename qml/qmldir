@@ -6,3 +6,4 @@ RowDivider 1.0 RowDivider.qml
 TopBar 1.0 TopBar.qml
 ActionButton 1.0 ActionButton.qml
 TickRow 1.0 TickRow.qml
+UpdateBadge 1.0 UpdateBadge.qml

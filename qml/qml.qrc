@@ -10,6 +10,7 @@
         <file>RowDivider.qml</file>
         <file>TopBar.qml</file>
         <file>ActionButton.qml</file>
+        <file>UpdateBadge.qml</file>
         <file>TickRow.qml</file>
         <file>pages/HomePage.qml</file>
         <file>pages/DetailPage.qml</file>

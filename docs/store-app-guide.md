@@ -28,13 +28,17 @@ Every app in the list shows one of four state words with an icon (never colour a
 |-------|---------|-----------------|
 | **Not installed** | The catalog offers it; it is not on the reader. | Install |
 | **Installed** | It is on the reader and PB Store manages it (there is an install record). | Remove; Update when a newer version is offered |
-| **Update available** | A newer version is offered. | Update, Remove |
+| **Update available** | A newer version is offered. The row has a black badge with the words "Update available" and a filled icon, shows both versions, and is listed before every app without an update. | Update, Remove |
 | **Installed outside the store** | It is on the reader but was copied by hand. | **Check**: if its files equal the catalog package, **Adopt** lets the store manage it; if they differ, **Replace** installs the catalog version over it (read the plan first) |
 | **Not in the catalog** | It is on the reader, the catalog does not list it. | nothing; the store does not touch it |
 
 Notes under a row: *needs repair*, *this version was withdrawn* (the catalog no longer offers that version; nothing is changed on the reader), *changed since
-install* (a file of the app was edited), *from a local file*. **Update all** (in the menu) goes through the apps with an update one after the other, asks for
-each plan, and updates PB Store itself last.
+install* (a file of the app was edited), *from a local file*. When at least one app has an update, a line above the list says how many ("3 updates available") and has an **Update all** button (the menu entry is still there). Update all
+asks **once**: it lists every app with its old and new version, the size to download, that your apps' data is kept and that Wi-Fi is on only while packages are
+downloaded, and, if the store cannot read the reader's model, firmware or battery level, asks you to accept that once for the whole run. After you confirm, the apps are
+updated one after the other with no more questions; PB Store itself comes last. An app whose update needs a consent of its own (a file of it was edited, or a data folder
+exists that no installed app owns) stops the run at that app and asks about it only; Cancel there skips that app. The first failure stops the run and the result says what was
+updated, what failed and what was not tried. A single Update from an app's page still shows that app's plan first.
 
 ## Updating PB Store itself
 

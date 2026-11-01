@@ -1,0 +1,22 @@
+# Feature 004 (story 3): the menu entry "Update all" is still there and starts the same run as the button: the combined confirmation, then the
+# summary. Nothing is left to update afterwards, so neither the banner nor the menu entry is offered.
+# scenario demo
+size 1404 1872
+wait 400
+tap refresh
+waitfor catalogLine Catalog last updated
+tap menu
+tap menuUpdateAll
+waitfor updateAllIntro
+expect_count updateAllEntry 1
+tap consent 0
+tap consent 1
+tap confirm
+waitfor resultText Updated:
+expect resultText App app-02
+tap ok
+waitfor appRow
+expect_absent updateBanner
+tap menu
+expect_absent menuUpdateAll
+quit

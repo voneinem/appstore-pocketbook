@@ -1,5 +1,12 @@
 # Changelog
 
+## store-0.2.0 - 2026-11-01
+
+- Apps with an update are marked with a black badge ("Update available") and a filled icon, and are listed before all other apps (feature 004).
+- The first screen shows how many updates there are ("3 updates available") with an **Update all** button; the menu entry stays.
+- **Update all** asks once for the whole run (the apps with both versions, the size, the consents about the reader), then updates the apps one after the other with no plan page
+  between them; an app whose update needs a consent of its own (a changed file, an existing data folder) still asks, and the first failure stops the run. A single update is unchanged.
+
 ## 0.3.1 - 2026-10-31
 
 - CI only: the pull request check may run 30 minutes instead of 15 (the exhaustive `test_store_leave` takes about 6 minutes on the runner). No change for PB Installer users.
