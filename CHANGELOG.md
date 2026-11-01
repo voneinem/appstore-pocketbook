@@ -1,6 +1,6 @@
 # Changelog
 
-## store-0.2.0 - 2026-11-01
+## store-0.2.0 - 2026-10-31
 
 - Apps with an update are marked with a black badge ("Update available") and a filled icon, and are listed before all other apps (feature 004).
 - The first screen shows how many updates there are ("3 updates available") with an **Update all** button; the menu entry stays.

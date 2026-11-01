@@ -1,0 +1,11 @@
+PB Store 0.2.0 for the PocketBook InkPad One
+
+Apps that have an update are now easy to see: a black "Update available" badge,
+a filled icon, a place at the top of the list, and a banner on the first screen
+that counts them. Update all asks once for the whole run and then updates the
+apps one after the other.
+
+Release file: pbstore-inkpad-one-0.2.0.zip
+SHA-256: e0b0c2b2e235285bb75996ef293af81587990de8d1edaf70eb7a0367a35a01f4
+
+Unofficial. Not made, endorsed or supported by PocketBook.
