@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "id": "pbstore",
-  "package_url": "https://github.com/voneinem/appstore-pocketbook/releases/download/0.1.0/pbstore-inkpad-one-0.1.0.zip",
-  "release_date": "2026-10-31",
+  "package_url": "https://github.com/voneinem/appstore-pocketbook/releases/download/0.2.0/pbstore-inkpad-one-0.2.0.zip",
+  "release_date": "2026-11-01",
   "short_description": {
     "en": "The app store on the reader: browse the signed catalog, install, update, remove and repair apps.",
     "de": "Der App-Store auf dem Gerät: signierten Katalog durchsuchen, Apps installieren, aktualisieren, entfernen und reparieren."
@@ -14,6 +14,6 @@
   "license": "MIT",
   "source_url": "https://github.com/voneinem/appstore-pocketbook",
   "author": "Volker von Einem",
-  "icon_url": "https://raw.githubusercontent.com/voneinem/appstore-pocketbook/0.1.0/res/icons/pbstore.bmp",
-  "changelog_url": "https://github.com/voneinem/appstore-pocketbook/releases/tag/0.1.0"
+  "icon_url": "https://raw.githubusercontent.com/voneinem/appstore-pocketbook/0.2.0/res/icons/pbstore.bmp",
+  "changelog_url": "https://github.com/voneinem/appstore-pocketbook/releases/tag/0.2.0"
 }
